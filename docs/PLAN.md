@@ -253,7 +253,51 @@ The pipeline implements at least three layers of mitigation: (1) structural sepa
 
 ---
 
-## Provider Interface
+## Deployment
+
+### Deployment context
+
+The system is deployed locally — on the developer's Mac for the build, and on whatever machine wants to run it for use. Local deployment is a deliberate choice tied to the project's consumer-hardware thesis: the goal is to demonstrate that a useful LLM-backed system can be deployed without cloud infrastructure or specialized hardware.
+
+"Deployed locally" is treated by the project rubric as a legitimate production environment ("local, AWS, etc."). The deployment story is not "I ran it on my laptop and it worked" — that's not deployment, that's development. The deployment story is **"the system can be reliably stood up on any platform with Docker, with documented setup and verified cross-platform compatibility."**
+
+### Deployment architecture
+
+Two paths are supported:
+
+**Native (developer or local user):**
+- `uv sync` to install dependencies
+- Ollama running on the same machine
+- `uv run` to start the Gradio app
+- App reaches Ollama at `http://localhost:11434/v1`
+
+**Containerized (anyone with Docker):**
+- Ollama runs on the host machine (not in the container)
+- Gradio app runs inside a Docker container
+- Container reaches Ollama via `host.docker.internal:11434` (Mac/Windows) or host network (Linux)
+- One `docker run` command starts the app
+
+### Why Ollama runs on the host, not in the container
+
+This is a deliberate architectural choice with a real tradeoff. Running Ollama inside the container would make deployment a single command with no external dependencies — but it would also lose GPU acceleration on Apple Silicon, because Docker on Mac runs in a Linux VM that doesn't have access to the Apple GPU. Inference inside a Mac container would be CPU-only and dramatically slower, defeating the purpose of choosing a model that fits on consumer hardware.
+
+The chosen split (Ollama on host, app in container) gives:
+
+- **Pro:** GPU/MLX acceleration is preserved on Apple Silicon
+- **Pro:** smaller container image (~500MB instead of 12GB+ with models baked in)
+- **Pro:** models are downloaded once on the host, not re-downloaded per container rebuild
+- **Pro:** matches how Ollama is typically deployed in the field
+- **Con:** the deploying user has to install Ollama and pull models separately before running the container — this is documented in `DEPLOYMENT.md`
+
+### Cross-platform testing
+
+The Docker setup will be tested on at least three platforms before being treated as deployable:
+
+- macOS (developer's machine — primary)
+- Windows (developer's secondary machine)
+- Linux (developer's work laptop)
+
+Tested platforms will be documented in `DEPLOYMENT.md`. The deployment story is only as strong as the platforms it has been verified on.
 
 The provider abstraction is defined as a Python `Protocol` so that any class implementing the protocol can be used interchangeably without explicit inheritance. For this iteration, only the local Ollama provider is implemented. A `cloud_qwen.py` placeholder exists in the codebase so that a cloud provider can be added later without refactoring the pipeline.
 
@@ -286,6 +330,9 @@ The project uses a single-app Python layout. There is no separate client and ser
 ```text
 ticket-triage-llm/
 ├── README.md
+├── DEPLOYMENT.md                   # forthcoming — native and Docker quick-start
+├── Dockerfile                      # forthcoming — Phase 1
+├── .dockerignore                   # forthcoming — Phase 1
 ├── pyproject.toml                  # uv-managed, source of truth for deps
 ├── uv.lock
 ├── .env
@@ -294,11 +341,14 @@ ticket-triage-llm/
 ├── ruff.toml
 │
 ├── docs/
-│   ├── llm-ticket-triage-plan.md   # this document
-│   ├── decision-log.md             # chronological scope/framing decisions
-│   ├── decisions/                  # ADRs (adr-tools format)
+│   ├── PLAN.md                     # this document
+│   ├── cost-analysis.md            # three-component cost analysis
+│   ├── adr/                        # ADRs (adr-tools format)
 │   │   ├── README.md
 │   │   └── 0001-language-and-stack.md
+│   ├── decisions/                  # scope/framing decisions (non-architectural)
+│   │   └── decision-log.md         # chronological decision log
+│   ├── archive/                    # original plan and rubric (reference)
 │   ├── architecture.md             # forthcoming
 │   ├── evaluation-plan.md          # forthcoming
 │   ├── tradeoffs.md                # forthcoming
@@ -804,8 +854,11 @@ The output of this phase is *empirical input* to all later decisions, not just a
 - one Gradio tab (Triage tab) that accepts a ticket and shows the structured result
 - minimal SQLite trace storage
 - one happy-path test, one failed-parse test
+- basic `Dockerfile` for the Gradio app (Ollama runs on host, container connects via `host.docker.internal:11434` on Mac/Windows or host network on Linux)
+- `.dockerignore`
+- verify the container builds and runs locally on Mac
 
-Output: a single working slice end-to-end. One model, one prompt, one tab. Demo-able.
+Output: a single working slice end-to-end. One model, one prompt, one tab. Demo-able both natively and via Docker.
 
 ### Phase 2: Provider abstraction and second/third local models
 
@@ -857,11 +910,13 @@ Output: Experiment 4 has real data. Prompt comparison is available in the dashbo
 
 - sweep adversarial cases that revealed weaknesses; iterate on guardrail or prompt
 - write `architecture.md`, `evaluation-plan.md`, `tradeoffs.md`, `prompt-versions.md`, `threat-model.md`
+- write `DEPLOYMENT.md` with native and Docker quick-starts, architecture note explaining Ollama-on-host design, and troubleshooting section
+- test the Docker setup on Windows and on the work laptop (Linux) — document tested platforms in `DEPLOYMENT.md`
 - finalize ADRs based on what was actually decided during the build
 - author the presentation slides
 - rehearse the demo end-to-end (twice)
 
-Output: complete deliverable. Everything ready for presentation day.
+Output: complete deliverable. Everything ready for presentation day, deployable on any platform with Docker.
 
 ### Phase order, not phase duration
 
@@ -935,14 +990,15 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: sev
 Documentation is split across multiple artifact types, each with a clear purpose:
 
 - **This document** (`docs/llm-ticket-triage-plan.md`) — the working project plan, updated as the project evolves
-- **`docs/decisions/`** — Architecture Decision Records (ADRs) for *architectural* decisions only, in `adr-tools` format
-- **`docs/decision-log.md`** — chronological log of *scope, framing, and strategy* decisions that are not architectural
+- **`docs/adr/`** — Architecture Decision Records (ADRs) for *architectural* decisions only, in `adr-tools` format
+- **`docs/decisions/decision-log.md`** — chronological log of *scope, framing, and strategy* decisions that are not architectural
 - **`docs/architecture.md`** — forthcoming, deeper detail on the pipeline, services, and component contracts
 - **`docs/evaluation-plan.md`** — forthcoming, the executable version of the evaluation plan
 - **`docs/threat-model.md`** — forthcoming, prompt injection threat model and mitigation map
 - **`docs/tradeoffs.md`** — forthcoming, the cross-cutting tradeoffs document
 - **`docs/prompt-versions.md`** — forthcoming, prompt v1 and v2 and the rationale for each
 - **`docs/cost-analysis.md`** — forthcoming, the three-layer cost analysis
+- **`DEPLOYMENT.md`** (repo root) — forthcoming, native and Docker quick-start, architecture note, troubleshooting, tested platforms
 - **`docs/future-improvements.md`** — forthcoming, things explicitly out of scope and why
 - **`docs/demo-script.md`** — forthcoming, the literal walkthrough used for the live demo
 - **`docs/presentation-notes.md`** — forthcoming, slide-by-slide speaker notes

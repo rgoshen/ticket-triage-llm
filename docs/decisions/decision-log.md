@@ -8,6 +8,20 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-15 — Deployment strategy: local-only with Docker containerization for the app
+
+The system will be deployed locally, with two supported paths: native (`uv run` against host Ollama) and containerized (Docker container for the Gradio app, Ollama on the host). Containerization is added because "I can run it on my Mac" is not a deployment story — the instructor or anyone evaluating the project needs to be able to actually stand it up on their own machine, and that requires explicit, reproducible setup.
+
+The architecture deliberately keeps Ollama on the host (not inside the container). The reason: Docker on Mac runs in a Linux VM that has no access to the Apple GPU, so running Ollama inside a container on Apple Silicon would lose MLX/Metal acceleration entirely and force CPU-only inference. That would defeat the project's consumer-hardware thesis. The chosen split — Ollama on host, app in container — preserves GPU acceleration, keeps the container small (~500MB instead of 12GB+), and matches how Ollama is typically deployed in the field. The tradeoff is that the deploying user has to install Ollama and pull models separately before running the container; this is documented in `DEPLOYMENT.md`.
+
+The Docker setup will be tested on three platforms before being treated as deployable: macOS (developer's primary), Windows (developer's secondary), and Linux (developer's work laptop). Tested platforms will be documented explicitly. Cross-platform testing is non-optional — a deployment story is only as strong as the platforms it has actually been verified on.
+
+This decision adds work to Phase 1 (Dockerfile + basic local container verification) and Phase 7 (`DEPLOYMENT.md`, cross-platform testing).
+
+Cloud deployment (AWS, etc.) was considered and rejected because it would conflict with the consumer-hardware thesis that anchors the rest of the project.
+
+---
+
 ## 2026-04-14 — OD-7 resolved: Adversarial set categories and counts locked, content deferred to Phase 3
 
 The adversarial set categories and target counts are locked:
