@@ -8,6 +8,14 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-14 — OD-3 resolved: Local model lineup is 2B / 4B / 9B pending Phase 0 verification
+
+The planned local model lineup is Qwen 3.5 2B, 4B, and 9B. All three will be smoke-tested in Phase 0 on the target hardware. If any model cannot produce structured output reliably enough to be informative, it will be dropped with a documented rationale.
+
+The 2B is included despite uncertainty about its task quality because: (1) there is no data yet that it *won't* work, and excluding it without evidence is less defensible than testing and documenting the result; (2) a wider size range (2B to 9B is roughly 5x) produces a more informative quality-vs-size curve than a narrow range; (3) the 2B is where the validator-first pipeline will be stressed hardest, since smaller models produce more malformed output, which is where retry logic earns its keep; and (4) the 2B has the lowest resource cost in both memory (~2.7GB) and inference time, making it essentially free to include in the benchmark runs.
+
+---
+
 ## 2026-04-14 — OD-2 resolved: Cloud comparison deferred to future work
 
 The cloud Qwen variant is out of scope for this iteration. The project will be local-only, comparing Qwen 3.5 at multiple sizes on consumer hardware. Cloud comparison is documented as future work.

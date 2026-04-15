@@ -906,11 +906,9 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: Qwe
 
 Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: cloud comparison deferred to future work. The project is local-only for this iteration. The `LlmProvider` Protocol remains in the design so a cloud provider can be added without refactoring.
 
-### OD-3: Final local model lineup
+### ~~OD-3: Final local model lineup~~ — RESOLVED
 
-- **What's needed:** confirmation that 2B / 4B / 9B is the right local lineup, or an empirical reason to drop the 2B.
-- **Why it's not yet decided:** depends on the Phase 0 smoke test. The 2B will be included only if it can produce structured output reliably enough to be informative.
-- **Will be captured in:** decision log entry (immediately after Phase 0) and the eventual model selection ADR
+Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: 2B / 4B / 9B, all three included pending Phase 0 verification. No a-priori exclusions — if a model can't produce structured output, the exclusion will be documented with evidence from the smoke test rather than assumed in advance.
 
 ### OD-4: Default model for the demo
 
