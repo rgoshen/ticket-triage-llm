@@ -916,25 +916,13 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: 2B 
 - **Why it's not yet decided:** depends on Phase 3 evaluation results. The default should be the model that won the multi-factor decision matrix, not the one with the highest single-metric score.
 - **Will be captured in:** ADR for model selection (forthcoming, written after Phase 3)
 
-### OD-5: Cost analysis depth
+### ~~OD-5: Cost analysis depth~~ — RESOLVED
 
-- **What's needed:** how detailed the cost analysis should be for a local-only deployment.
-- **Options:**
-  - Hardware acquisition cost amortized over expected useful life, with a projected break-even comparison against hypothetical cloud pricing — useful as a thought exercise even without a real cloud integration
-  - Hardware cost only, with a brief qualitative discussion of when cloud would make sense — simpler, still shows the thinking
-  - Skip cost analysis — acceptable but misses an easy opportunity to demonstrate the "factors weighing" thinking the instructor asked for
-- **Why it's not yet decided:** with cloud deferred, the cost analysis is simpler but potentially less interesting. Need to decide how much depth is worth the writing time.
-- **Will be captured in:** `docs/cost-analysis.md` or within the model selection ADR
+Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: three components — (1) local compute resource cost per model (RAM, GPU, latency, disk), (2) hardware acquisition cost amortized over useful life, (3) hypothetical cloud comparison using published Qwen API pricing and actual token counts from the benchmarks, with a break-even calculation at projected daily volumes. Written up in `docs/cost-analysis.md` after Phase 3.
 
-### OD-6: Guardrail implementation depth
+### ~~OD-6: Guardrail implementation depth~~ — RESOLVED
 
-- **What's needed:** how sophisticated the pre-LLM guardrail layer should be.
-- **Options:**
-  - Heuristic-only (regex / substring match for known injection patterns, length checks, language detection)
-  - Heuristic + LLM-based classifier as a second pass
-  - Heuristic + a small dedicated injection-detection model
-- **Why it's not yet decided:** depends on Phase 0 capacity. The heuristic baseline is in scope for Phase 2; anything beyond that is a stretch and depends on whether the heuristic baseline already produces interesting findings.
-- **Will be captured in:** ADR for guardrail strategy (forthcoming, written after first eval run on adversarial set)
+Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: heuristic-only baseline (pattern matching for known injection phrases, structural markers, length extremes, PII patterns). The heuristic will be measured against the adversarial set in Phase 4; expected failures on obfuscated attacks are treated as a finding, not a defect. Optional stretch: LLM-based second-pass classifier post-Phase 6 if time permits.
 
 ### OD-7: Adversarial set final size and exact composition
 

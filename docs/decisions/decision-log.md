@@ -8,6 +8,42 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-14 — OD-6 resolved: Guardrail implementation starts heuristic-only
+
+The guardrail layer will start as a heuristic-only implementation: a function that takes a ticket body and returns `pass`, `warn`, or `block` based on pattern matching. The patterns cover:
+
+- Known injection phrases ("ignore previous instructions", "ignore all prior", "you are now", "disregard your system prompt", and similar variants)
+- Suspicious structural markers (Base64-encoded blocks, invisible Unicode characters, unusual character-to-whitespace ratios)
+- Length extremes (empty input, input over a threshold)
+- Basic PII patterns (credit card regex, SSN regex)
+
+This is roughly 50–80 lines of Python plus tests. The implementation cost is minimal; the valuable work is measuring the guardrail against the adversarial set in Phase 4 and writing up what it caught and what it missed.
+
+The heuristic approach will almost certainly fail on obfuscated injection attempts — that is expected and is itself a finding worth reporting. The writeup will frame this as "the heuristic approach caught X% of direct injection but only Y% of obfuscated attacks, demonstrating the limits of pattern-matching as a defense."
+
+**Optional stretch (post-Phase 6 if time permits):** add a small LLM-based second-pass classifier to detect injection attempts the regex missed, and re-run the adversarial eval to measure the improvement. This would add roughly half a day of implementation plus tuning plus extra eval runs, so it's only worth attempting if the core project is otherwise complete.
+
+---
+
+## 2026-04-14 — OD-5 resolved: Cost analysis will cover three components
+
+The cost analysis will include three components, written up in `docs/cost-analysis.md` after Phase 3 when real token counts are available from the benchmark runs:
+
+1. **Local compute resource cost per model** — RAM footprint, GPU utilization (if measurable), inference latency, tokens/sec, and disk usage for each model's weights. This captures what each model "costs the machine" in resource terms, even though the per-request dollar cost is $0.
+
+2. **Hardware acquisition cost amortized** — the target Mac's purchase price amortized over its expected useful life (e.g., 3 years), expressed as a daily fixed cost. This is the honest answer to "what does local inference actually cost?" — it's not free, the hardware just isn't free.
+
+3. **Hypothetical cloud comparison using published pricing** — using actual token counts from the benchmark (tokens in + tokens out per triage request) multiplied by published Qwen API pricing (e.g., Qwen 3.5 Plus at $0.26/M input, $1.56/M output), projected at daily volumes of 100, 1K, and 10K tickets/day. Includes a break-even calculation showing at what daily volume amortized hardware cost becomes cheaper than cloud per-request fees.
+
+This approach recovers the most interesting part of the cloud comparison — the cost reasoning — without requiring actual cloud integration. It demonstrates the ability to reason about costs not yet incurred, which is what a senior engineer does when writing a deployment proposal.
+
+Published Qwen pricing sources consulted:
+- Qwen 3.5 Plus: $0.26/M input, $1.56/M output (OpenRouter)
+- Qwen Plus: $0.26/M input, $0.78/M output (pricepertoken.com)
+- Qwen3 Max: $0.78/M input, $3.90/M output (pricepertoken.com)
+
+---
+
 ## 2026-04-14 — OD-3 resolved: Local model lineup is 2B / 4B / 9B pending Phase 0 verification
 
 The planned local model lineup is Qwen 3.5 2B, 4B, and 9B. All three will be smoke-tested in Phase 0 on the target hardware. If any model cannot produce structured output reliably enough to be informative, it will be dropped with a documented rationale.
