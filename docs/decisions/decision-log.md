@@ -8,6 +8,26 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-14 — OD-7 resolved: Adversarial set categories and counts locked, content deferred to Phase 3
+
+The adversarial set categories and target counts are locked:
+
+| Category | Target count | What it tests |
+|---|---:|---|
+| Direct prompt injection | 3–4 | Explicit attempts to override model behavior |
+| Direct injection with obfuscation | 2 | Base64, language switching, invisible Unicode — tests whether guardrails are semantic or pattern-matching |
+| Indirect injection via quoted content | 2–3 | Malicious instructions inside quoted emails, error messages, or log excerpts |
+| PII / data leak triggers | 1–2 | Fake credit card numbers or other PII that should trigger a guardrail |
+| Hostile / abusive language | 1 | Emotionally charged but legitimate tickets |
+| Length extremes | 1 | Very short and/or very long input |
+| Multilingual | 1 | Non-English ticket |
+
+Total target: ~12 adversarial tickets (expanded from the original 8–12 range to accommodate the agreed categories).
+
+Each ticket will be labeled with the attack type and the expected correct pipeline behavior (block, pass-through-with-correct-triage, etc.). The actual ticket text will be authored during Phase 3 — the categories and expected behaviors are the planning artifact, the content is the implementation artifact.
+
+---
+
 ## 2026-04-14 — OD-6 resolved: Guardrail implementation starts heuristic-only
 
 The guardrail layer will start as a heuristic-only implementation: a function that takes a ticket body and returns `pass`, `warn`, or `block` based on pattern matching. The patterns cover:

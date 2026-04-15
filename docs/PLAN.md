@@ -622,7 +622,7 @@ The evaluation uses two distinct datasets:
 
 #### Adversarial set
 
-- **8–12 adversarial tickets**, organized by attack type. The adversarial set is the central evidence base for the prompt-injection investigation.
+- **~12 adversarial tickets**, organized by attack type. The adversarial set is the central evidence base for the prompt-injection investigation.
 
 | Category | Count (target) | What it tests |
 |---|---:|---|
@@ -821,7 +821,7 @@ Output: pipeline supports all local models with one-click switching. Retry logic
 ### Phase 3: Evaluation harness and labeled datasets
 
 - build the `gold_tickets.json` normal labeled set (20–30 tickets)
-- build the `adversarial_tickets.json` adversarial set (8–12 tickets, organized by attack category)
+- build the `adversarial_tickets.json` adversarial set (~12 tickets, organized by attack category)
 - write the eval runners for each of the four experiments
 - run each experiment, store results to SQLite
 - generate the first real benchmark table (replacing the placeholder TBDs in this document)
@@ -878,7 +878,7 @@ Minimum viable strong version:
 - Qwen 3.5 local at three sizes (subject to Phase 0 smoke test, default plan: 2B / 4B / 9B)
 - validator-first pipeline with bounded retry
 - guardrail layer with explicit attention to prompt injection
-- 20–30 labeled normal tickets + 8–12 labeled adversarial tickets
+- 20–30 labeled normal tickets + ~12 labeled adversarial tickets
 - four experiments (size, size-vs-controls interaction, validation-on/off, prompt-v1-vs-v2)
 - prompt injection sub-evaluation across attack categories
 - built-in metrics dashboard and trace explorer
@@ -924,11 +924,9 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: thr
 
 Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: heuristic-only baseline (pattern matching for known injection phrases, structural markers, length extremes, PII patterns). The heuristic will be measured against the adversarial set in Phase 4; expected failures on obfuscated attacks are treated as a finding, not a defect. Optional stretch: LLM-based second-pass classifier post-Phase 6 if time permits.
 
-### OD-7: Adversarial set final size and exact composition
+### ~~OD-7: Adversarial set final size and exact composition~~ — RESOLVED
 
-- **What's needed:** the final list of 8–12 adversarial tickets, each labeled with attack type and expected behavior.
-- **Why it's not yet decided:** the categories are agreed (see Evaluation Plan), but the actual ticket text needs to be written. The right time to do this is during Phase 3.
-- **Will be captured in:** the dataset file itself (`src/ticket_triage_llm/eval/datasets/adversarial_tickets.json`) and a brief writeup in the threat model doc
+Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: seven categories, ~12 tickets total. Categories and target counts are locked. Actual ticket text will be authored during Phase 3. Each ticket will be labeled with attack type and expected correct pipeline behavior.
 
 ---
 
