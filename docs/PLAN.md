@@ -85,7 +85,7 @@ Use the **Qwen 3.5** family as the main model family because it supports:
 - native tool calling and "thinking" modes, available in all sizes,
 - and Apache 2.0 licensing, suitable for any deployment context.
 
-The reasoning behind choosing the 3.5 family specifically over the 3.0 family is **TBD** — captured in the open decisions section at the end of this document.
+The choice of 3.5 over 3.0 is documented in the [decision log](decisions/decision-log.md): the 3.5 sub-10B variants deliver better structured-output quality and instruction following at the parameter sizes that fit on consumer hardware, with no licensing tradeoff.
 
 ### Recommended Comparison
 
@@ -899,11 +899,9 @@ This version matches the available hardware, the constraints we have chosen to h
 
 This section tracks decisions that have **not yet been made** and need to be resolved before or during the build. Every entry includes what the decision is, what's blocking it, and where it will be captured once made.
 
-### OD-1: Why Qwen 3.5 specifically (over Qwen 3.0)?
+### ~~OD-1: Why Qwen 3.5 specifically (over Qwen 3.0)?~~ — RESOLVED
 
-- **What's needed:** a defensible one-paragraph reason for choosing the 3.5 family over 3.0 that can go into the eventual model selection ADR.
-- **Why it's not yet decided:** the choice was made by gut and not yet articulated. Possible reasons include longer context window (256K), native tool calling and "thinking" modes, more recent and active development, multimodal capability available if needed in future iterations, or "newest in the family is most relevant to current production deployments." Any of these is defensible; the question is which is *true* for this project.
-- **Will be captured in:** ADR for model family selection (forthcoming, written after Phase 0)
+Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: Qwen 3.5's sub-10B variants deliver better structured-output quality and instruction following than their 3.0 equivalents at the same parameter count, which is the tier that fits on the project's consumer hardware. No licensing tradeoff (Apache 2.0). Vision/long-context features are available but unused and cost nothing.
 
 ### OD-2: Cloud provider for the within-family comparison
 

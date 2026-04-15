@@ -8,6 +8,18 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-14 — OD-1 resolved: Qwen 3.5 over Qwen 3.0
+
+Qwen 3.5 was chosen over Qwen 3.0 because the 3.5 family delivers meaningfully better quality at the sub-10B parameter sizes that actually fit on the project's target hardware (≤24GB Apple Silicon). Specifically, the 3.5 small variants (4B, 9B) show improved instruction following, stronger structured-output and tool-calling behavior, and better benchmark scores relative to their 3.0 equivalents at the same parameter count. Since the project is constrained to consumer hardware and relies heavily on structured JSON output, the relevant comparison is not flagship-vs-flagship but rather small-model-vs-small-model — and at that tier, 3.5 is a meaningful step up. Additionally, 3.5 retains Apache 2.0 licensing and open weights on Hugging Face, so there is no licensing tradeoff.
+
+Qwen 3.5's vision and long-context capabilities (256K+ native, 1M+ with extended attention) are not relevant to this project's text-only, short-input use case, but they do not impose any overhead either — they are available features that the project simply does not use, not costs it pays for.
+
+Sources consulted:
+- https://news.ycombinator.com/item?id=47249959
+- https://www.digitalapplied.com/blog/qwen-3-5-medium-model-series-benchmarks-pricing-guide
+
+---
+
 ## 2026-04-14 — Initial scope and framing decisions
 
 The following decisions were made during the initial planning conversation. They establish the shape of the project before implementation begins.
