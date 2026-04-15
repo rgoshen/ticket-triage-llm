@@ -33,7 +33,7 @@ The core argument of the project is:
 The project is structured to test that argument empirically. Each of the planned experiments is a probe at one part of it:
 
 - **Model size comparison** asks: how much does raw model capability buy you?
-- **Local vs cloud comparison** asks: how much does the cloud premium buy you?
+- **Model size vs engineering controls interaction** asks: can a smaller model with strong controls match a larger model without them?
 - **Validation on/off comparison** asks: how much do engineering controls buy you?
 - **Prompt v1/v2 comparison** asks: how much does prompt design buy you?
 
@@ -80,7 +80,7 @@ Example routing teams:
 Use the **Qwen 3.5** family as the main model family because it supports:
 
 - local execution via Ollama with 256K context windows across all sizes,
-- cloud variants in the same family (`qwen3.5:cloud` via Ollama, or DashScope-hosted Qwen-Plus / Qwen-Max — provider TBD),
+- cloud variants available in the same family for future expansion (deferred for this iteration — see OD-2),
 - strong instruction following and structured/JSON-oriented output behavior,
 - native tool calling and "thinking" modes, available in all sizes,
 - and Apache 2.0 licensing, suitable for any deployment context.
@@ -89,7 +89,7 @@ The choice of 3.5 over 3.0 is documented in the [decision log](decisions/decisio
 
 ### Recommended Comparison
 
-The plan is to compare three local Qwen 3.5 sizes plus one cloud option, all within the same family. This lets the comparison isolate two variables — model size and hosting type — without the confound of mixing model families.
+The plan is to compare three local Qwen 3.5 sizes within the same family. This lets the comparison isolate model size as the primary variable without the confound of mixing model families. The provider abstraction supports adding a cloud variant later without pipeline changes.
 
 #### Local models (planned)
 
@@ -99,9 +99,9 @@ The plan is to compare three local Qwen 3.5 sizes plus one cloud option, all wit
 
 The 2B is included even though it may produce lower task quality, because the experiment is about *characterizing how quality changes with size*, not just identifying the best model. A wide range produces a more interesting curve than a narrow one. If the 2B turns out to be unable to follow the structured-output format at all (verified in the Phase 0 smoke test described below), it will be dropped from the main comparison and that exclusion will be documented.
 
-#### Cloud model (planned)
+#### Cloud model
 
-- **One Qwen 3.5 cloud variant** as a cost-and-quality reference point. Specific provider is **TBD** (see open decisions).
+Cloud comparison is **deferred to future work** for this iteration. The `LlmProvider` Protocol and the `cloud_qwen.py` placeholder remain in the codebase so that a cloud provider can be added without refactoring, but no cloud model will be integrated, benchmarked, or demoed in the current build. See [decision log](decisions/decision-log.md), OD-2.
 
 #### Models excluded by design
 
@@ -113,9 +113,10 @@ The 2B is included even though it may produce lower task quality, because the ex
 It lets the project compare:
 
 - model size vs quality (across 2B / 4B / 9B),
-- local speed vs cloud cost,
-- the cost of running on consumer hardware vs the cost of cloud per-request fees,
+- speed vs accuracy tradeoffs on consumer hardware,
 - and practical engineering tradeoffs without adding extra-family confounds.
+
+A cloud comparison variant can be added later via the provider abstraction without any pipeline changes.
 
 ### Phase 0 smoke test (decision point)
 
@@ -254,7 +255,7 @@ The pipeline implements at least three layers of mitigation: (1) structural sepa
 
 ## Provider Interface
 
-The provider abstraction is defined as a Python `Protocol` so that any class implementing the protocol can be used interchangeably without explicit inheritance. Concrete implementations cover one local provider (Ollama, called via the `openai` Python client pointed at Ollama's OpenAI-compatible endpoint) and one cloud provider (Qwen-family hosted, exact provider TBD).
+The provider abstraction is defined as a Python `Protocol` so that any class implementing the protocol can be used interchangeably without explicit inheritance. For this iteration, only the local Ollama provider is implemented. A `cloud_qwen.py` placeholder exists in the codebase so that a cloud provider can be added later without refactoring the pipeline.
 
 ```python
 from typing import Protocol
@@ -274,7 +275,7 @@ class LlmProvider(Protocol):
 ### Implementations
 
 - `OllamaQwenProvider` — local execution via Ollama, called through the `openai` client pointed at Ollama's OpenAI-compatible endpoint (`http://localhost:11434/v1`)
-- `CloudQwenProvider` — cloud-hosted Qwen variant; specific provider TBD (see open decisions)
+- `CloudQwenProvider` — placeholder for future cloud integration; not implemented this iteration
 
 ---
 
@@ -447,7 +448,7 @@ Purpose: compare experimental runs side by side, with the four planned experimen
 Features:
 
 - **Experiment 1** — local size comparison: Qwen 3.5 2B vs 4B vs 9B
-- **Experiment 2** — local vs cloud: best local Qwen vs cloud Qwen variant
+- **Experiment 2** — model size vs engineering controls: smallest model with full validation vs largest model without validation
 - **Experiment 3** — validation impact: pipeline with validation/retry vs pipeline without
 - **Experiment 4** — prompt comparison: triage prompt v1 vs v2
 - exportable result summaries
@@ -605,7 +606,6 @@ class TraceRecord(BaseModel):
 | Qwen 3.5 2B | TBD | TBD | TBD | TBD | TBD | TBD | $0 |
 | Qwen 3.5 4B | TBD | TBD | TBD | TBD | TBD | TBD | $0 |
 | Qwen 3.5 9B | TBD | TBD | TBD | TBD | TBD | TBD | $0 |
-| Cloud Qwen | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
 
 ## Evaluation Plan
 
@@ -661,12 +661,14 @@ The four experiments are designed as probes at the project's central question �
 - **Primary metrics:** task accuracy, JSON validity rate, latency, tokens/sec
 - **Secondary observation:** which size first becomes useful at producing structured output reliably
 
-#### Experiment 2: Local vs cloud
+#### Experiment 2: Model size vs engineering controls interaction
 
-- **Models:** best-performing local Qwen vs cloud Qwen variant
-- **Question being asked:** how much does the cloud premium buy you, within the same model family?
-- **Primary metrics:** task accuracy, latency, cost per request, projected cost at scale (100/day, 10K/day, 1M/day)
-- **Secondary observation:** at what daily volume does local hardware amortization break even against cloud per-request fees?
+- **Configurations:** smallest viable local model WITH full validation/retry vs largest local model WITHOUT validation/retry
+- **Question being asked:** can a smaller, cheaper model with strong engineering controls match or outperform a larger model running without them?
+- **Primary metrics:** end-to-end task accuracy, JSON validity rate, routing correctness
+- **Secondary observation:** what's the cost (in latency and retries) of compensating for model quality with engineering controls?
+
+This experiment directly tests the project's central thesis. It replaces the originally planned local-vs-cloud comparison (deferred to future work) with a more focused probe at the same underlying question: *where does the value come from?*
 
 #### Experiment 3: Validation impact
 
@@ -707,7 +709,6 @@ The honest engineering claim from this sub-evaluation is *not* "I built guardrai
 | Qwen 3.5 2B local | TBD | TBD | TBD | TBD | ~2.7GB | $0.00 | fast baseline / pipeline stress test |
 | Qwen 3.5 4B local | TBD | TBD | TBD | TBD | ~3.3GB | $0.00 | middle data point |
 | Qwen 3.5 9B local | TBD | TBD | TBD | TBD | ~6.6GB | $0.00 | likely best balance |
-| Cloud Qwen | TBD | TBD | TBD | N/A | N/A | TBD | cloud reference point |
 
 ---
 
@@ -759,8 +760,8 @@ Keep the live presentation to **6 slides max**.
 
 ### Step 2: Model switch
 
-- switch to a different size (e.g., 4B → 9B) or to the cloud Qwen variant,
-- show differences in latency, output quality, and cost.
+- switch to a different local size (e.g., 4B → 9B),
+- show differences in latency, output quality, and JSON validity.
 
 ### Step 3: Failure case — adversarial input
 
@@ -827,14 +828,12 @@ Output: pipeline supports all local models with one-click switching. Retry logic
 
 Output: the project's central evidence base. Real numbers replace illustrative ones.
 
-### Phase 4: Cloud provider and cost analysis
+### Phase 4: Prompt injection hardening and adversarial evaluation
 
-- integrate the cloud Qwen provider (whichever option is chosen)
-- run Experiments 1, 2, and 4 on the cloud variant
-- compute the three layers of cost (direct inference, amortized hardware, TCO)
-- compute the local-vs-cloud break-even point at projected daily volumes
-
-Output: the cost dimension of the model selection decision is grounded in real numbers, not guesses.
+- run the adversarial set against all local models
+- measure per-layer mitigation effectiveness (guardrail block rate, model bypass rate, output validation catch rate, residual risk)
+- iterate on the guardrail implementation based on what the adversarial results reveal
+- document findings in the threat model
 
 ### Phase 5: Dashboard and traces tab
 
@@ -877,19 +876,19 @@ Build the system around **Qwen 3.5 local-first evaluation with prompt-injection-
 Minimum viable strong version:
 
 - Qwen 3.5 local at three sizes (subject to Phase 0 smoke test, default plan: 2B / 4B / 9B)
-- one cloud Qwen variant for cost and quality reference
 - validator-first pipeline with bounded retry
 - guardrail layer with explicit attention to prompt injection
 - 20–30 labeled normal tickets + 8–12 labeled adversarial tickets
-- four experiments (size, local-vs-cloud, validation-on/off, prompt-v1-vs-v2)
+- four experiments (size, size-vs-controls interaction, validation-on/off, prompt-v1-vs-v2)
 - prompt injection sub-evaluation across attack categories
 - built-in metrics dashboard and trace explorer
 - 6-slide presentation framed around the central engineering question, not the feature list
 
 Optional stretch:
 
+- add a cloud Qwen variant via the provider abstraction (requires API key and integration work)
 - if Phase 0 reveals that the 2B is genuinely usable, the size comparison curve is more informative
-- if there's time after Phase 7, document `future-improvements.md` covering the things explicitly out of scope (multimodal injection defense, LoRA fine-tuning on ticket data, role-based access, vision input)
+- document `future-improvements.md` covering the things explicitly out of scope (cloud comparison, multimodal injection defense, LoRA fine-tuning on ticket data, role-based access, vision input)
 
 This version matches the available hardware, the constraints we have chosen to honor, and the rubric's emphasis on engineering judgment, evaluation rigor, and decision-making.
 
@@ -903,15 +902,9 @@ This section tracks decisions that have **not yet been made** and need to be res
 
 Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: Qwen 3.5's sub-10B variants deliver better structured-output quality and instruction following than their 3.0 equivalents at the same parameter count, which is the tier that fits on the project's consumer hardware. No licensing tradeoff (Apache 2.0). Vision/long-context features are available but unused and cost nothing.
 
-### OD-2: Cloud provider for the within-family comparison
+### ~~OD-2: Cloud provider for the within-family comparison~~ — RESOLVED
 
-- **What's needed:** a specific provider for the cloud Qwen variant.
-- **Options:**
-  - `qwen3.5:cloud` via Ollama — simplest integration (same client, different model name), but pricing, latency, and availability are not yet verified
-  - DashScope (Alibaba's cloud API) — Qwen-Plus or Qwen-Max, official upstream provider, well-documented, requires a separate client integration
-  - A non-Qwen cloud model as an "external upper bound" — rejected, would muddy the within-family comparison
-- **Why it's not yet decided:** need to verify whether `qwen3.5:cloud` works reliably and what it costs before committing. If it does, integration is essentially free and that's the right answer. If not, fall back to DashScope.
-- **Will be captured in:** ADR for cloud provider selection (forthcoming, written after Phase 0 verification)
+Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: cloud comparison deferred to future work. The project is local-only for this iteration. The `LlmProvider` Protocol remains in the design so a cloud provider can be added without refactoring.
 
 ### OD-3: Final local model lineup
 
@@ -927,13 +920,13 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: Qwe
 
 ### OD-5: Cost analysis depth
 
-- **What's needed:** how detailed the three-layer cost analysis (direct inference, amortized hardware, TCO) needs to be.
+- **What's needed:** how detailed the cost analysis should be for a local-only deployment.
 - **Options:**
-  - Layer 1 only (per-request inference cost) — quick, leaves money on the table
-  - Layer 1 + Layer 2 (with break-even calculation) — recommended baseline; produces a real finding
-  - All three layers (including a TCO discussion) — most thorough but TCO is hard to quantify and risks padding
-- **Why it's not yet decided:** trading completeness against time budget. Recommended default is "Layer 1 + Layer 2 + a paragraph naming Layer 3 honestly."
-- **Will be captured in:** the eventual model selection ADR and a `cost-analysis.md` doc, both forthcoming
+  - Hardware acquisition cost amortized over expected useful life, with a projected break-even comparison against hypothetical cloud pricing — useful as a thought exercise even without a real cloud integration
+  - Hardware cost only, with a brief qualitative discussion of when cloud would make sense — simpler, still shows the thinking
+  - Skip cost analysis — acceptable but misses an easy opportunity to demonstrate the "factors weighing" thinking the instructor asked for
+- **Why it's not yet decided:** with cloud deferred, the cost analysis is simpler but potentially less interesting. Need to decide how much depth is worth the writing time.
+- **Will be captured in:** `docs/cost-analysis.md` or within the model selection ADR
 
 ### OD-6: Guardrail implementation depth
 

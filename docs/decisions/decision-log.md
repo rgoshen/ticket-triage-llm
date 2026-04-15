@@ -8,6 +8,16 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-14 — OD-2 resolved: Cloud comparison deferred to future work
+
+The cloud Qwen variant is out of scope for this iteration. The project will be local-only, comparing Qwen 3.5 at multiple sizes on consumer hardware. Cloud comparison is documented as future work.
+
+Reasoning: adding a cloud provider introduces a second client integration, an API key dependency, and a cost dimension that all need to be verified and tested. The project's central thesis — that engineering controls matter as much as model choice — can be tested entirely within the local-only comparison, especially via Experiment 3 (validation on/off). The cloud comparison would strengthen the cost analysis but is not required to answer the central question. Time is better spent on evaluation depth and the prompt injection investigation.
+
+This also simplifies the provider abstraction: only one concrete provider (Ollama) is needed for the initial build. The `LlmProvider` Protocol still exists so that a cloud provider can be added later without refactoring.
+
+---
+
 ## 2026-04-14 — OD-1 resolved: Qwen 3.5 over Qwen 3.0
 
 Qwen 3.5 was chosen over Qwen 3.0 because the 3.5 family delivers meaningfully better quality at the sub-10B parameter sizes that actually fit on the project's target hardware (≤24GB Apple Silicon). Specifically, the 3.5 small variants (4B, 9B) show improved instruction following, stronger structured-output and tool-calling behavior, and better benchmark scores relative to their 3.0 equivalents at the same parameter count. Since the project is constrained to consumer hardware and relies heavily on structured JSON output, the relevant comparison is not flagship-vs-flagship but rather small-model-vs-small-model — and at that tier, 3.5 is a meaningful step up. Additionally, 3.5 retains Apache 2.0 licensing and open weights on Hugging Face, so there is no licensing tradeoff.
@@ -74,6 +84,7 @@ The following are deliberately not part of this iteration of the project, and th
 - Authentication / role-based access (see above)
 - LoRA / fine-tuning (see above)
 - Multimodal / vision input (see above)
+- Cloud Qwen comparison (see OD-2 resolution above — deferred to future work)
 - Qwen 3.5 27B and larger (consumer-hardware constraint)
 - TypeScript / Node / React stack (see [ADR 0001](decisions/0001-language-and-stack.md))
 - Two-tickets-in-one adversarial category (see above)
