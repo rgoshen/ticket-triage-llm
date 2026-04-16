@@ -160,187 +160,47 @@ ollama pull qwen3.5:9b
 
 ## System Architecture
 
-### High-level pipeline
+The full architecture — pipeline flow, component responsibilities, data model, and deployment diagram — is documented in [architecture.md](architecture.md).
 
-```text
-[UI]
-  -> [Input Validation]
-  -> [Guardrail Check]
-  -> [Prompt Builder + Prompt Version]
-  -> [Provider Router]
-        -> [Ollama Qwen Provider]
-        -> [Cloud Qwen Provider]
-  -> [LLM Output]
-  -> [JSON Parse]
-  -> [Schema Validation]
-  -> [Semantic Checks]
-  -> [Retry Service (max 1)]
-  -> [Trace Store]
-  -> [Metrics Store]
-  -> [UI Result + Dashboard]
-```
-
-### Core design idea
-
-The business workflow should be independent of the model host. Only the provider changes; the rest of the pipeline stays the same.
+The core design idea: the business workflow is independent of the model host. Only the provider changes; the rest of the pipeline stays the same. All model output is treated as untrusted until validated. Every request produces a trace. See the ADRs for the reasoning behind each architectural choice: [ADR index](adr/README.md).
 
 ---
 
 ## Key Engineering Decisions
 
-### 1. Structured JSON output
+Each key architectural decision is captured in its own ADR with full context, options considered, rationale, tradeoffs, and consequences. See the [ADR index](adr/README.md) for the complete list.
 
-The model must return a fixed schema instead of free-form prose.
+Summary of the decisions and where to find them:
 
-**Why:**
+| Decision | ADR |
+|---|---|
+| Python + Gradio + uv/pytest/ruff stack | [ADR 0001](adr/0001-language-and-stack.md) |
+| Validator-first pipeline with bounded retry, pydantic for schema validation | [ADR 0002](adr/0002-validator-first-pipeline-with-bounded-retry.md) |
+| Typed two-state error contract (TriageSuccess / TriageFailure) | [ADR 0003](adr/0003-pipeline-failure-handling-and-error-contract.md) |
+| Provider abstraction via Python Protocol | [ADR 0004](adr/0004-provider-abstraction-via-python-protocol.md) |
+| SQLite for trace storage, single table, repository pattern | [ADR 0005](adr/0005-sqlite-trace-storage-with-repository-pattern.md) |
+| Single-app Gradio architecture with tabbed layout | [ADR 0006](adr/0006-single-app-gradio-architecture.md) |
+| Local-only deployment with Docker for app, Ollama on host | [ADR 0007](adr/0007-local-deployment-with-docker.md) |
+| Heuristic-only guardrail as baseline | [ADR 0008](adr/0008-heuristic-only-guardrail-baseline.md) |
+| Monitoring distinct from benchmarking, with drift detection and alerting | [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md) |
 
-- easier to validate,
-- easier to benchmark,
-- easier to integrate into downstream systems.
-
-### 2. Validator-first architecture
-
-Treat model output as untrusted until it passes parsing and schema checks.
-
-**Why:**
-
-- LLMs are probabilistic,
-- malformed output should not silently flow through the system,
-- validation makes failure visible.
-
-### 3. One bounded retry
-
-Retry once only when parsing or schema validation fails.
-
-**Why:**
-
-- improves robustness,
-- avoids hidden instability,
-- keeps latency bounded.
-
-### 4. Provider abstraction
-
-Use a common provider interface so the same app can run local and cloud models.
-
-**Why:**
-
-- clean comparison framework,
-- isolates infrastructure concerns,
-- future-proofs deployment options.
-
-### 5. Built-in observability dashboard
-
-Benchmark and runtime metrics should appear in the app UI, not just in terminal logs.
-
-**Why:**
-
-- supports engineering analysis,
-- helps demo the system,
-- makes model selection and failure analysis visible.
-
-### 6. Prompt injection defense as a load-bearing component
-
-The guardrail and validation layers are not just hygiene — they are the project's central engineering investigation. Tickets are user-submitted by definition, which means the body of any ticket is untrusted input. The pipeline must treat the ticket body as adversarial and apply layered mitigations against direct, indirect (via quoted third-party content), and obfuscated injection attempts.
-
-**Why:**
-
-- prompt injection is the central unsolved problem in production LLM security right now,
-- it cannot be *prevented* architecturally as long as instructions and data share a context window — it can only be *mitigated* through layered defenses,
-- the only honest engineering stance is to build the mitigations, measure them on a real adversarial set, and document the residual risk,
-- this is what converts the validator-first architecture from a checkbox into the spine of the project's argument.
-
-The pipeline implements at least three layers of mitigation: (1) structural separation between system instructions and user content in the prompt, (2) a pre-LLM guardrail that screens the input for known injection patterns, and (3) post-LLM output validation that rejects responses that don't conform to the expected schema (which is itself a way of catching cases where the model was successfully redirected). The effectiveness of each layer is measured on the adversarial set described in the evaluation plan.
+The prompt injection defense strategy — three defensive layers, what each catches and misses, and the residual risk — is documented in [threat-model.md](threat-model.md).
 
 ---
 
 ## Deployment
 
-### Deployment context
+The system is deployed locally on consumer hardware, with two supported paths: native (`uv run`) and containerized (Docker for the Gradio app, Ollama on the host). Ollama runs outside the container to preserve GPU/MLX acceleration on Apple Silicon. Cross-platform testing is performed on macOS, Windows, and Linux.
 
-The system is deployed locally — on the developer's Mac for the build, and on whatever machine wants to run it for use. Local deployment is a deliberate choice tied to the project's consumer-hardware thesis: the goal is to demonstrate that a useful LLM-backed system can be deployed without cloud infrastructure or specialized hardware.
-
-"Deployed locally" is treated by the project rubric as a legitimate production environment ("local, AWS, etc."). The deployment story is not "I ran it on my laptop and it worked" — that's not deployment, that's development. The deployment story is **"the system can be reliably stood up on any platform with Docker, with documented setup and verified cross-platform compatibility."**
-
-### Deployment architecture
-
-Two paths are supported:
-
-**Native (developer or local user):**
-- `uv sync` to install dependencies
-- Ollama running on the same machine
-- `uv run` to start the Gradio app
-- App reaches Ollama at `http://localhost:11434/v1`
-
-**Containerized (anyone with Docker):**
-- Ollama runs on the host machine (not in the container)
-- Gradio app runs inside a Docker container
-- Container reaches Ollama via `host.docker.internal:11434` (Mac/Windows) or host network (Linux)
-- One `docker run` command starts the app
-
-### Why Ollama runs on the host, not in the container
-
-This is a deliberate architectural choice with a real tradeoff. Running Ollama inside the container would make deployment a single command with no external dependencies — but it would also lose GPU acceleration on Apple Silicon, because Docker on Mac runs in a Linux VM that doesn't have access to the Apple GPU. Inference inside a Mac container would be CPU-only and dramatically slower, defeating the purpose of choosing a model that fits on consumer hardware.
-
-The chosen split (Ollama on host, app in container) gives:
-
-- **Pro:** GPU/MLX acceleration is preserved on Apple Silicon
-- **Pro:** smaller container image (~500MB instead of 12GB+ with models baked in)
-- **Pro:** models are downloaded once on the host, not re-downloaded per container rebuild
-- **Pro:** matches how Ollama is typically deployed in the field
-- **Con:** the deploying user has to install Ollama and pull models separately before running the container — this is documented in `DEPLOYMENT.md`
-
-### Cross-platform testing
-
-The Docker setup will be tested on at least three platforms before being treated as deployable:
-
-- macOS (developer's machine — primary)
-- Windows (developer's secondary machine)
-- Linux (developer's work laptop)
-
-Tested platforms will be documented in `DEPLOYMENT.md`. The deployment story is only as strong as the platforms it has been verified on.
+Full deployment architecture, rationale for the Ollama-on-host split, and cross-platform testing plan: [ADR 0007](adr/0007-local-deployment-with-docker.md). Runtime instructions will be in `DEPLOYMENT.md` (Phase 7).
 
 ---
 
 ## Monitoring
 
-### Why monitoring is treated separately from benchmarking
+The Metrics tab distinguishes **benchmarking** (static results from labeled eval runs) from **monitoring** (rolling metrics from live traffic). Live monitoring includes latency trends, error rate trends, category distribution as a drift indicator, and log-based alerting when configured thresholds are crossed.
 
-The project does both **benchmarking** and **monitoring**, and the distinction matters:
-
-- **Benchmarking** answers the question *"how does this perform on a known test set?"* It runs once or periodically against labeled data, produces accuracy and validity numbers, and is essentially a snapshot.
-- **Monitoring** answers the question *"what's happening in production right now?"* It runs continuously against live traffic, surfaces trends, and alerts when something is going wrong.
-
-Most student LLM projects collapse these two concepts into one dashboard called "metrics." This project deliberately separates them, because a real production system needs both and they answer different questions.
-
-### What's monitored
-
-The Live Metrics section of the Metrics tab tracks the following from the live trace store, on rolling time windows (last hour, last day, last week):
-
-- **Latency trends** — p50 and p95 latency over time, by provider and prompt version
-- **Error rate trends** — validation failures and retry rate over time
-- **Category distribution** — what proportion of recent tickets are being assigned to each category. Sustained shifts in this distribution are a basic drift indicator: if "security" suddenly grows from 5% to 80%, either the input distribution has changed (which is a real-world signal worth flagging) or the model behavior has changed (which is a regression worth investigating)
-
-### Alerting
-
-Alerting thresholds are configured for the following conditions, with structured warnings written to the application logs when crossed:
-
-- p95 latency exceeds a configured limit (default: 5 seconds)
-- Retry rate exceeds a configured limit (default: 20%)
-- Any single category exceeds a configured share of recent traffic (default: 70%) — drift signal
-
-The thresholds are configurable rather than hardcoded so that they can be tuned to actual baseline behavior once Phase 3 benchmark data exists. The defaults above are starting points, not final values.
-
-### What's intentionally out of scope
-
-This is monitoring at the scale of a single deployed instance, not a production service mesh. The following are deliberately not included:
-
-- Real alerting infrastructure (PagerDuty, Opsgenie, etc.) — alerts are log-based only
-- A real time-series database (Prometheus, InfluxDB) — time-series queries hit SQLite directly, which is sufficient at this scale
-- Distributed tracing (OpenTelemetry, Jaeger) — a single-process app does not benefit from distributed tracing
-- Long-term metric retention — the trace store is not pruned in this iteration; for a real deployment, retention policy would need to be designed
-- Anomaly detection (statistical or ML-based) — drift indication is rule-based, not learned
-
-These limitations are documented honestly. A real production deployment would address them; a single-instance demo system on consumer hardware does not need to, and pretending it does would be padding.
+Full monitoring design, alerting thresholds, drift detection approach, and what's intentionally out of scope: [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md).
 
 ---
 
@@ -632,178 +492,36 @@ Returns experiment summaries and comparison results for the Experiments tab.
 
 ---
 
-## Suggested Metrics Schema
+## Schemas and Data Model
 
-```json
-{
-  "provider": "qwen3.5-9b-local",
-  "accuracy": 0.87,
-  "json_validity_rate": 0.95,
-  "avg_latency_ms": 3200,
-  "p95_latency_ms": 4700,
-  "retry_rate": 0.08,
-  "guardrail_block_rate": 0.12,
-  "estimated_cost_per_request": 0.0,
-  "sample_count": 25,
-  "prompt_version": "v1"
-}
-```
-
-### Suggested trace schema (pydantic)
-
-```python
-from datetime import datetime
-from typing import Literal
-from pydantic import BaseModel
-
-class TraceRecord(BaseModel):
-    request_id: str
-    ticket_hash: str
-    prompt_version: str
-    model: str
-    provider: str
-    guardrail_result: Literal["pass", "warn", "block"]
-    validation_status: Literal["pass", "fail"]
-    semantic_check_status: Literal["pass", "fail"]
-    retry_count: int
-    latency_ms: int
-    tokens_in: int
-    tokens_out: int
-    tokens_total: int
-    tokens_per_sec: float
-    estimated_cost: float
-    timestamp: datetime
-```
+The `TraceRecord`, `TriageOutput`, `TriageSuccess`, `TriageFailure`, and `TriageResult` pydantic models are defined in [architecture.md](architecture.md) (data model section) and implemented in `src/ticket_triage_llm/schemas/`. The trace record is the single source of truth for all metrics — summaries are computed from traces, never stored separately ([ADR 0005](adr/0005-sqlite-trace-storage-with-repository-pattern.md)).
 
 ---
 
-## Metrics & Benchmarking
+## Evaluation Plan
 
-### Per-Model Metrics
+The full evaluation plan — datasets, metrics, experiments, prompt injection sub-evaluation, execution process, and reporting approach — is in [evaluation-plan.md](evaluation-plan.md).
 
-| Metric | Description |
-|--------|-------------|
-| Task accuracy | Category, severity, routing correctness |
-| JSON validity rate | Parse + schema pass rate |
-| Avg / p95 latency | Response time |
-| Tokens/sec | Throughput (decoding speed) |
-| Tokens used | Input, output, total per request |
-| Retry rate | First-pass failure rate |
-| Guardrail block rate | Block/warn/pass distribution |
-| Estimated cost/request | Cloud only (from token usage) |
+Summary of the four experiments:
+
+1. **Model size comparison** — Qwen 3.5 2B vs 4B vs 9B: how does quality scale with size on consumer hardware?
+2. **Model size vs engineering controls** — smallest model with full validation vs largest model without: can controls compensate for model size?
+3. **Validation impact** — full pipeline vs no validation on same model: what do engineering controls actually buy?
+4. **Prompt comparison** — prompt v1 vs v2 on same model: how much does prompt design contribute?
+
+Plus a **prompt injection sub-evaluation** measuring per-layer effectiveness across attack categories. See [threat-model.md](threat-model.md) for the defensive layer design and residual risk framing.
+
+Cost analysis methodology is in [cost-analysis.md](cost-analysis.md).
 
 ### Expected Benchmark Table
 
-> The numbers below are **illustrative placeholders only**. Real values will come from the Phase 0 smoke test and the full evaluation runs. They are included here to show the *shape* of the table that will be populated, not to predict the result.
+> Numbers are **placeholders** until Phase 3 produces real data. The shape of the table is what matters at the planning stage.
 
 | Model | Accuracy | JSON Valid | Latency | Tokens/s | Tokens/req | Retries | Cost/req |
 |-------|----------|------------|---------|----------|------------|---------|----------|
 | Qwen 3.5 2B | TBD | TBD | TBD | TBD | TBD | TBD | $0 |
 | Qwen 3.5 4B | TBD | TBD | TBD | TBD | TBD | TBD | $0 |
 | Qwen 3.5 9B | TBD | TBD | TBD | TBD | TBD | TBD | $0 |
-
-## Evaluation Plan
-
-### Datasets
-
-The evaluation uses two distinct datasets:
-
-#### Normal labeled set
-
-- **20–30 labeled normal tickets** representing realistic support traffic
-- Each ticket labeled with ground truth for: category, severity, routing team, escalation flag
-- Categories cover the full taxonomy (billing, outage, account_access, bug, feature_request, other)
-- Tickets vary in length, tone, clarity, and completeness to reflect realistic input
-
-#### Adversarial set
-
-- **~12 adversarial tickets**, organized by attack type. The adversarial set is the central evidence base for the prompt-injection investigation.
-
-| Category | Count (target) | What it tests |
-|---|---:|---|
-| Direct prompt injection | 3–4 | Explicit attempts to override the model's behavior in the ticket body |
-| Direct injection with obfuscation | 2 | Base64, language switching, or invisible Unicode variants — tests whether guardrails are doing semantic checking or pattern matching |
-| Indirect injection via quoted content | 2–3 | Tickets that legitimately quote third-party content (forwarded emails, error messages, log excerpts) where the malicious instructions are inside the quoted material |
-| PII / data leak triggers | 1–2 | Tickets containing fake credit card numbers or other PII patterns that should trigger a guardrail |
-| Hostile / abusive language | 1 | Legitimate but emotionally charged tickets, to test that the model still produces a useful triage |
-| Length extremes | 1 | One very-short and one very-long ticket |
-| Multilingual | 1 | A ticket in a language other than English |
-
-Every adversarial ticket is labeled with both the attack type and the *expected correct behavior* (e.g., "guardrail should block," "model should ignore the injection and triage the underlying complaint normally," "should be routed to security with high severity").
-
-### Core metrics
-
-| Metric | Purpose |
-|---|---|
-| Category accuracy | classification quality |
-| Severity accuracy | operational usefulness |
-| Routing accuracy | downstream utility |
-| JSON validity rate | structured-output reliability |
-| Retry rate | stability signal — first-pass failure rate |
-| Avg / p50 / p95 latency | operational responsiveness |
-| Guardrail block success rate | safety behavior on adversarial set |
-| Injection resistance rate | proportion of injection attempts that the pipeline correctly handled |
-| Cost/request | cloud tradeoff |
-
-### Experiments
-
-The four experiments are designed as probes at the project's central question — *where does the value actually come from in a production LLM system?*
-
-#### Experiment 1: Local model size comparison
-
-- **Models:** Qwen 3.5 2B vs 4B vs 9B (subject to Phase 0 smoke test)
-- **Question being asked:** how much does raw model size buy you on this task at this hardware tier?
-- **Primary metrics:** task accuracy, JSON validity rate, latency, tokens/sec
-- **Secondary observation:** which size first becomes useful at producing structured output reliably
-
-#### Experiment 2: Model size vs engineering controls interaction
-
-- **Configurations:** smallest viable local model WITH full validation/retry vs largest local model WITHOUT validation/retry
-- **Question being asked:** can a smaller, cheaper model with strong engineering controls match or outperform a larger model running without them?
-- **Primary metrics:** end-to-end task accuracy, JSON validity rate, routing correctness
-- **Secondary observation:** what's the cost (in latency and retries) of compensating for model quality with engineering controls?
-
-This experiment directly tests the project's central thesis. It replaces the originally planned local-vs-cloud comparison (deferred to future work) with a more focused probe at the same underlying question: *where does the value come from?*
-
-#### Experiment 3: Validation impact
-
-- **Configurations:** full pipeline (parse + schema + bounded retry) vs same pipeline with validation and retry disabled, on the same model
-- **Question being asked:** how much do engineering controls buy you, independently of model choice?
-- **Primary metrics:** end-to-end task accuracy with vs without validation, JSON validity rate, percentage of cases where retry recovers a failure
-- **Secondary observation:** does a smaller model with strong validation outperform a larger model without validation?
-
-This experiment is the most directly load-bearing for the project's central thesis. If the answer is "yes, validation matters more than model size in some regime," that finding alone justifies the project's framing.
-
-#### Experiment 4: Prompt comparison
-
-- **Configurations:** triage prompt v1 vs v2, on the same model
-- **Question being asked:** how much does prompt design buy you?
-- **Primary metrics:** task accuracy, JSON validity rate, retry rate
-- **Secondary observation:** which fields benefit most from prompt iteration
-
-### Prompt injection sub-evaluation
-
-Beyond the four main experiments, the adversarial set is run separately as a focused security evaluation. For each model and each attack category, the metrics reported are:
-
-- **Block rate** — proportion of adversarial inputs caught by the pre-LLM guardrail before the model sees them
-- **Bypass rate** — proportion that reached the model
-- **Successful injection rate** — proportion of bypassed inputs where the model actually followed the injected instructions
-- **Recovery rate** — proportion of successful injections caught downstream by output validation (e.g., the model wrote `severity = critical` to comply with an injection but the validation layer flagged it as suspicious)
-- **Residual risk** — proportion that succeeded end-to-end and produced a corrupted triage object
-
-The honest engineering claim from this sub-evaluation is *not* "I built guardrails that stop prompt injection." It is "here are the layered mitigations I built, here's how each layer performs on a realistic adversarial set, and here's the residual risk I could not eliminate." That framing — measurement and honesty about residual risk — is the position the field currently sits in, and articulating it cleanly is itself a piece of the project's deliverable.
-
----
-
-## Expected Benchmark Output Example
-
-> Same caveat as the earlier table: numbers are **placeholders**. The shape of the table is what matters at the planning stage.
-
-| Model | Accuracy | JSON Validity | Avg Latency | Tokens/s | RAM | Cost/Request | Notes |
-|---|---:|---:|---:|---:|---:|---:|---|
-| Qwen 3.5 2B local | TBD | TBD | TBD | TBD | ~2.7GB | $0.00 | fast baseline / pipeline stress test |
-| Qwen 3.5 4B local | TBD | TBD | TBD | TBD | ~3.3GB | $0.00 | middle data point |
-| Qwen 3.5 9B local | TBD | TBD | TBD | TBD | ~6.6GB | $0.00 | likely best balance |
 
 ---
 
@@ -1047,18 +765,18 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: sev
 
 Documentation is split across multiple artifact types, each with a clear purpose:
 
-- **This document** (`docs/llm-ticket-triage-plan.md`) — the working project plan, updated as the project evolves
-- **`docs/adr/`** — Architecture Decision Records (ADRs) for *architectural* decisions only, in `adr-tools` format
-- **`docs/decisions/decision-log.md`** — chronological log of *scope, framing, and strategy* decisions that are not architectural
-- **`docs/architecture.md`** — forthcoming, deeper detail on the pipeline, services, and component contracts
-- **`docs/evaluation-plan.md`** — forthcoming, the executable version of the evaluation plan
-- **`docs/threat-model.md`** — forthcoming, prompt injection threat model and mitigation map
-- **`docs/tradeoffs.md`** — forthcoming, the cross-cutting tradeoffs document
-- **`docs/prompt-versions.md`** — forthcoming, prompt v1 and v2 and the rationale for each
-- **`docs/cost-analysis.md`** — forthcoming, the three-layer cost analysis
-- **`DEPLOYMENT.md`** (repo root) — forthcoming, native and Docker quick-start, architecture note, troubleshooting, tested platforms
-- **`docs/future-improvements.md`** — forthcoming, things explicitly out of scope and why
-- **`docs/demo-script.md`** — forthcoming, the literal walkthrough used for the live demo
-- **`docs/presentation-notes.md`** — forthcoming, slide-by-slide speaker notes
+- **This document** (`docs/PLAN.md`) — the working project plan and map to all other docs
+- **`docs/adr/`** — Architecture Decision Records for architectural decisions ([ADR index](adr/README.md)) — **9 ADRs written**
+- **`docs/decisions/decision-log.md`** — chronological log of scope, framing, and strategy decisions — **active, 9 entries**
+- **`docs/architecture.md`** — pipeline flow, component responsibilities, data model, deployment diagram — **written**
+- **`docs/evaluation-plan.md`** — datasets, metrics, experiments, execution, reporting — **written**
+- **`docs/threat-model.md`** — prompt injection threat model, attack categories, defensive layers, residual risk, measurement plan — **written**
+- **`docs/tradeoffs.md`** — cross-cutting tradeoffs with reasoning — **written**
+- **`docs/cost-analysis.md`** — three-component cost analysis with TBD placeholders for Phase 3 data — **structured, awaiting data**
+- **`docs/future-improvements.md`** — everything deliberately out of scope with reasoning and effort estimates — **written**
+- **`docs/prompt-versions.md`** — forthcoming (Phase 6, when v1 and v2 both exist)
+- **`DEPLOYMENT.md`** (repo root) — forthcoming (Phase 7, native and Docker quick-start, tested platforms)
+- **`docs/demo-script.md`** — forthcoming (Phase 7, literal walkthrough for the live demo)
+- **`docs/presentation-notes.md`** — forthcoming (Phase 7, slide-by-slide speaker notes)
 
-This split keeps the presentation short while preserving rigor in writing.
+This split keeps the presentation short while preserving rigor in writing. PLAN.md is the map; the other docs are the territory.
