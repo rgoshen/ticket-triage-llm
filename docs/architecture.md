@@ -83,8 +83,35 @@ The system is a single-process Python application that accepts a support ticket 
 
 | Component | Responsibility |
 |---|---|
-| `app.py` | Gradio entry point. Creates `gr.Blocks` with tabs, wires UI to services. ([ADR 0006](adr/0006-single-app-gradio-architecture.md)) |
-| `eval/runners/*.py` | Eval runner entry points. Import service layer directly, no Gradio dependency. |
+| `app.py` | FastAPI + Gradio entry point. FastAPI is the outer app; Gradio is mounted as a sub-application. Wires API routes and UI tabs to the shared service layer. ([ADR 0006](adr/0006-single-app-gradio-architecture.md) + addendum) |
+| `eval/runners/*.py` | Eval runner entry points. Import service layer directly, no Gradio or FastAPI dependency. |
+
+### API layer
+
+The system exposes a REST API via FastAPI alongside the Gradio UI, in the same process:
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/v1/triage` | POST | Submit a ticket for triage. Accepts ticket body, optional model and prompt version. Returns `TriageResult`. |
+| `/api/v1/docs` | GET | Swagger UI — interactive API documentation auto-generated from pydantic models |
+| `/` | GET | Gradio UI (mounted as sub-application) |
+
+The API and the UI call the same service layer. There is no logic duplication. The API exists to satisfy the rubric's "accessible via an API endpoint" requirement and to provide Swagger documentation for programmatic consumers.
+
+### Sampling configuration
+
+The pipeline uses conservative sampling parameters optimized for structured JSON output:
+
+| Parameter | Value | Rationale |
+|---|---|---|
+| Temperature | 0.1–0.3 | Low temperature maximizes JSON validity. Near-zero avoids greedy decoding's complete lack of variation. |
+| Top-p | 0.85–0.9 | Excludes low-probability tokens that could break JSON structure |
+| Top-k | 40 | Standard default; limits vocabulary to the 40 most probable tokens |
+| Repetition penalty | 1.0 (disabled) | JSON output legitimately repeats field names and structural tokens |
+
+These parameters are passed to the Ollama provider as request-level settings and are configurable via app configuration. The rationale: structured JSON output requires the model to be predictable. Every "creative" token choice is a potential validation failure.
+
+If time permits, sampling parameters can be added as an experimental variable in the eval harness to test whether different settings measurably affect JSON validity or task accuracy.
 
 ### UI layer (`ui/`)
 

@@ -8,6 +8,35 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-15 — API endpoint: FastAPI alongside Gradio for rubric compliance
+
+The rubric's Environment Setup criterion requires the model to be "accessible via an API endpoint." The original single-app Gradio architecture (ADR 0006) did not explicitly address this. Gradio auto-generates internal API endpoints, but these are framework-determined, not project-designed, and lack Swagger/OpenAPI documentation.
+
+Resolution: add a minimal FastAPI layer alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One new route (`POST /api/v1/triage`) calls the same `triage_service.run_triage()` that the Gradio Triage tab calls. Swagger UI is auto-generated at `/api/v1/docs` from the existing pydantic request/response models.
+
+This does not create a client/server split — it's one process, one codebase, one Docker container. The service layer is unchanged. The instructor can open `/api/v1/docs` in a browser, submit a triage request via Swagger, and see the structured result without using the Gradio UI.
+
+See the addendum to ADR 0006 for the full architectural update.
+
+---
+
+## 2026-04-15 — Sampling configuration: conservative baseline for structured output, with room for experimentation
+
+The rubric's Inference Pipeline criterion explicitly calls out sampling method at both the Excellent and Good tiers. The plan did not previously address sampling parameters.
+
+Resolution: the pipeline will use a conservative baseline sampling configuration optimized for structured JSON output:
+
+- **Temperature: 0.1–0.3** — low temperature produces predictable, schema-conforming output. At temperature 0.0 (greedy decoding), the model always picks the highest-probability token, which maximizes JSON validity but may reduce diversity across runs. A small amount of temperature (0.1–0.3) allows minimal variation while keeping output reliable.
+- **Top-p: 0.85–0.9** — nucleus sampling that considers the top ~85–90% of the probability mass. This excludes low-probability tokens that could break JSON structure while still allowing the model some choice among plausible completions.
+- **Top-k: 40** — limits consideration to the 40 most probable tokens. Standard default that works well for most structured-output tasks.
+- **Repetition penalty: 1.0 (disabled)** — repetition penalty is useful for free-form text generation but can interfere with JSON output where field names and structural tokens legitimately repeat.
+
+The rationale: structured JSON output requires the model to be *boring and predictable*. Every "creative" token choice is a potential validation failure — a stray character, a hallucinated field name, a broken bracket. Low temperature, moderate top-p, and standard top-k bias the model toward the expected schema structure.
+
+These values are the *starting* configuration. They are passed as parameters to the provider (Ollama's API accepts `temperature`, `top_p`, `top_k` as request parameters), configurable via environment variable or app config, and documented in the architecture doc. If time permits during or after Phase 3, sampling parameters can be added as an experimental variable to test whether different settings measurably affect JSON validity or task accuracy — the eval harness already supports this by parameterizing runs.
+
+---
+
 ## 2026-04-15 — Monitoring strategy: distinguish from benchmarking, add live metrics with drift indication
 
 The Metrics tab will be split into two clearly distinct sections: "Benchmark Results" (static, from labeled eval runs) and "Live Metrics" (rolling, from live trace traffic). The distinction matters because benchmarking and monitoring answer different questions — benchmarking is "how does this perform on a known test set," monitoring is "what's happening in production right now."

@@ -110,3 +110,37 @@ The `ServiceContainer` (or equivalent) is a simple object that holds references 
 - **Option B (Gradio + FastAPI, two processes):** rejected because it doubles the operational surface (two processes, two dependency sets, HTTP between them, CORS, "is the backend up" debugging) without adding any capability the project actually needs. The only benefit — a standalone API — has no consumer today. The cost in build time is real; the benefit is speculative.
 
 - **Option C (Gradio mounted on FastAPI, one process):** rejected because it adds FastAPI's routing, middleware, and lifecycle management to a project that doesn't need them. If the only consumer of the API is Gradio running in the same process, the API is ceremony. This option makes sense when you genuinely need both a REST API for external consumers *and* a Gradio UI for humans — but this project only needs the latter.
+
+---
+
+## Addendum: FastAPI added alongside Gradio for API endpoint (rubric requirement)
+
+**Date:** 2026-04-15
+
+**What changed:** After reviewing the rubric's Environment Setup criterion ("the model is accessible via an API endpoint"), we determined that relying solely on Gradio's auto-generated internal API is insufficient — it produces endpoint names and shapes determined by Gradio's internals, not by the project. A minimal FastAPI layer has been added alongside Gradio in the same process to provide a designed, documented REST API with Swagger/OpenAPI documentation.
+
+**Architecture update:**
+
+```text
+app.py (entry point)
+  └── FastAPI (main app)
+        ├── POST /api/v1/triage      → triage_service.run_triage()
+        ├── GET  /api/v1/docs        → Swagger UI (auto-generated)
+        └── mount: Gradio at /       → gr.Blocks with tabs (unchanged)
+```
+
+FastAPI is the outer app. Gradio is mounted inside it as a sub-application. Both share the same process and the same service layer. The API endpoint calls the same `triage_service.run_triage()` that the Gradio Triage tab calls — no duplication of logic.
+
+**Why this does not contradict the original decision:**
+
+The original ADR rejected a *split client/server architecture* (two processes, HTTP between them, CORS, separate deployments). The FastAPI addition does not create a split architecture — it adds one route to the same process. The reasoning from the original decision still holds: one codebase, one process, one `uv run` command, one Docker container. The service layer remains pure Python with no framework dependencies.
+
+The original ADR also rejected Option C (Gradio mounted on FastAPI) because "if the only consumer of the API is Gradio running in the same process, the API is ceremony." The rubric is now a second consumer — it explicitly requires an API endpoint. That changes the calculus: the API is no longer ceremony, it's a graded requirement.
+
+**What the API provides:**
+
+- `POST /api/v1/triage` — accepts a ticket body and optional model/prompt-version parameters, returns a `TriageResult` (success or typed failure)
+- `GET /api/v1/docs` — Swagger UI with interactive documentation, auto-generated from the pydantic request/response models
+- The instructor can open `/api/v1/docs` in a browser and submit a triage request interactively without using the Gradio UI
+
+**Implementation cost:** One FastAPI route file, one request/response schema (reusing existing pydantic models), and the `app.py` entry point mounts Gradio inside FastAPI instead of running Gradio standalone. Estimated coding agent time: 30 minutes.

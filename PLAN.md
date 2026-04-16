@@ -204,6 +204,26 @@ Full monitoring design, alerting thresholds, drift detection approach, and what'
 
 ---
 
+## API Endpoint
+
+The rubric requires the model to be "accessible via an API endpoint." To satisfy this, a minimal FastAPI layer is added alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One route (`POST /api/v1/triage`) calls the same service layer the Gradio Triage tab calls. Swagger UI is auto-generated at `/api/v1/docs` from existing pydantic models.
+
+This does not create a client/server split — it's one process, one codebase, one Docker container. The instructor can open `/api/v1/docs` in a browser and submit a triage request via Swagger without using the Gradio UI.
+
+Full reasoning for this addition: see the addendum to [ADR 0006](adr/0006-single-app-gradio-architecture.md). Decision log entry: [2026-04-15 — API endpoint](decisions/decision-log.md).
+
+---
+
+## Sampling Configuration
+
+The pipeline uses conservative sampling parameters optimized for structured JSON output: low temperature (0.1–0.3), tight top-p (0.85–0.9), standard top-k (40), and repetition penalty disabled (1.0). The rationale: structured JSON output requires the model to be predictable; every "creative" token choice is a potential validation failure.
+
+These parameters are configurable and passed to the Ollama provider as request-level settings. If time permits during or after Phase 3, sampling can be added as an experimental variable in the eval harness.
+
+Full configuration table and rationale: [architecture.md](architecture.md) (Sampling Configuration section). Decision log entry: [2026-04-15 — Sampling configuration](decisions/decision-log.md).
+
+---
+
 ## Provider Interface
 
 The provider abstraction is defined as a Python `Protocol` so that any class implementing the protocol can be used interchangeably without explicit inheritance. For this iteration, only the local Ollama provider is implemented. A `cloud_qwen.py` placeholder exists in the codebase so that a cloud provider can be added later without refactoring the pipeline.
@@ -267,8 +287,12 @@ ticket-triage-llm/
 ├── src/
 │   └── ticket_triage_llm/
 │       ├── __init__.py
-│       ├── app.py                  # Gradio app entry point (gr.Blocks with tabs)
+│       ├── app.py                  # FastAPI + Gradio entry point
 │       ├── config.py               # env loading, settings
+│       │
+│       ├── api/                    # FastAPI route(s)
+│       │   ├── __init__.py
+│       │   └── triage_route.py     # POST /api/v1/triage
 │       │
 │       ├── ui/                     # Gradio tab definitions
 │       │   ├── __init__.py
