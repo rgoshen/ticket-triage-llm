@@ -8,6 +8,18 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-15 — Monitoring strategy: distinguish from benchmarking, add live metrics with drift indication
+
+The Metrics tab will be split into two clearly distinct sections: "Benchmark Results" (static, from labeled eval runs) and "Live Metrics" (rolling, from live trace traffic). The distinction matters because benchmarking and monitoring answer different questions — benchmarking is "how does this perform on a known test set," monitoring is "what's happening in production right now."
+
+The Live Metrics section adds: time-series latency trends (p50, p95) over rolling windows, time-series error rate trends, category distribution as a basic drift indicator, and structured-log alerts when configured thresholds are crossed (default: p95 > 5s, retry rate > 20%, single category > 70% of recent traffic).
+
+Out of scope deliberately: real alerting infrastructure (PagerDuty etc.), a separate time-series database (Prometheus etc.), distributed tracing, long-term retention policies, learned anomaly detection. These are appropriate for a real production service mesh but are overkill for a single-instance demo system on consumer hardware. The limitations are documented honestly rather than pretending the system has them.
+
+The work was scoped at roughly 3–4 hours of coding agent time and 1.5 hours of developer attention, with much of the agent work parallelizable with other Phase 5+ activities. Most student LLM projects collapse benchmarking and monitoring into one undifferentiated "dashboard"; this project's deliberate separation is itself a piece of the engineering judgment story.
+
+---
+
 ## 2026-04-15 — Deployment strategy: local-only with Docker containerization for the app
 
 The system will be deployed locally, with two supported paths: native (`uv run` against host Ollama) and containerized (Docker container for the Gradio app, Ollama on the host). Containerization is added because "I can run it on my Mac" is not a deployment story — the instructor or anyone evaluating the project needs to be able to actually stand it up on their own machine, and that requires explicit, reproducible setup.

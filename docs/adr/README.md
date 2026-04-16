@@ -6,7 +6,7 @@ This directory contains the Architecture Decision Records (ADRs) for `ticket-tri
 
 ADRs capture **architectural** decisions — choices about the structure, components, technologies, patterns, and interfaces of the system. If a decision is about *how the system is built*, it belongs here.
 
-Decisions about *what the project is, isn't, or why* (scope, framing, priorities, things considered and rejected) belong in the [decision log](../decision-log.md) instead, not in an ADR.
+Decisions about *what the project is, isn't, or why* (scope, framing, priorities, things considered and rejected) belong in the [decision log](../decisions/decision-log.md) instead, not in an ADR.
 
 ## Format
 
@@ -17,6 +17,7 @@ ADRs follow the standard format used by [`adr-tools`](https://github.com/npryce/
 | Number | Title | Status |
 |---|---|---|
 | [0001](0001-language-and-stack.md) | Language and stack choice | Accepted |
+| [0002](0002-validator-first-pipeline-with-bounded-retry.md) | Validator-first pipeline with bounded retry | Accepted |
 
 ## Status definitions
 

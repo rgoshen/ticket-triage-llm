@@ -299,6 +299,53 @@ The Docker setup will be tested on at least three platforms before being treated
 
 Tested platforms will be documented in `DEPLOYMENT.md`. The deployment story is only as strong as the platforms it has been verified on.
 
+---
+
+## Monitoring
+
+### Why monitoring is treated separately from benchmarking
+
+The project does both **benchmarking** and **monitoring**, and the distinction matters:
+
+- **Benchmarking** answers the question *"how does this perform on a known test set?"* It runs once or periodically against labeled data, produces accuracy and validity numbers, and is essentially a snapshot.
+- **Monitoring** answers the question *"what's happening in production right now?"* It runs continuously against live traffic, surfaces trends, and alerts when something is going wrong.
+
+Most student LLM projects collapse these two concepts into one dashboard called "metrics." This project deliberately separates them, because a real production system needs both and they answer different questions.
+
+### What's monitored
+
+The Live Metrics section of the Metrics tab tracks the following from the live trace store, on rolling time windows (last hour, last day, last week):
+
+- **Latency trends** — p50 and p95 latency over time, by provider and prompt version
+- **Error rate trends** — validation failures and retry rate over time
+- **Category distribution** — what proportion of recent tickets are being assigned to each category. Sustained shifts in this distribution are a basic drift indicator: if "security" suddenly grows from 5% to 80%, either the input distribution has changed (which is a real-world signal worth flagging) or the model behavior has changed (which is a regression worth investigating)
+
+### Alerting
+
+Alerting thresholds are configured for the following conditions, with structured warnings written to the application logs when crossed:
+
+- p95 latency exceeds a configured limit (default: 5 seconds)
+- Retry rate exceeds a configured limit (default: 20%)
+- Any single category exceeds a configured share of recent traffic (default: 70%) — drift signal
+
+The thresholds are configurable rather than hardcoded so that they can be tuned to actual baseline behavior once Phase 3 benchmark data exists. The defaults above are starting points, not final values.
+
+### What's intentionally out of scope
+
+This is monitoring at the scale of a single deployed instance, not a production service mesh. The following are deliberately not included:
+
+- Real alerting infrastructure (PagerDuty, Opsgenie, etc.) — alerts are log-based only
+- A real time-series database (Prometheus, InfluxDB) — time-series queries hit SQLite directly, which is sufficient at this scale
+- Distributed tracing (OpenTelemetry, Jaeger) — a single-process app does not benefit from distributed tracing
+- Long-term metric retention — the trace store is not pruned in this iteration; for a real deployment, retention policy would need to be designed
+- Anomaly detection (statistical or ML-based) — drift indication is rule-based, not learned
+
+These limitations are documented honestly. A real production deployment would address them; a single-instance demo system on consumer hardware does not need to, and pretending it does would be padding.
+
+---
+
+## Provider Interface
+
 The provider abstraction is defined as a Python `Protocol` so that any class implementing the protocol can be used interchangeably without explicit inheritance. For this iteration, only the local Ollama provider is implemented. A `cloud_qwen.py` placeholder exists in the codebase so that a cloud provider can be added later without refactoring the pipeline.
 
 ```python
@@ -888,15 +935,28 @@ Output: the project's central evidence base. Real numbers replace illustrative o
 - iterate on the guardrail implementation based on what the adversarial results reveal
 - document findings in the threat model
 
-### Phase 5: Dashboard and traces tab
+### Phase 5: Dashboard, traces, and live monitoring
 
-- Metrics tab populated from the SQLite results
-- Traces tab with filtering
-- Experiments tab showing comparison views for the four experiments
-- KPI cards on the Metrics tab
-- latency chart
+The Metrics tab is split into two distinct sections to reflect the difference between benchmarking and monitoring:
 
-Output: the project is fully observable from the UI. The instructor can see the full story without leaving the app.
+**Benchmark Results section** (static, from labeled eval runs):
+- KPI cards for the latest benchmark run (best model, accuracy, JSON validity, p95 latency, retry rate)
+- Per-experiment comparison tables (size comparison, validation impact, prompt comparison, model-vs-controls)
+- Charts populated from the SQLite eval results
+
+**Live Metrics section** (rolling, from live trace traffic):
+- Time-series view of recent latency (p50 and p95) over configurable windows (last hour, last day, last week)
+- Time-series view of error rate (validation failures and retry rate) over the same windows
+- Category distribution over time as a basic drift indicator — if the distribution of assigned categories shifts meaningfully, something has changed (input distribution, model behavior, or both)
+- Alerting thresholds with structured log warnings when configured limits are crossed (e.g., p95 latency > 5s, retry rate > 20%, single category exceeds 70% of recent traffic)
+
+**Other UI work in this phase:**
+- Traces tab with filtering by provider, prompt version, validation status
+- Experiments tab showing side-by-side comparison views for the four experiments
+
+Output: the project is fully observable from the UI. Static benchmark results and live monitoring are clearly distinguished. Someone watching the system would know when something is going wrong without having to dig through logs.
+
+Much of this phase can be parallelized — the coding agent can build the time-series queries and chart rendering while the developer authors documentation or runs additional eval batches.
 
 ### Phase 6: Prompt v2 and prompt comparison
 
