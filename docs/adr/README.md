@@ -23,6 +23,7 @@ ADRs follow the standard format used by [`adr-tools`](https://github.com/npryce/
 | [0005](0005-sqlite-trace-storage-with-repository-pattern.md) | SQLite for trace storage with repository pattern | Accepted |
 | [0006](0006-single-app-gradio-architecture.md) | Single-app Gradio architecture | Accepted |
 | [0007](0007-local-deployment-with-docker.md) | Local-only deployment with Docker for app, Ollama on host | Accepted |
+| [0008](0008-heuristic-only-guardrail-baseline.md) | Heuristic-only guardrail as baseline | Accepted |
 
 ## Status definitions
 
