@@ -449,9 +449,7 @@ ticket-triage-llm/
 │       ├── storage/                # SQLite + repository pattern
 │       │   ├── __init__.py
 │       │   ├── db.py               # connection / schema setup
-│       │   ├── trace_repo.py
-│       │   ├── metrics_repo.py
-│       │   └── benchmark_repo.py
+│       │   └── trace_repo.py       # single repository — traces are the source of truth
 │       │
 │       └── eval/                   # evaluation harness
 │           ├── __init__.py

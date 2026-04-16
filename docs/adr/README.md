@@ -20,6 +20,7 @@ ADRs follow the standard format used by [`adr-tools`](https://github.com/npryce/
 | [0002](0002-validator-first-pipeline-with-bounded-retry.md) | Validator-first pipeline with bounded retry | Accepted |
 | [0003](0003-pipeline-failure-handling-and-error-contract.md) | Pipeline failure handling and error contract | Accepted |
 | [0004](0004-provider-abstraction-via-python-protocol.md) | Provider abstraction via Python Protocol | Accepted |
+| [0005](0005-sqlite-trace-storage-with-repository-pattern.md) | SQLite for trace storage with repository pattern | Accepted |
 
 ## Status definitions
 
