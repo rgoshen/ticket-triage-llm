@@ -18,6 +18,8 @@ ADRs follow the standard format used by [`adr-tools`](https://github.com/npryce/
 |---|---|---|
 | [0001](0001-language-and-stack.md) | Language and stack choice | Accepted |
 | [0002](0002-validator-first-pipeline-with-bounded-retry.md) | Validator-first pipeline with bounded retry | Accepted |
+| [0003](0003-pipeline-failure-handling-and-error-contract.md) | Pipeline failure handling and error contract | Accepted |
+| [0004](0004-provider-abstraction-via-python-protocol.md) | Provider abstraction via Python Protocol | Accepted |
 
 ## Status definitions
 
