@@ -24,6 +24,7 @@ ADRs follow the standard format used by [`adr-tools`](https://github.com/npryce/
 | [0006](0006-single-app-gradio-architecture.md) | Single-app Gradio architecture | Accepted |
 | [0007](0007-local-deployment-with-docker.md) | Local-only deployment with Docker for app, Ollama on host | Accepted |
 | [0008](0008-heuristic-only-guardrail-baseline.md) | Heuristic-only guardrail as baseline | Accepted |
+| [0009](0009-monitoring-distinct-from-benchmarking.md) | Monitoring distinct from benchmarking | Accepted |
 
 ## Status definitions
 
