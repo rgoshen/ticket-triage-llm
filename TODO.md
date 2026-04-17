@@ -51,7 +51,7 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 - [x] Service-layer tests (TDD), API route smoke test, Dockerfile build check
 - [x] Happy-path integration test (mocked provider) + failed-parse unit test
 - [x] SUMMARY.md + TODO.md updated
-- [ ] PR opened, CI green, merged to `develop`
+- [x] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F).
 **Can run in parallel with:** nothing — everything else builds on the service layer this phase instantiates.

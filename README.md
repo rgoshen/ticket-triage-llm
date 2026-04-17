@@ -65,18 +65,46 @@ uv run ruff format --check .
 
 ### Run the app
 
-```bash
-# Ollama prerequisites (must be pulled before the app works)
-ollama pull qwen3.5:2b
-ollama pull qwen3.5:4b
-ollama pull qwen3.5:9b
+#### Prerequisites
 
-# Run the app natively (FastAPI + Gradio on :7860)
+Ollama must be **installed and running** on the host before the app will work. Pull at least one model:
+
+```bash
+ollama pull qwen3.5:4b          # recommended starting point
+ollama pull qwen3.5:2b          # lighter alternative
+ollama pull qwen3.5:9b          # higher quality, slower
+```
+
+#### Option A: run natively
+
+```bash
+# Set the model via env var (required — no default)
 OLLAMA_MODEL=qwen3.5:4b uv run python -m ticket_triage_llm.app
 
-# Run in Docker (app container only — Ollama stays on host)
+# Or copy .env.example → .env and set OLLAMA_MODEL there
+cp .env.example .env             # then edit OLLAMA_MODEL=qwen3.5:4b
+uv run python -m ticket_triage_llm.app
+```
+
+#### Option B: run in Docker (app container only — Ollama stays on host)
+
+```bash
 docker build -t ticket-triage-llm .
 docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
+```
+
+The container reaches Ollama via `host.docker.internal:11434` (Mac/Windows). On Linux, use `--network=host` instead.
+
+#### Verify it's working
+
+Open the Gradio UI at **http://localhost:7860**.
+
+Or test the REST API directly:
+
+```bash
+curl -X POST http://localhost:7860/api/v1/triage \
+  -H "Content-Type: application/json" \
+  -d '{"ticket_body": "My printer is offline and I cannot print any documents.", "ticket_subject": "Printer not working"}'
 ```
 
 ## Repository structure
@@ -110,7 +138,7 @@ ticket-triage-llm/
 │   └── archive/                       # Original plan and rubric (read-only)
 ├── src/ticket_triage_llm/
 │   ├── __init__.py
-│   ├── app.py                         # FastAPI + Gradio entry point (stub)
+│   ├── app.py                         # FastAPI + Gradio entry point
 │   ├── config.py                      # Settings via pydantic-settings
 │   ├── logging_config.py              # Structured logging
 │   ├── schemas/                       # Pydantic models (all implemented)
@@ -140,7 +168,7 @@ ticket-triage-llm/
 │   └── eval/runners/                  # Evaluation harness (stubs)
 ├── Dockerfile                         # Multi-stage app container build
 ├── tests/
-│   ├── unit/                          # 127 unit tests
+│   ├── unit/                          # 129 unit tests
 │   ├── integration/                   # API route smoke tests
 │   └── eval/                          # (stub — Phase 3)
 ├── data/
