@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status: pre-implementation
+## Project status: foundation complete, Phase 1 next
 
-At the time of writing, the repository contains **only planning artifacts** — 9 ADRs, `PLAN.md`, `docs/architecture.md`, `docs/threat-model.md`, `docs/evaluation-plan.md`, `docs/tradeoffs.md`, `docs/cost-analysis.md`, `docs/future-improvements.md`, and `docs/decisions/decision-log.md`. There is no `src/`, `tests/`, `pyproject.toml`, `Dockerfile`, or `uv.lock` yet.
+Phase 0 (smoke test) and Phase F (foundation) are complete. The repository has a full package skeleton under `src/ticket_triage_llm/`, 73 unit tests, pydantic schemas, Protocols, SQLite schema, config loader, structured logging, and CI. Phase 1 (first end-to-end happy-path slice) is next — see `TODO.md` for the full phase plan with checkboxes.
 
-Phase 0 (smoke-test the three Qwen 3.5 sizes against real hardware) has not run; Phase 1 (first code slice) has not started. When writing new code, create the layout described in `PLAN.md` (Folder Structure section) rather than inferring a structure. Do not invent tooling — the stack is fixed (see below) and decisions about deviation belong in an ADR or the decision log.
+Do not invent tooling — the stack is fixed (see below) and decisions about deviation belong in an ADR or the decision log. When adding new modules, follow the existing layout under `src/ticket_triage_llm/`.
 
 Use `docs/evaluation-checklist.md` to log Phase 0 smoke-test results, sampling observations, experiment data, adversarial evaluation findings, and cost analysis inputs as they are produced.
 
@@ -45,6 +45,7 @@ This applies to Phase 0, all four experiments in Phase 3, the adversarial evalua
 - At the conclusion of each phase:
   - Append a new entry to `SUMMARY.md`
   - Update `TODO.md` (mark the phase complete, adjust any downstream phases if reality changed)
+  - Update `README.md` if necessary
   - If any architecture changes were required, create a new ADR in `docs/adr/` (see existing ADRs for format)
   - Commit with Conventional Commits (see Repository conventions)
   - Open a PR using `.github/PULL_REQUEST_TEMPLATE.md`
@@ -84,32 +85,30 @@ Do NOT invoke for routine tasks: typo fixes, formatting, running existing tests,
 
 If you're tempted to reach for SQLAlchemy, Streamlit, a REST-only split, LangChain, Instructor, or Outlines — **stop and check the relevant ADR first**. Each was considered and rejected with reasoning that's worth re-reading before overriding.
 
-## Commands (planned — will apply once Phase 1 lands)
-
-Confirm they exist in `pyproject.toml` / `Dockerfile` before relying on them.
+## Commands
 
 ```bash
 # Install / sync deps
-uv sync
+uv sync --all-extras
 
-# Run the app natively (FastAPI + Gradio on :7860, Ollama on host :11434)
-uv run python -m ticket_triage_llm.app
-
-# Run in Docker (app container only — Ollama stays on host)
-docker build -t ticket-triage-llm .
-docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
-
-# Tests
+# Tests (working now)
 uv run pytest                          # full suite
 uv run pytest tests/unit                # unit only
 uv run pytest -k test_name_substring    # single test by name
 uv run pytest --cov=ticket_triage_llm --cov-fail-under=80
 
-# Lint / format
+# Lint / format (working now)
 uv run ruff check .
 uv run ruff format .
 
-# Eval runners (entry points are planned; each is invoked directly, bypassing UI)
+# Run the app natively — Phase 1+ (not yet functional)
+uv run python -m ticket_triage_llm.app
+
+# Run in Docker — Phase 1+ (not yet functional)
+docker build -t ticket-triage-llm .
+docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
+
+# Eval runners — Phase 3+ (not yet functional)
 uv run python -m ticket_triage_llm.eval.runners.run_local_comparison
 uv run python -m ticket_triage_llm.eval.runners.run_validation_impact
 uv run python -m ticket_triage_llm.eval.runners.run_prompt_comparison

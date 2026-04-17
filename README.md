@@ -2,7 +2,7 @@
 
 A production-style support ticket triage system built on local LLMs, with a focus on prompt injection defense and structured-output reliability under realistic adversarial conditions.
 
-> **Status:** In active development. Not yet ready for use.
+> **Status:** Foundation phase complete. Phase 1 (first end-to-end slice) is next.
 
 ## What this project is
 
@@ -27,142 +27,149 @@ The findings from these experiments will be reported as part of the project deli
 
 ## Tech stack
 
-- **Language:** Python
-- **UI:** Gradio (`gr.Blocks` with multiple tabs for triage, metrics, traces, and experiments)
-- **Local inference:** Ollama, with Qwen 3.5 model variants
-- **Cloud inference:** Within the Qwen family (provider TBD — see project plan)
+- **Language:** Python (≥3.11)
+- **UI:** Gradio (`gr.Blocks` with tabs for triage, metrics, traces, and experiments)
+- **API:** FastAPI with Gradio mounted as sub-application
+- **Local inference:** Ollama, with Qwen 3.5 model variants (2B, 4B, 9B)
+- **Schema validation:** Pydantic 2.x
+- **Storage:** SQLite (stdlib `sqlite3`, no ORM) with repository pattern
 - **Dependency management:** `uv`
 - **Testing:** `pytest` with 80% coverage minimum
 - **Linting / formatting:** `ruff`
-- **Architecture decisions:** ADRs in `docs/decisions/` (managed via `adr-tools`)
+- **Architecture decisions:** ADRs in `docs/adr/` (managed via `adr-tools`)
+
+## Quick start
+
+### Prerequisites
+
+- Python ≥3.11
+- [uv](https://docs.astral.sh/uv/) package manager
+- [Ollama](https://ollama.com/) running on localhost (for Phase 1+)
+
+### Install and verify
+
+```bash
+# Install dependencies
+uv sync --all-extras
+
+# Run tests
+uv run pytest
+
+# Run tests with coverage
+uv run pytest --cov=ticket_triage_llm --cov-fail-under=80
+
+# Lint and format check
+uv run ruff check .
+uv run ruff format --check .
+```
+
+### Commands available after Phase 1
+
+The following commands are planned but not yet functional:
+
+```bash
+# Run the app natively (FastAPI + Gradio on :7860)
+uv run python -m ticket_triage_llm.app
+
+# Run in Docker (app container only — Ollama stays on host)
+docker build -t ticket-triage-llm .
+docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
+
+# Ollama prerequisites (must be pulled before the app works)
+ollama pull qwen3.5:2b
+ollama pull qwen3.5:4b
+ollama pull qwen3.5:9b
+```
 
 ## Repository structure
 
 ```text
 ticket-triage-llm/
 ├── .github/
-├── .remember/
-├── .adr-dir                          # adr tools config
-├── README.md
-├── DEPLOYMENT.md                   # forthcoming — native and Docker quick-start
-├── Dockerfile                      # forthcoming — Phase 1
-├── .dockerignore                   # forthcoming — Phase 1
-├── pyproject.toml                  # uv-managed, source of truth for deps
-├── uv.lock
-├── .env
-├── .env.example
-├── .gitignore
-├── ruff.toml
-├── data
-│   ├── adversarial_set.jsonl
-│   └── normal_set.jsonl
+│   ├── workflows/ci.yml              # GitHub Actions: lint, format, test
+│   └── PULL_REQUEST_TEMPLATE.md
 ├── docs/
-│   ├── PLAN.md                     # this document
-│   ├── cost-analysis.md            # three-component cost analysis
-│   ├── adr/                        # ADRs (adr-tools format)
-│   │   ├── README.md
-│   │   └── 0001-language-and-stack.md
-│   ├── decisions/                  # scope/framing decisions (non-architectural)
-│   │   └── decision-log.md         # chronological decision log
-│   ├── archive/                    # original plan and rubric (reference)
-│   ├── architecture.md             # forthcoming
-│   ├── evaluation-plan.md          # forthcoming
-│   ├── tradeoffs.md                # forthcoming
-│   ├── prompt-versions.md          # forthcoming
-│   ├── threat-model.md             # forthcoming — prompt injection threat model
-│   ├── demo-script.md              # forthcoming
-│   └── presentation-notes.md       # forthcoming
-│
-├── src/
-│   └── ticket_triage_llm/
-│       ├── __init__.py
-│       ├── app.py                  # FastAPI + Gradio entry point
-│       ├── config.py               # env loading, settings
-│       │
-│       ├── api/                    # FastAPI route(s)
-│       │   ├── __init__.py
-│       │   └── triage_route.py     # POST /api/v1/triage
-│       │
-│       ├── ui/                     # Gradio tab definitions
-│       │   ├── __init__.py
-│       │   ├── triage_tab.py       # ticket input + result display
-│       │   ├── metrics_tab.py      # benchmark dashboard
-│       │   ├── traces_tab.py       # trace explorer
-│       │   └── experiments_tab.py  # experiment comparison
-│       │
-│       ├── services/               # business logic
-│       │   ├── __init__.py
-│       │   ├── triage.py           # orchestrates the full pipeline
-│       │   ├── prompt.py           # prompt building / versioning
-│       │   ├── guardrail.py        # pre-LLM input screening
-│       │   ├── validation.py       # parse + schema + semantic checks
-│       │   ├── retry.py            # bounded retry policy
-│       │   ├── trace.py            # trace recording
-│       │   ├── metrics.py          # metrics aggregation
-│       │   └── provider_router.py  # selects active provider
-│       │
-│       ├── providers/              # LLM provider implementations
-│       │   ├── __init__.py
-│       │   ├── base.py             # LlmProvider Protocol
-│       │   ├── ollama_qwen.py      # local Ollama provider
-│       │   └── cloud_qwen.py       # cloud Qwen provider (provider TBD)
-│       │
-│       ├── prompts/                # prompt templates by version
-│       │   ├── __init__.py
-│       │   ├── triage_v1.py
-│       │   ├── triage_v2.py
-│       │   └── repair_json_v1.py
-│       │
-│       ├── schemas/                # pydantic models
-│       │   ├── __init__.py
-│       │   ├── triage_input.py
-│       │   ├── triage_output.py
-│       │   └── trace.py
-│       │
-│       ├── storage/                # SQLite + repository pattern
-│       │   ├── __init__.py
-│       │   ├── db.py               # connection / schema setup
-│       │   └── trace_repo.py       # single repository — traces are the source of truth
-│       │
-│       └── eval/                   # evaluation harness
-│           ├── __init__.py
-│           ├── datasets/
-│           │   ├── gold_tickets.json
-│           │   └── adversarial_tickets.json
-│           ├── runners/
-│           │   ├── __init__.py
-│           │   ├── run_local_comparison.py
-│           │   ├── run_local_vs_cloud.py
-│           │   ├── run_validation_impact.py
-│           │   ├── run_prompt_comparison.py
-│           │   └── summarize_results.py
-│           └── reports/
-│               └── (generated benchmark output)
-│
-└── tests/
-    ├── __init__.py
-    ├── unit/
-    │   ├── test_validation.py
-    │   ├── test_guardrail.py
-    │   ├── test_retry.py
-    │   └── test_prompts.py
-    ├── integration/
-    │   ├── test_triage_pipeline.py
-    │   └── test_providers.py
-    └── eval/
-        └── test_eval_runners.py
+│   ├── adr/                           # Architecture Decision Records
+│   │   ├── README.md                  # ADR index
+│   │   ├── 0001-language-and-stack.md
+│   │   ├── 0002-validator-first-pipeline-with-bounded-retry.md
+│   │   ├── 0003-pipeline-failure-handling-and-error-contract.md
+│   │   ├── 0004-provider-abstraction-via-python-protocol.md
+│   │   ├── 0005-sqlite-trace-storage-with-repository-pattern.md
+│   │   ├── 0006-single-app-gradio-architecture.md
+│   │   ├── 0007-local-deployment-with-docker.md
+│   │   ├── 0008-heuristic-only-guardrail-baseline.md
+│   │   ├── 0009-monitoring-distinct-from-benchmarking.md
+│   │   └── 0010-non-actionable-and-ambiguous-input-handling.md
+│   ├── decisions/decision-log.md      # Scope/framing decisions
+│   ├── architecture.md
+│   ├── evaluation-plan.md
+│   ├── evaluation-checklist.md
+│   ├── threat-model.md
+│   ├── tradeoffs.md
+│   ├── cost-analysis.md
+│   ├── future-improvements.md
+│   └── archive/                       # Original plan and rubric (read-only)
+├── src/ticket_triage_llm/
+│   ├── __init__.py
+│   ├── app.py                         # FastAPI + Gradio entry point (stub)
+│   ├── config.py                      # Settings via pydantic-settings
+│   ├── logging_config.py              # Structured logging
+│   ├── schemas/                       # Pydantic models (all implemented)
+│   │   ├── triage_input.py            # TriageInput
+│   │   ├── triage_output.py           # TriageOutput + enums
+│   │   ├── model_result.py            # ModelResult
+│   │   ├── trace.py                   # TraceRecord, TriageSuccess/Failure, FailureReason
+│   │   └── errors.py                  # assert_never helper
+│   ├── providers/                     # LLM provider abstraction
+│   │   ├── base.py                    # LlmProvider Protocol
+│   │   ├── ollama_qwen.py             # OllamaQwenProvider (stub)
+│   │   └── cloud_qwen.py              # CloudQwenProvider (stub)
+│   ├── storage/                       # SQLite + repository pattern
+│   │   ├── db.py                      # Connection + schema init
+│   │   └── trace_repo.py             # TraceRepository Protocol
+│   ├── services/                      # Business logic (stubs)
+│   ├── ui/                            # Gradio tabs (stubs)
+│   ├── api/                           # FastAPI routes (stubs)
+│   ├── prompts/                       # Prompt templates
+│   └── eval/runners/                  # Evaluation harness (stubs)
+├── tests/
+│   ├── unit/                          # 73 tests, 89% coverage
+│   ├── integration/                   # (stub)
+│   └── eval/                          # (stub)
+├── data/
+│   ├── normal_set.jsonl               # 35 normal tickets
+│   └── adversarial_set.jsonl          # Adversarial test set
+├── scripts/
+│   └── phase0_smoke_test.py           # Phase 0 smoke-test runner
+├── pyproject.toml                     # uv-managed, source of truth for deps
+├── uv.lock
+├── ruff.toml
+├── .env.example
+├── .dockerignore
+├── TODO.md                            # Phased build plan with checkboxes
+├── SUMMARY.md                         # Historical log across all phases
+├── CLAUDE.md                          # AI assistant instructions
+└── LICENSE                            # MIT
 ```
-
-## Running the project
-
-> Forthcoming. Setup, install, and run instructions will be added as the project takes shape.
 
 ## Documentation
 
-- **[Project plan](docs/llm-ticket-triage-plan.md)** — full plan including architecture, model strategy, evaluation plan, and open decisions
-- **[Decision log](docs/decision-log.md)** — chronological log of scope, framing, and strategy decisions
-- **[ADR index](docs/decisions/README.md)** — index of all Architecture Decision Records
+- **[Project plan](PLAN.md)** — full plan including architecture, model strategy, evaluation plan, and open decisions
+- **[Architecture](docs/architecture.md)** — system overview, pipeline diagram, key components
+- **[ADR index](docs/adr/README.md)** — all Architecture Decision Records
+- **[Decision log](docs/decisions/decision-log.md)** — chronological scope/framing/strategy decisions
+- **[Evaluation plan](docs/evaluation-plan.md)** — experiment design and methodology
+- **[Threat model](docs/threat-model.md)** — prompt injection defense layers
+- **[Tradeoffs](docs/tradeoffs.md)** — design tradeoff analysis
+- **[Cost analysis](docs/cost-analysis.md)** — three-component cost analysis
+- **[TODO](TODO.md)** — phased build plan with progress checkboxes
+- **[SUMMARY](SUMMARY.md)** — what was done, how, and what went wrong
 
 ## Context
 
 This project is the final deliverable for an LLMs-in-Production course based on Brousseau & Sharp, *LLMs in Production* (Manning, 2024). It is intended to demonstrate the engineering judgment, evaluation rigor, and decision-making process that go into selecting and deploying an LLM under real-world constraints — not just the act of building a chatbot.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
