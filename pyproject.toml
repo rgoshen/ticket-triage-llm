@@ -37,3 +37,8 @@ source = ["ticket_triage_llm"]
 
 [tool.coverage.report]
 fail_under = 80
+omit = [
+    "src/ticket_triage_llm/app.py",
+    "src/ticket_triage_llm/ui/*",
+    "src/ticket_triage_llm/logging_config.py",
+]

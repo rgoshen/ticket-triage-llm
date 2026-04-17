@@ -5,7 +5,10 @@ class CloudQwenProvider:
     name: str = "cloud:qwen"
 
     def generate_structured_ticket(
-        self, ticket_body: str, prompt_version: str
+        self,
+        ticket_body: str,
+        prompt_version: str,
+        ticket_subject: str = "",
     ) -> ModelResult:
         raise NotImplementedError(
             "CloudQwenProvider is a placeholder — "
