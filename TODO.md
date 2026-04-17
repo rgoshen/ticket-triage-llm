@@ -16,214 +16,148 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
-## [2026-04-17] Phase F — Foundation
+## [2026-04-17] Phase F — Foundation (COMPLETE)
 
-**Objective:** Establish the shared skeleton that every subsequent phase depends on: package scaffolding, shared pydantic schemas, the `LlmProvider` Protocol, the `TriageResult` discriminated union, the SQLite `traces` table contract, the logging configuration, and CI. Nothing here contains business logic; the point is to publish the contracts so downstream phases can be built against them in parallel without merge conflicts.
+- [x] Python project scaffolding — `pyproject.toml`, `ruff.toml`, `.env.example`, `.dockerignore`, `.gitignore`, package skeleton
+- [x] Shared pydantic schemas (TDD) — `TriageInput`, `TriageOutput`, `ModelResult`, `TraceRecord`, `TriageSuccess`/`TriageFailure`, `FailureReason`
+- [x] `LlmProvider` Protocol (TDD) — structural typing per ADR 0004, `OllamaQwenProvider` + `CloudQwenProvider` stubs
+- [x] Failure-reason literal + exhaustive-match helper (TDD)
+- [x] Storage contract (TDD) — `init_schema()`, `TraceRepository` Protocol
+- [x] Config loader (TDD) — pydantic-settings `Settings` with locked sampling defaults
+- [x] Structured logging — stdlib formatter with ADR 0009 monitoring format
+- [x] CI workflow — GitHub Actions, Python 3.11/3.12, ruff + pytest
+- [x] Module stubs for future phases
+- [x] Lint/format cleanup
+- [x] SUMMARY.md + TODO.md updated
+- [x] PR #4 opened (feature/phase-foundation → develop)
+- [ ] CI green on PR #4
+- [ ] PR #4 merged to `develop`
 
-**Dependencies:** none — branches off `develop` directly as `feature/phase-foundation`.
-
-**PLAN.md mapping:** predecessor scaffolding for PLAN.md Phase 1 (single happy-path slice). Where PLAN.md Phase 1 says "create the Python project skeleton, pydantic schemas, the `OllamaQwenProvider` against one model, `triage_service.run_triage()` end-to-end, one Gradio tab, minimal SQLite trace storage, basic Dockerfile," this Phase F carves out only the shared-contract pieces — the runnable pipeline is still TODO phase 1.
-
-**Approach:**
-
-1. **Python project scaffolding** (judgment)
-   - `pyproject.toml` with pinned versions: `python>=3.11`, `fastapi`, `gradio`, `openai`, `ollama`, `pydantic`, `pytest`, `pytest-cov`, `ruff`, dev extras for testing. Source of truth for deps per CLAUDE.md.
-   - `uv.lock` generated via `uv sync`.
-   - `ruff.toml` (or `[tool.ruff]` in `pyproject.toml`).
-   - `pytest` config with `--cov=ticket_triage_llm --cov-fail-under=80` on changed code.
-   - `.gitignore`, `.env.example`, `.dockerignore` placeholder (the real Dockerfile lives in TODO Phase 1).
-   - Package skeleton under `src/ticket_triage_llm/` matching the layout in PLAN.md "Folder Structure" section — empty `__init__.py` files and module stubs, no logic.
-
-2. **Shared pydantic schemas** (TDD: yes — these are business-logic contracts)
-   - `schemas/triage_input.py` — `TriageInput`
-   - `schemas/triage_output.py` — `TriageOutput` with enum-constrained `category`, `severity`, `routingTeam`; numeric bounds on `confidence`.
-   - `schemas/trace.py` — `TraceRecord` with the fields enumerated in ADR 0005 (including `run_id`, `model`, `prompt_version`, `validation_status`).
-   - Discriminated union: `TriageSuccess`, `TriageFailure` (with `failure_reason: Literal[...]` per ADR 0003), `TriageResult = Union[TriageSuccess, TriageFailure]`.
-   - Tests: field-type enforcement, enum rejection of invalid values, numeric-bound enforcement, discriminator round-trip through `model_dump`/`model_validate`.
-
-3. **`LlmProvider` Protocol** (TDD: yes — the contract is the deliverable)
-   - `providers/base.py` — define the `LlmProvider` `Protocol` with `name: str` and `generate_structured_ticket(ticket_body: str, prompt_version: str) -> ModelResult` per ADR 0004.
-   - `providers/ollama_qwen.py` — class stub with signatures only; raises `NotImplementedError`. Concrete body belongs to TODO Phase 1.
-   - `providers/cloud_qwen.py` — `NotImplementedError` placeholder (ADR 0004 requires it to exist to prove the abstraction is real).
-   - Tests: a minimal fake implementing the Protocol passes structural typing; `OllamaQwenProvider` currently raises `NotImplementedError`; `CloudQwenProvider` raises `NotImplementedError`.
-
-4. **Failure-reason literal + exhaustive-match helper** (TDD: yes)
-   - Define `FailureReason = Literal["guardrail_blocked", "model_unreachable", "parse_failure", "schema_failure", "semantic_failure"]` per ADR 0003.
-   - Add an assert-never helper so every `match` on `TriageResult` downstream is exhaustive.
-   - Tests: exhaustiveness — a match that forgets a case fails `mypy --strict` (documented in the test) and the assert-never helper raises at runtime.
-
-5. **Storage contract** (TDD: yes — schema definition is load-bearing)
-   - `storage/db.py` — `get_connection()` + `init_schema()`. Single `traces` table matching ADR 0005 (one row per request, no summary tables).
-   - `storage/trace_repo.py` — Protocol/interface only for the repository; concrete insert/query methods are TODO Phase 1.
-   - Tests: `init_schema()` is idempotent; schema matches the ADR 0005 column list; repository Protocol can be satisfied by a fake.
-
-6. **Config loader** (TDD: yes — env-var parsing is testable and easy to break)
-   - `config.py` — pydantic-settings or equivalent; reads `OLLAMA_BASE_URL` (default `http://localhost:11434/v1`), `OLLAMA_MODEL` (no default — must be set per instance), sampling params (defaults: `temperature=0.2`, `top_p=0.9`, `top_k=40`, `repetition_penalty=1.0` per 2026-04-16 sampling-lock decision), DB path.
-   - Tests: defaults are the locked sampling values; env overrides are picked up; missing required values error cleanly.
-
-7. **Structured logging** (judgment)
-   - One-file `logging_config.py` setting up a structured formatter (`logging` stdlib, not a new dep). Includes the `WARN [monitoring] threshold_breached: ...` format shape from ADR 0009 so later phases emit it consistently.
-
-8. **CI workflow** (judgment — this is infra, not business logic)
-   - `.github/workflows/ci.yml` triggered on `pull_request` and `push` to `develop`/`main`.
-   - Job steps: checkout, install `uv`, `uv sync --all-extras --dev`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run pytest --cov=ticket_triage_llm --cov-fail-under=80`.
-   - Python version matrix: 3.11, 3.12 (keep small; we target 3.11+).
-   - Caches: uv cache keyed on `pyproject.toml` + `uv.lock`.
-   - No deploy step yet; runs only in the app repo, no Ollama in CI (providers in CI use the `NotImplementedError` stubs from this phase; real provider integration tests run locally).
-   - Fail-fast on any step.
-
-**Tests:**
-
-- Unit tests for every schema (6 above), the Protocol structural check, the failure-reason exhaustiveness helper, storage `init_schema()` idempotency, and config env-var handling.
-- CI workflow validated by pushing the branch: the PR itself must turn the "CI passed" check green before merge.
-- No integration tests in this phase — pipeline orchestration is TODO Phase 1.
-
-**Risks & Tradeoffs:**
-
-- **Over-engineering risk:** it is tempting to add the concrete `OllamaQwenProvider` body here "since the stub is already in place." Resist. This phase is deliberately limited to contracts. Merging a working provider here delays the phase and makes PR review heavier. The body belongs to TODO Phase 1.
-- **CI in a contracts-only phase:** running `pytest --cov-fail-under=80` on a phase that intentionally contains mostly stubs risks a coverage shortfall. Mitigation: the schemas, config, storage schema, and failure-reason helpers are fully testable and will comfortably clear 80% on the code that actually has logic. Stub files (`ollama_qwen.py` placeholder, tab stubs) with `NotImplementedError` are measured as having coverage only if exercised — write a single import-and-assert-raises test per stub so coverage reflects the real surface.
-- **pydantic-settings vs stdlib env parsing:** using `pydantic-settings` adds a dep but buys type-safe env handling that pairs with the other schemas. Tradeoff accepted.
-- **CI running only on stubs is low-value on the first pass** — but it means every subsequent PR in the project enters CI the moment it opens, which is the real point.
-
+**Dependencies:** none — branches off `develop` directly.
+**PLAN.md mapping:** predecessor scaffolding for PLAN.md Phase 1.
 **Branch:** `feature/phase-foundation` (off `develop`).
-**Exit criteria:** `docs/adr/` links resolve, `uv sync` succeeds, `uv run pytest` passes at ≥80% on changed code, `uv run ruff check .` clean, CI green on the PR, `SUMMARY.md` updated, PR merged to `develop`.
+**Implementation plan:** [`docs/superpowers/plans/2026-04-17-phase-foundation.md`](docs/superpowers/plans/2026-04-17-phase-foundation.md)
 
 ---
 
 ## [2026-04-17] Phase 1 — Single happy-path slice
 
-**Objective:** First end-to-end working slice: one ticket in, one structured triage object out, via one model, one prompt, one Gradio tab. Demo-able natively and via Docker.
+- [ ] Concrete `OllamaQwenProvider` against one model (likely 4B per OD-4)
+- [ ] `services/triage.py::run_triage()` — prompt builder → provider → JSON parse → schema validation (no retry yet)
+- [ ] Prompt module `prompts/triage_v1.py` wired into the service layer
+- [ ] Minimal SQLite trace insert on every request via `TraceRepository`
+- [ ] FastAPI app in `app.py` with Gradio mounted as sub-application (ADR 0006). `POST /api/v1/triage` + Triage tab
+- [ ] `Dockerfile` for app container only (Ollama on host per ADR 0007)
+- [ ] Service-layer tests (TDD), API route smoke test, Dockerfile build check
+- [ ] Happy-path integration test (mocked provider) + failed-parse unit test
+- [ ] SUMMARY.md + TODO.md updated
+- [ ] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F).
 **Can run in parallel with:** nothing — everything else builds on the service layer this phase instantiates.
 **PLAN.md mapping:** PLAN.md Phase 1.
-
-**Approach:**
-
-1. Concrete `OllamaQwenProvider` against one model (default from Phase 0 go/no-go — likely 4B; decision deferred to post-experiment data per OD-4).
-2. `services/triage.py::run_triage()` orchestrating prompt builder → provider → JSON parse → schema validation. No retry yet (bounded retry lands in TODO Phase 2).
-3. Prompt module `prompts/triage_v1.py` carrying the prompt already exercised in the Phase 0 smoke test (same structural-delimiter design).
-4. Minimal SQLite trace insert on every request using the repo from Phase F.
-5. FastAPI app in `app.py` with Gradio mounted as sub-application (ADR 0006 addendum). `POST /api/v1/triage` route plus the Triage tab.
-6. `Dockerfile` for the app container only (Ollama stays on host per ADR 0007); `.dockerignore`.
-7. One happy-path integration test (mocked provider) and one failed-parse unit test against the validation step.
-
-**Tests:** service-layer tests (TDD yes); API route smoke test; Dockerfile build check in CI.
-
-**Risks & Tradeoffs:**
-
-- Retry is deferred to TODO Phase 2 to keep this phase small. Known consequence: if the model produces malformed JSON on the happy path the request will `TriageFailure` at `parse_failure`; that is acceptable for a first slice.
-- Default model defer-until-data (OD-4 in PLAN.md) — this phase picks one reasonable default and flags it for revisit.
-
 **Branch:** `feature/phase-1-happy-path` (off `develop`, after F merges).
 
 ---
 
 ## [2026-04-17] Phase 2 — Provider abstraction + retry + guardrail stub
 
-**Objective:** All three local models behind the same `LlmProvider` Protocol, one-click switching in the UI, bounded retry (max 1) wired in, and the heuristic guardrail in its initial form.
+- [ ] `provider_router.py` registry keyed on config (no `if provider == ...` branches per ADR 0004)
+- [ ] Dropdown in Triage tab driven by registry
+- [ ] `services/retry.py` — bounded retry (max 1) with repair prompt (`prompts/repair_json_v1.py`)
+- [ ] `services/guardrail.py` — injection phrase regexes, structural markers, length checks, basic PII regex (ADR 0008)
+- [ ] Guardrail returns `pass`/`warn`/`block` + `matched_rules` list
+- [ ] Unit tests (TDD) for retry policy branches, guardrail rule matches/misses, provider router selection
+- [ ] SUMMARY.md + TODO.md updated
+- [ ] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F), Phase 1.
-**Can run in parallel with:** Phase 3 (eval harness can be authored against the Phase 1 service layer while Phase 2 adds retry).
+**Can run in parallel with:** Phase 3 (eval harness can start against Phase 1 service layer while Phase 2 adds retry).
 **PLAN.md mapping:** PLAN.md Phase 2.
-
-**Approach:**
-
-- `provider_router.py` registry keyed on config.
-- Dropdown in the Triage tab driven by the registry (no `if provider == ...` branches in services, per ADR 0004).
-- `services/retry.py` implementing the bounded retry with the repair prompt (`prompts/repair_json_v1.py`).
-- `services/guardrail.py` first pass: known injection phrase regexes, structural markers, length checks, basic PII regex (ADR 0008).
-- Guardrail returns `pass` / `warn` / `block` and an optional `matched_rules` list per ADR 0008 / 0009.
-
-**Tests:** unit tests (TDD yes) for retry policy branches, guardrail rule matches/misses, provider router selection.
-
-**Risks & Tradeoffs:**
-
-- Guardrail false-positive risk on legitimate tickets quoting injection-like phrases. Tracked as an empirical question for Phase 4.
-
 **Branch:** `feature/phase-2-providers-retry-guardrail`.
 
 ---
 
 ## [2026-04-17] Phase 3 — Evaluation harness + benchmark run
 
-**Objective:** Run the four planned experiments, produce real numbers to replace the placeholder TBDs in `PLAN.md`.
+- [ ] `eval/runners/run_local_comparison.py` (E1) — local model size comparison
+- [ ] `eval/runners/run_validation_impact.py` (E3) — validation on/off impact (needs Phase 2 retry)
+- [ ] `eval/runners/run_prompt_comparison.py` (E4) — prompt v1 vs v2 (partial; re-run after Phase 6)
+- [ ] `eval/runners/summarize_results.py` — aggregate results, compute E2 as composition of E1+E3
+- [ ] All runs tag rows with `run_id` in traces table (ADR 0005)
+- [ ] Fill in `docs/evaluation-checklist.md` Phase 3 sections + "Expected Benchmark Table" in `PLAN.md`
+- [ ] Unit tests (TDD) for summarizer aggregation logic
+- [ ] SUMMARY.md + TODO.md updated
+- [ ] PR opened, CI green, merged to `develop`
 
-**Dependencies:** Foundation (F), Phase 1. **Can start in parallel with Phase 2**, but the validation-on/off experiment (E3) needs Phase 2's retry to mean anything; schedule E3 after Phase 2 merges.
+**Dependencies:** Foundation (F), Phase 1. E3 needs Phase 2's retry.
+**Can run in parallel with:** Phase 2 (except E3).
 **PLAN.md mapping:** PLAN.md Phase 3.
-
-**Approach:**
-
-- `eval/runners/run_local_comparison.py` (E1), `run_validation_impact.py` (E3), `run_prompt_comparison.py` (E4 — v2 not yet authored; E4 runs partially here and again after Phase 6), and `summarize_results.py`.
-- E2 (model size vs engineering controls) is a *composition* of E1 + E3 results — write the summarizer to compute it rather than running a separate pass.
-- All runs tag rows with `run_id` in the `traces` table (ADR 0005). Summaries are computed on the fly from traces (no second table).
-- Fill in `docs/evaluation-checklist.md` Phase 3 sections and the "Expected Benchmark Table" in `PLAN.md`.
-
-**Tests:** unit tests for summarizer aggregation logic (TDD yes); eval runners themselves are thin wrappers and are validated end-to-end by the benchmark run.
-
-**Risks & Tradeoffs:**
-
-- Runs are long — a full sweep of 35 normal tickets × 3 models × 2 validation configs × 2 prompt versions could take hours. Plan for an overnight run; structure runners so partial-completion traces are still usable.
-
 **Branch:** `feature/phase-3-eval-harness`.
 
 ---
 
 ## [2026-04-17] Phase 4 — Adversarial evaluation + guardrail iteration
 
-**Objective:** Run the adversarial set against all local models; measure per-layer effectiveness; iterate on the guardrail based on findings. Produce the residual-risk statement.
+- [ ] Run adversarial set (`data/adversarial_set.jsonl`) against all local models using Phase 3 harness
+- [ ] Per-layer accounting: guardrail blocked / reached model / model complied / validation caught / end-to-end success
+- [ ] Fill Phase 4 tables in `docs/evaluation-checklist.md`
+- [ ] Iterate on `services/guardrail.py` only if findings reveal concretely fixable misses
+- [ ] Update `docs/threat-model.md` with measured numbers + residual-risk paragraph
+- [ ] SUMMARY.md + TODO.md updated
+- [ ] PR opened, CI green, merged to `develop`
 
-**Dependencies:** Foundation (F), Phase 2 (guardrail must exist), Phase 3 (baseline benchmark numbers must exist so guardrail-iteration effects are measurable).
+**Dependencies:** Foundation (F), Phase 2 (guardrail), Phase 3 (baseline numbers).
 **PLAN.md mapping:** PLAN.md Phase 4.
-
-**Approach:**
-
-- Reuse Phase 3 harness, swapping the dataset for `data/adversarial_set.jsonl`.
-- Per-layer accounting (guardrail blocked / reached model / model complied / validation caught / end-to-end success) fills the Phase 4 tables in `docs/evaluation-checklist.md`.
-- Iterate on `services/guardrail.py` only if findings reveal a concretely fixable miss. Record each iteration in the checklist's iteration table.
-- Update `docs/threat-model.md` with the measured numbers and an honest residual-risk paragraph.
-
-**Risks & Tradeoffs:** ADR 0008 explicitly expects the heuristic guardrail to miss obfuscated attacks — those misses are *findings*, not defects. Do not over-engineer the guardrail to suppress expected failures; the comparison only works if the heuristic baseline is real.
-
 **Branch:** `feature/phase-4-adversarial`.
 
 ---
 
 ## [2026-04-17] Phase 5 — Dashboard, traces, live monitoring
 
-**Objective:** Metrics / Traces / Experiments tabs fully populated; Metrics split into "Benchmark Results" (static) and "Live Metrics" (rolling) per ADR 0009; log-based alerting wired up.
+- [ ] Metrics tab — "Benchmark Results" (static, from `run_id`-tagged traces) + "Live Metrics" (rolling time-series)
+- [ ] Traces tab — request inspection and filtering
+- [ ] Experiments tab — side-by-side experiment comparison
+- [ ] Category-distribution drift indicator
+- [ ] Log-based alerts (`WARN [monitoring] threshold_breached: ...`) per ADR 0009
+- [ ] SUMMARY.md + TODO.md updated
+- [ ] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F), Phase 1 (traces exist), Phase 3 (benchmark data exists).
 **Can run in parallel with:** Phase 4 (different surface area).
 **PLAN.md mapping:** PLAN.md Phase 5.
-
-**Approach:** as specified in `PLAN.md` Phase 5 and ADR 0009 — two-section Metrics tab, category-distribution drift indicator, log-based alerts (`WARN [monitoring] threshold_breached: ...`). No separate time-series DB, no Prometheus.
-
 **Branch:** `feature/phase-5-dashboard`.
 
 ---
 
 ## [2026-04-17] Phase 6 — Prompt v2 + prompt comparison
 
-**Objective:** Author `prompts/triage_v2.py` as a meaningfully different prompt (not a tweak), re-run Experiment 4 with both prompts, wire prompt-version filtering into the dashboard.
+- [ ] Author `prompts/triage_v2.py` — meaningfully different prompt (not a tweak)
+- [ ] Re-run Experiment 4 with both prompt versions
+- [ ] Wire prompt-version filtering into the dashboard
+- [ ] SUMMARY.md + TODO.md updated
+- [ ] PR opened, CI green, merged to `develop`
 
-**Dependencies:** Foundation (F), Phase 1, Phase 5 (dashboard filter lands here if not earlier).
+**Dependencies:** Foundation (F), Phase 1, Phase 5 (dashboard filter).
 **PLAN.md mapping:** PLAN.md Phase 6.
-
 **Branch:** `feature/phase-6-prompt-v2`.
 
 ---
 
 ## [2026-04-17] Phase 7 — Hardening, documentation, presentation prep
 
-**Objective:** Everything polished for demo day.
+- [ ] Sweep adversarial misses that are cheap to fix
+- [ ] Write `DEPLOYMENT.md` with native + Docker quick-starts
+- [ ] Cross-platform Docker testing (macOS / Windows / Linux) per ADR 0007
+- [ ] Finalize ADRs reflecting what was actually built
+- [ ] `demo-script.md` + `presentation-notes.md`
+- [ ] Rehearse the demo twice
+- [ ] SUMMARY.md + TODO.md updated
+- [ ] PR opened, CI green, merged to `develop` → `main`
 
 **Dependencies:** Phases 1–6 all merged.
 **PLAN.md mapping:** PLAN.md Phase 7.
-
-**Approach:** sweep adversarial misses that are cheap to fix; write `DEPLOYMENT.md` with native + Docker quick-starts; cross-platform Docker testing (macOS / Windows / Linux) per ADR 0007; finalize ADRs reflecting what was actually built; `demo-script.md`; `presentation-notes.md`; rehearse the demo twice.
-
-**Branch:** `release/v1-presentation` (per GitFlow — this is the stabilization branch for the final deliverable).
+**Branch:** `release/v1-presentation` (GitFlow stabilization branch).
 
 ---
 
@@ -251,6 +185,14 @@ P2 and P3 can kick off in parallel once P1 merges, subject to the "E3 needs retr
 ---
 
 ## Completed phases
+
+### [2026-04-17] Phase F — Foundation (COMPLETE)
+
+**Objective:** Establish the shared skeleton that every subsequent phase depends on: package scaffolding, shared pydantic schemas, the `LlmProvider` Protocol, the `TriageResult` discriminated union, the SQLite `traces` table contract, the logging configuration, and CI.
+
+**Outcome:** 73 unit tests, 89% coverage, ruff clean, CI workflow committed. 17 atomic commits on `feature/phase-foundation`. All contracts published; downstream phases unblocked.
+
+**References:** `SUMMARY.md` (Phase F entry), PR pending (feature/phase-foundation → develop).
 
 ### [2026-04-16] Phase 0 — Smoke test (COMPLETE)
 

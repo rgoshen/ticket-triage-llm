@@ -182,9 +182,7 @@ def check_ollama_available(client: OpenAI) -> bool:
         return False
 
 
-def run_ticket(
-    client: OpenAI, model: str, ticket: dict
-) -> dict:
+def run_ticket(client: OpenAI, model: str, ticket: dict) -> dict:
     """Send a single ticket to a model and capture the result."""
     user_prompt = build_user_prompt(ticket["subject"], ticket["body"])
 
@@ -212,8 +210,14 @@ def run_ticket(
 
         # Check fields if JSON is valid
         expected_fields = {
-            "category", "severity", "routingTeam", "summary",
-            "businessImpact", "draftReply", "confidence", "escalation",
+            "category",
+            "severity",
+            "routingTeam",
+            "summary",
+            "businessImpact",
+            "draftReply",
+            "confidence",
+            "escalation",
         }
         if parsed and isinstance(parsed, dict):
             present_fields = set(parsed.keys())
@@ -247,9 +251,15 @@ def run_ticket(
             "raw_output": raw_content,
             "error": None,
             "usage": {
-                "prompt_tokens": response.usage.prompt_tokens if response.usage else None,
-                "completion_tokens": response.usage.completion_tokens if response.usage else None,
-                "total_tokens": response.usage.total_tokens if response.usage else None,
+                "prompt_tokens": (
+                    response.usage.prompt_tokens if response.usage else None
+                ),
+                "completion_tokens": (
+                    response.usage.completion_tokens if response.usage else None
+                ),
+                "total_tokens": (
+                    response.usage.total_tokens if response.usage else None
+                ),
             },
         }
 
@@ -303,28 +313,39 @@ def print_summary(all_results: dict[str, list[dict]]) -> None:
 
     for ticket in SAMPLE_TICKETS:
         print(f"\nTicket {ticket['id']}: {ticket['subject']}")
-        print(f"  Expected: category={ticket['expected']['category']}, "
-              f"severity={ticket['expected']['severity']}")
-        print(f"  {'Model':<20} {'JSON?':<8} {'Fields?':<10} "
-              f"{'Values?':<10} {'Latency':<10}")
-        print(f"  {'-'*18:<20} {'-'*6:<8} {'-'*8:<10} "
-              f"{'-'*8:<10} {'-'*8:<10}")
+        print(
+            f"  Expected: category={ticket['expected']['category']}, "
+            f"severity={ticket['expected']['severity']}"
+        )
+        print(
+            f"  {'Model':<20} {'JSON?':<8} {'Fields?':<10} "
+            f"{'Values?':<10} {'Latency':<10}"
+        )
+        print(
+            f"  {'-' * 18:<20} {'-' * 6:<8} {'-' * 8:<10} {'-' * 8:<10} {'-' * 8:<10}"
+        )
         for model, results in all_results.items():
             r = next(x for x in results if x["ticket_id"] == ticket["id"])
             json_ok = "Yes" if r["valid_json"] else "No"
-            fields_ok = "Yes" if r["has_all_fields"] else "Partial" if r["valid_json"] else "No"
+            fields_ok = (
+                "Yes" if r["has_all_fields"] else "Partial" if r["valid_json"] else "No"
+            )
             values_ok = "Yes" if r["reasonable_values"] else "No"
             latency = f"{r['latency_seconds']}s"
-            print(f"  {model:<20} {json_ok:<8} {fields_ok:<10} "
-                  f"{values_ok:<10} {latency:<10}")
+            print(
+                f"  {model:<20} {json_ok:<8} {fields_ok:<10} "
+                f"{values_ok:<10} {latency:<10}"
+            )
 
     print("\n" + "-" * 70)
     print("DECISION POINT:")
     for model, results in all_results.items():
         json_rate = sum(1 for r in results if r["valid_json"]) / len(results)
         field_rate = sum(1 for r in results if r["has_all_fields"]) / len(results)
-        print(f"  {model}: JSON valid {json_rate:.0%}, "
-              f"all fields present {field_rate:.0%}")
+        print(
+            f"  {model}: JSON valid {json_rate:.0%}, "
+            f"all fields present {field_rate:.0%}"
+        )
         if json_rate < 0.5:
             print(f"    ⚠ Consider dropping {model} from comparison")
     print("-" * 70)
