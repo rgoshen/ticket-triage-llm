@@ -25,17 +25,27 @@ jobs:
             pyproject.toml
             uv.lock
 
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+      - name: Set up Python
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
+        run: uv python install "$PY_VERSION"
 
       - name: Install dependencies
-        run: uv sync --all-extras
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
+        run: uv sync --all-extras --python "$PY_VERSION"
 
       - name: Lint
-        run: uv run ruff check .
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
+        run: uv run --python "$PY_VERSION" ruff check .
 
       - name: Format check
-        run: uv run ruff format --check .
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
+        run: uv run --python "$PY_VERSION" ruff format --check .
 
       - name: Test with coverage
-        run: uv run pytest --cov=ticket_triage_llm --cov-fail-under=80
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
+        run: uv run --python "$PY_VERSION" pytest --cov=ticket_triage_llm --cov-fail-under=80
