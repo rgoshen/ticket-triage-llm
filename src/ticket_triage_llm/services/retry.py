@@ -13,6 +13,7 @@ from ticket_triage_llm.prompts.repair_json_v1 import (
 )
 from ticket_triage_llm.providers.base import LlmProvider
 from ticket_triage_llm.providers.errors import ProviderError
+from ticket_triage_llm.schemas.model_result import ModelResult
 from ticket_triage_llm.schemas.trace import TriageFailure, TriageResult, TriageSuccess
 from ticket_triage_llm.services.validation import (
     parse_json,
@@ -27,20 +28,20 @@ class RetryResult:
     result: TriageResult
     retry_count: int
     final_raw_output: str | None
+    repair_model_result: ModelResult | None = None
 
 
 def _attempt_repair(
     provider: LlmProvider,
     raw_output: str,
     error_message: str,
-) -> str | None:
+) -> ModelResult | None:
     try:
-        repair_result = provider.generate_structured_ticket(
+        return provider.generate_structured_ticket(
             ticket_body=build_repair_user_prompt(raw_output, error_message),
             prompt_version="__repair__",
             ticket_subject=REPAIR_SYSTEM_PROMPT,
         )
-        return repair_result.raw_output
     except ProviderError as exc:
         logger.warning("Provider error during retry: %s", exc)
         return None
@@ -56,10 +57,10 @@ def validate_or_retry(
     parsed = parse_json(raw_output)
 
     if parsed is None:
-        repair_raw = _attempt_repair(
+        repair_mr = _attempt_repair(
             provider, raw_output, "Failed to parse output as JSON"
         )
-        if repair_raw is None:
+        if repair_mr is None:
             return RetryResult(
                 result=TriageFailure(
                     category="model_unreachable",
@@ -72,6 +73,7 @@ def validate_or_retry(
                 final_raw_output=raw_output,
             )
 
+        repair_raw = repair_mr.raw_output
         parsed = parse_json(repair_raw)
         if parsed is None:
             return RetryResult(
@@ -84,6 +86,7 @@ def validate_or_retry(
                 ),
                 retry_count=1,
                 final_raw_output=repair_raw,
+                repair_model_result=repair_mr,
             )
 
         output, schema_error = validate_schema_with_error(parsed)
@@ -98,12 +101,14 @@ def validate_or_retry(
                 ),
                 retry_count=1,
                 final_raw_output=repair_raw,
+                repair_model_result=repair_mr,
             )
 
         return RetryResult(
             result=TriageSuccess(output=output, retry_count=1),
             retry_count=1,
             final_raw_output=repair_raw,
+            repair_model_result=repair_mr,
         )
 
     output, schema_error = validate_schema_with_error(parsed)
@@ -114,10 +119,10 @@ def validate_or_retry(
             final_raw_output=raw_output,
         )
 
-    repair_raw = _attempt_repair(
+    repair_mr = _attempt_repair(
         provider, raw_output, f"Schema validation failed: {schema_error}"
     )
-    if repair_raw is None:
+    if repair_mr is None:
         return RetryResult(
             result=TriageFailure(
                 category="model_unreachable",
@@ -130,6 +135,7 @@ def validate_or_retry(
             final_raw_output=raw_output,
         )
 
+    repair_raw = repair_mr.raw_output
     repair_parsed = parse_json(repair_raw)
     if repair_parsed is None:
         return RetryResult(
@@ -145,6 +151,7 @@ def validate_or_retry(
             ),
             retry_count=1,
             final_raw_output=repair_raw,
+            repair_model_result=repair_mr,
         )
 
     repair_output, repair_schema_error = validate_schema_with_error(repair_parsed)
@@ -159,10 +166,12 @@ def validate_or_retry(
             ),
             retry_count=1,
             final_raw_output=repair_raw,
+            repair_model_result=repair_mr,
         )
 
     return RetryResult(
         result=TriageSuccess(output=repair_output, retry_count=1),
         retry_count=1,
         final_raw_output=repair_raw,
+        repair_model_result=repair_mr,
     )

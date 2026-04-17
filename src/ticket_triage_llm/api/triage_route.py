@@ -41,7 +41,7 @@ def triage_ticket(payload: TriageInput) -> TriageResult:
         raise HTTPException(
             status_code=422,
             detail=f"Unknown provider: {payload.model!r}",
-        )
+        ) from None
 
     result, _trace = run_triage(
         ticket_body=payload.ticket_body,

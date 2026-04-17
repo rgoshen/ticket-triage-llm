@@ -100,6 +100,20 @@ def run_triage(
     elif isinstance(retry.result, TriageFailure):
         validation_status = "invalid"
 
+    repair_mr = retry.repair_model_result
+    if model_result and repair_mr:
+        combined_result = ModelResult(
+            raw_output=repair_mr.raw_output,
+            model=model_result.model,
+            latency_ms=model_result.latency_ms + repair_mr.latency_ms,
+            tokens_input=model_result.tokens_input + repair_mr.tokens_input,
+            tokens_output=model_result.tokens_output + repair_mr.tokens_output,
+            tokens_total=model_result.tokens_total + repair_mr.tokens_total,
+            tokens_per_second=model_result.tokens_per_second,
+        )
+    else:
+        combined_result = model_result
+
     trace = _build_and_save_trace(
         trace_repo=trace_repo,
         request_id=request_id,
@@ -109,7 +123,7 @@ def run_triage(
         ticket_body=ticket_body,
         guardrail_result=guardrail.decision,
         guardrail_matched_rules=guardrail.matched_rules,
-        model_result=model_result,
+        model_result=combined_result,
         raw_output=retry.final_raw_output,
         result=retry.result,
         retry_count=retry.retry_count,

@@ -333,3 +333,18 @@ class TestRunTriageRetryIntegration:
         assert isinstance(result, TriageSuccess)
         assert trace.retry_count == 1
         assert trace.validation_status == "valid_after_retry"
+
+    def test_retry_trace_sums_tokens_from_both_attempts(self):
+        repo = FakeTraceRepo()
+        provider = RetrySuccessProvider()
+        result, trace = run_triage(
+            ticket_body="test",
+            ticket_subject="",
+            provider=provider,
+            prompt_version="v1",
+            trace_repo=repo,
+        )
+        assert isinstance(result, TriageSuccess)
+        assert trace.tokens_input == 100
+        assert trace.tokens_output == 50
+        assert trace.tokens_total == 150
