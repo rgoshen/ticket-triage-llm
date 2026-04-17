@@ -10,6 +10,20 @@ Phase 0 (smoke-test the three Qwen 3.5 sizes against real hardware) has not run;
 
 Use `docs/evaluation-checklist.md` to log Phase 0 smoke-test results, sampling observations, experiment data, adversarial evaluation findings, and cost analysis inputs as they are produced.
 
+### Experiment observations are required, not optional
+
+After running any experiment or evaluation phase, do not stop at filling in the checklist tables. Write a **"Phase N Observations"** subsection immediately after the results in `docs/evaluation-checklist.md` that covers:
+
+1. **Unexpected findings** — anything that contradicts assumptions or prior results
+2. **Patterns in the data** — trends, inversions, outliers, and what they imply
+3. **Implementation implications** — what the results mean for the next phase of the build
+4. **Cost or performance implications** — anything that affects cost-analysis.md, tradeoffs.md, or the project thesis
+5. **Limitations at this sample size** — what can and cannot be concluded from the data
+
+The observations section is analytical, not descriptive. "All models achieved 100% accuracy" is a fact from the table. "Quality differentiation is subtle at n=3 and requires the full 35-ticket evaluation to characterize" is an observation. Write the latter.
+
+This applies to Phase 0, all four experiments in Phase 3, the adversarial evaluation in Phase 4, and any sampling experiments. If the checklist has new data, it needs new observations.
+
 ## Workflow
 
 ### Planning artifacts
