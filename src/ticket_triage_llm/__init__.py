@@ -1,1 +1,1 @@
-"""ticket-triage-llm: production-style support ticket triage with local-first LLM evaluation."""
+"""Production-style support ticket triage with local-first LLM evaluation."""

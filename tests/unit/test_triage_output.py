@@ -89,8 +89,12 @@ class TestTriageOutput:
 
     def test_all_categories_accepted(self):
         categories = (
-            "billing", "outage", "account_access",
-            "bug", "feature_request", "other",
+            "billing",
+            "outage",
+            "account_access",
+            "bug",
+            "feature_request",
+            "other",
         )
         for cat in categories:
             data = {**VALID_OUTPUT, "category": cat}

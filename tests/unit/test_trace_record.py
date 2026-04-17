@@ -1,14 +1,13 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
 
 from ticket_triage_llm.schemas.trace import TraceRecord
 
-
 VALID_TRACE = {
     "request_id": "abc-123",
-    "timestamp": datetime.now(timezone.utc),
+    "timestamp": datetime.now(UTC),
     "model": "qwen3.5:4b",
     "provider": "ollama",
     "prompt_version": "v1",

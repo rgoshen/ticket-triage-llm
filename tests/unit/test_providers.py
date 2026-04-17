@@ -1,6 +1,8 @@
 import pytest
 
 from ticket_triage_llm.providers.base import LlmProvider
+from ticket_triage_llm.providers.cloud_qwen import CloudQwenProvider
+from ticket_triage_llm.providers.ollama_qwen import OllamaQwenProvider
 from ticket_triage_llm.schemas.model_result import ModelResult
 
 
@@ -38,10 +40,6 @@ class TestLlmProviderProtocol:
         assert LlmProvider not in FakeProvider.__mro__
         provider: LlmProvider = FakeProvider()
         assert provider.name == "fake"
-
-
-from ticket_triage_llm.providers.ollama_qwen import OllamaQwenProvider
-from ticket_triage_llm.providers.cloud_qwen import CloudQwenProvider
 
 
 class TestOllamaQwenProviderStub:
