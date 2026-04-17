@@ -48,6 +48,8 @@ This applies to Phase 0, all four experiments in Phase 3, the adversarial evalua
   - If any architecture changes were required, create a new ADR in `docs/adr/` (see existing ADRs for format)
   - Commit with Conventional Commits (see Repository conventions)
   - Open a PR using `.github/PULL_REQUEST_TEMPLATE.md`
+- At the start of a new phase run `/clear` command
+- Read `CLAUDE.md`, `PLAN.md`, and `TODO.md`
 
 ### Handling uncertainty
 
