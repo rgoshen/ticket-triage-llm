@@ -8,6 +8,12 @@ A production-style support ticket triage system built on local LLMs, with a focu
 
 `ticket-triage-llm` takes a raw support ticket and returns a validated triage object: category, severity, routing team, summary, draft reply, escalation flag, and a confidence score. The system is built around a validator-first inference pipeline with bounded retry, a provider abstraction that supports both local (Ollama) and cloud-hosted Qwen models, and a built-in observability dashboard for runtime metrics and benchmark results.
 
+**Key features:**
+- **Multi-model support** — switchable Qwen 3.5 models (2B/4B/9B) via dropdown in the Triage tab or `OLLAMA_MODELS` env var
+- **Heuristic guardrail** — injection phrase detection, structural marker screening, PII pattern matching, and length checks per ADR 0008
+- **Bounded retry with repair prompt** — on validation failure, sends the failed output plus specific error back to the model for self-correction (exactly one retry per ADR 0002)
+- **Config-driven provider registry** — add models via environment variables, no code changes required
+
 The project is deliberately constrained to consumer hardware (Apple Silicon, ≤24GB unified memory) for the local execution path. That constraint is a feature, not a workaround — it reflects the deployment context most production LLM systems will actually face outside of well-funded AI labs.
 
 ## Project goals
@@ -78,13 +84,15 @@ ollama pull qwen3.5:9b          # higher quality, slower
 #### Option A: run natively
 
 ```bash
-# Set the model via env var (required — no default)
-OLLAMA_MODEL=qwen3.5:4b uv run python -m ticket_triage_llm.app
+# Set the models via env var (comma-separated list)
+OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b uv run python -m ticket_triage_llm.app
 
-# Or copy .env.example → .env and set OLLAMA_MODEL there
-cp .env.example .env             # then edit OLLAMA_MODEL=qwen3.5:4b
+# Or copy .env.example → .env and set OLLAMA_MODELS there
+cp .env.example .env             # then edit OLLAMA_MODELS=qwen3.5:4b,qwen3.5:9b
 uv run python -m ticket_triage_llm.app
 ```
+
+**Configuration note:** `OLLAMA_MODELS` is a comma-separated list of model names. All models in the list will appear in the Triage tab dropdown. The first model in the list is the default selection.
 
 #### Option B: run in Docker (app container only — Ollama stays on host)
 

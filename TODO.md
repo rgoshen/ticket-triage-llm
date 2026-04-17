@@ -60,16 +60,16 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
-## [2026-04-17] Phase 2 — Provider abstraction + retry + guardrail stub
+## [2026-04-17] Phase 2 — Provider abstraction + retry + guardrail stub (COMPLETE)
 
-- [ ] `provider_router.py` registry keyed on config (no `if provider == ...` branches per ADR 0004)
-- [ ] Dropdown in Triage tab driven by registry
-- [ ] `services/retry.py` — bounded retry (max 1) with repair prompt (`prompts/repair_json_v1.py`)
-- [ ] `services/guardrail.py` — injection phrase regexes, structural markers, length checks, basic PII regex (ADR 0008)
-- [ ] Guardrail returns `pass`/`warn`/`block` + `matched_rules` list
-- [ ] Unit tests (TDD) for retry policy branches, guardrail rule matches/misses, provider router selection
-- [ ] SUMMARY.md + TODO.md updated
-- [ ] PR opened, CI green, merged to `develop`
+- [x] `provider_router.py` registry keyed on config (no `if provider == ...` branches per ADR 0004)
+- [x] Dropdown in Triage tab driven by registry
+- [x] `services/retry.py` — bounded retry (max 1) with repair prompt (`prompts/repair_json_v1.py`)
+- [x] `services/guardrail.py` — injection phrase regexes, structural markers, length checks, basic PII regex (ADR 0008)
+- [x] Guardrail returns `pass`/`warn`/`block` + `matched_rules` list
+- [x] Unit tests (TDD) for retry policy branches, guardrail rule matches/misses, provider router selection
+- [x] SUMMARY.md + TODO.md updated
+- [x] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F), Phase 1.
 **Can run in parallel with:** Phase 3 (eval harness can start against Phase 1 service layer while Phase 2 adds retry).

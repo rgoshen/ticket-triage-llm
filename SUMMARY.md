@@ -19,6 +19,42 @@ Related artifacts:
 
 ---
 
+## [2026-04-17] Phase 2 — Provider abstraction, retry, and guardrail
+
+**What was done:**
+
+- Implemented `ProviderRegistry` for config-driven multi-model switching via `OLLAMA_MODELS` env var. Dropdown in Triage tab driven by registry; API route resolves provider from request payload.
+- Implemented bounded retry service (`services/retry.py`) with repair prompt (`prompts/repair_json_v1.py`). On parse or schema failure, sends the failed output + specific error back to the same model for self-correction. Exactly one retry per ADR 0002.
+- Implemented heuristic guardrail (`services/guardrail.py`) per ADR 0008. Pattern matching for injection phrases (7 rules), structural markers (3 rules), PII (2 rules), and length checks. Returns `pass`/`warn`/`block` with namespaced `matched_rules` for Phase 4 per-rule analysis.
+- Added `validate_schema_with_error()` to validation service — returns the error string for inclusion in repair prompts.
+- Refactored `run_triage()` to compose: guardrail → provider → validate_or_retry → trace. Three exit points, reduced `_save_trace` duplication.
+- Updated Triage tab with `gr.Dropdown` for model selection, guardrail status in trace summary.
+- Updated API route to resolve provider from `ProviderRegistry`.
+- 174 tests total, ruff clean.
+
+**How it was done:**
+
+- Strict RED/GREEN/REFACTOR TDD for all three services (provider router, guardrail, retry) and the validation enhancement.
+- Subagent-driven development: fresh subagent per task with parallel dispatch for independent tasks, 12 atomic commits on `feature/phase-2-providers-retry-guardrail`.
+- Each service is independently testable with pure functions/classes and clear inputs/outputs.
+
+**Issues encountered:**
+
+1. **API route integration test regression.** The integration test for `POST /api/v1/triage` passed a `FakeProvider` directly to `configure()`, which now expects a `ProviderRegistry`. Tests failed with `AttributeError: 'FakeProvider' object has no attribute 'default'`.
+2. **Existing parse/schema failure tests affected by retry.** The Phase 1 tests used `FakeProvider` which always returns valid JSON — so after retry integration, parse failure tests would succeed on retry instead of failing. Required new test helpers (`AlwaysBadJsonProvider`, `AlwaysBadSchemaProvider`) that consistently fail.
+
+**How those issues were resolved:**
+
+1. Updated `tests/integration/test_api_route.py` to wrap `FakeProvider` in a `ProviderRegistry` before passing to `configure()`.
+2. Created dedicated test helpers that always return invalid output, ensuring the retry service also fails and the test exercises the intended failure path.
+
+**Exit state:**
+
+- 174 tests pass, ruff clean.
+- Phase 3 unblocked (eval harness). Phase 4 unblocked (adversarial eval uses the guardrail's `matched_rules` for per-rule analysis).
+
+---
+
 ## [2026-04-17] Phase 1 — Single happy-path slice
 
 **What was done:**
