@@ -16,11 +16,11 @@ Newest entries at the top.
 
 **Results:** All three models produced 100% valid JSON, 100% correct field shape (all 8 required keys, no extras), and 100% correct category+severity against ground truth.
 
-| Model | Valid JSON | All fields | Correct category+severity | Latency range | Quantization | Approx RAM |
-|---|---|---|---|---|---|---|
-| Qwen 3.5 2B | 3/3 | 3/3 | 3/3 | 42–652 s | Q8_0 | 2.7 GB |
-| Qwen 3.5 4B | 3/3 | 3/3 | 3/3 | 36–52 s | Q4_K_M | 3.4 GB |
-| Qwen 3.5 9B | 3/3 | 3/3 | 3/3 | 45–85 s | Q4_K_M | 6.6 GB |
+| Model       | Valid JSON | All fields | Correct category+severity | Latency range | Quantization | Approx RAM |
+| ----------- | ---------- | ---------- | ------------------------- | ------------- | ------------ | ---------- |
+| Qwen 3.5 2B | 3/3        | 3/3        | 3/3                       | 42–652 s      | Q8_0         | 2.7 GB     |
+| Qwen 3.5 4B | 3/3        | 3/3        | 3/3                       | 36–52 s       | Q4_K_M       | 3.4 GB     |
+| Qwen 3.5 9B | 3/3        | 3/3        | 3/3                       | 45–85 s       | Q4_K_M       | 6.6 GB     |
 
 **Per-model go/no-go rationale:**
 
@@ -35,6 +35,27 @@ Newest entries at the top.
 **What this unblocks:** Phase 1 can proceed with the default plan of three local providers. The choice of which size to make the demo default (OD-4) is still deferred to post-Phase 3 evaluation data.
 
 **Updated:** `docs/evaluation-checklist.md` (Phase 0 section filled in), this decision log.
+
+---
+
+## 2026-04-16 — Sampling parameters locked
+
+**Decision:** Sampling parameters are no longer ranges — they are fixed values for all pipeline and evaluation use:
+
+| Parameter          | Previous (range) | Locked value        |
+| ------------------ | ---------------- | ------------------- |
+| Temperature        | 0.1–0.3          | **0.2**             |
+| Top-p              | 0.85–0.9         | **0.9**             |
+| Top-k              | 40               | **40** (unchanged)  |
+| Repetition penalty | 1.0              | **1.0** (unchanged) |
+
+**Rationale:** The Phase 0 smoke test, all four experiments, and the production pipeline must use identical sampling parameters so results are directly comparable. Ranges introduce an uncontrolled variable — if the smoke test runs at temperature=0.1 and a later experiment runs at 0.3, any difference in output quality is confounded. Locking values eliminates that.
+
+**Values chosen:** Temperature 0.2 is low enough to keep structured JSON output consistent but avoids the repetition loops that fully greedy decoding (0.0) can cause in some models. Top-p 0.9 is a standard conservative setting.
+
+**Change process:** Any future change to these values requires a new decision-log entry and must be reflected in the Sampling Observations table in `docs/evaluation-checklist.md`.
+
+**Updated:** `CLAUDE.md` (Hardware & model constraints section) — ranges replaced with locked values.
 
 ---
 
@@ -268,22 +289,3 @@ Documentation will be split across three distinct artifact types, each with a cl
 3. **The decision log** (this file) — chronological, informal, captures scope, framing, and strategy decisions that are not architectural. Newest entries at the top.
 
 The instructor's emphasis on "factors weighing" in decision-making means that the *process* of decision-making is itself a graded artifact, not just the final answers. The decision log and the ADRs together form the trail of that process.
-
-## 2026-04-16 — Sampling parameters locked
-
-**Decision:** Sampling parameters are no longer ranges — they are fixed values for all pipeline and evaluation use:
-
-| Parameter          | Previous (range) | Locked value        |
-| ------------------ | ---------------- | ------------------- |
-| Temperature        | 0.1–0.3          | **0.2**             |
-| Top-p              | 0.85–0.9         | **0.9**             |
-| Top-k              | 40               | **40** (unchanged)  |
-| Repetition penalty | 1.0              | **1.0** (unchanged) |
-
-**Rationale:** The Phase 0 smoke test, all four experiments, and the production pipeline must use identical sampling parameters so results are directly comparable. Ranges introduce an uncontrolled variable — if the smoke test runs at temperature=0.1 and a later experiment runs at 0.3, any difference in output quality is confounded. Locking values eliminates that.
-
-**Values chosen:** Temperature 0.2 is low enough to keep structured JSON output consistent but avoids the repetition loops that fully greedy decoding (0.0) can cause in some models. Top-p 0.9 is a standard conservative setting.
-
-**Change process:** Any future change to these values requires a new decision-log entry and must be reflected in the Sampling Observations table in `docs/evaluation-checklist.md`.
-
-**Updated:** `CLAUDE.md` (Hardware & model constraints section) — ranges replaced with locked values.

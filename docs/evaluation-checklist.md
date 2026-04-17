@@ -17,21 +17,21 @@ A working document for logging results as each phase produces data. Fill in as y
 
 ### Model Pull Verification
 
-| Model | Pull command | Size on disk | Pull successful? | Notes |
-|---|---|---|---|---|
-| Qwen 3.5 2B | `ollama pull qwen3.5:2b` | 2.7 GB | ☒ Yes | Q8_0 quantization; 2.3B params; 262K ctx. |
-| Qwen 3.5 4B | `ollama pull qwen3.5:4b` | 3.4 GB | ☒ Yes | Q4_K_M quantization; 4.7B params; 262K ctx. |
-| Qwen 3.5 9B | `ollama pull qwen3.5:9b` | 6.6 GB | ☒ Yes | Q4_K_M quantization; 9.7B params; 262K ctx. Pulled as `qwen3.5:latest` and aliased locally via `ollama cp qwen3.5:latest qwen3.5:9b` to match the tag the runner expects. |
+| Model       | Pull command             | Size on disk | Pull successful? | Notes                                                                                                                                                                     |
+| ----------- | ------------------------ | ------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Qwen 3.5 2B | `ollama pull qwen3.5:2b` | 2.7 GB       | ☒ Yes            | Q8_0 quantization; 2.3B params; 262K ctx.                                                                                                                                 |
+| Qwen 3.5 4B | `ollama pull qwen3.5:4b` | 3.4 GB       | ☒ Yes            | Q4_K_M quantization; 4.7B params; 262K ctx.                                                                                                                               |
+| Qwen 3.5 9B | `ollama pull qwen3.5:9b` | 6.6 GB       | ☒ Yes            | Q4_K_M quantization; 9.7B params; 262K ctx. Pulled as `qwen3.5:latest` and aliased locally via `ollama cp qwen3.5:latest qwen3.5:9b` to match the tag the runner expects. |
 
 ### MLX Acceleration Check
 
 Checked with `OLLAMA_MLX=1 ollama run <model> --verbose` on a throwaway "say hi as JSON" prompt. Decode rates are well below what MLX kernels would deliver on M4 Pro for this architecture, so MLX is treated as **not engaged** for the `qwen35` architecture in Ollama 0.20.7. Apple Metal (GGML) is the active backend.
 
-| Model | MLX engaged? | Prefill tokens/s | Decode tokens/s | Notes |
-|---|---|---|---|---|
-| Qwen 3.5 2B | ☒ No | 40.95 | 61.72 | Backend: Metal GGML. Decode much lower than MLX-accelerated Qwen3/Mistral builds on same hardware. Reasoning mode produced 2720 eval tokens for a trivial prompt — consistent with thinking-mode being on by default. |
-| Qwen 3.5 4B | ☒ No | 36.21 | 36.03 | Metal GGML. Latency dominated by parameter count, as expected without MLX. |
-| Qwen 3.5 9B | ☒ No | 10.47 | 26.73 | Metal GGML. Still comfortably fits in 24 GB unified memory alongside IDE + app. |
+| Model       | MLX engaged? | Prefill tokens/s | Decode tokens/s | Notes                                                                                                                                                                                                                 |
+| ----------- | ------------ | ---------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Qwen 3.5 2B | ☒ No         | 40.95            | 61.72           | Backend: Metal GGML. Decode much lower than MLX-accelerated Qwen3/Mistral builds on same hardware. Reasoning mode produced 2720 eval tokens for a trivial prompt — consistent with thinking-mode being on by default. |
+| Qwen 3.5 4B | ☒ No         | 36.21            | 36.03           | Metal GGML. Latency dominated by parameter count, as expected without MLX.                                                                                                                                            |
+| Qwen 3.5 9B | ☒ No         | 10.47            | 26.73           | Metal GGML. Still comfortably fits in 24 GB unified memory alongside IDE + app.                                                                                                                                       |
 
 **Takeaway:** MLX coverage for the `qwen35` architecture has not landed in Ollama 0.20.7, so planning must assume Metal GGML performance. If a later Ollama release adds MLX for this family, the benchmarks should be rerun — latency numbers will likely improve meaningfully.
 
@@ -41,27 +41,27 @@ Sent 3 sample tickets (`n-004` outage, `n-007` billing, `n-003` feature request)
 
 **Sample ticket 1:** n-004 — *URGENT: Complete service outage* (expected: category=outage, severity=critical, routingTeam=infra, escalation=true)
 
-| Model | Valid JSON? | Correct fields? | Reasonable values? | Latency | Notes |
-|---|---|---|---|---|---|
-| Qwen 3.5 2B | ☒ Yes | ☒ Yes | ☒ Yes | 43.55s | confidence 0.95; escalation=true; 2451 completion tokens (reasoning mode verbose). |
-| Qwen 3.5 4B | ☒ Yes | ☒ Yes | ☒ Yes | 49.73s | confidence 0.95; escalation=true; 1575 completion tokens. Tightest summary of the three. |
-| Qwen 3.5 9B | ☒ Yes | ☒ Yes | ☒ Yes | 84.92s | confidence 0.98; escalation=true; 1772 completion tokens. Most professional draftReply. First run after model load — subsequent requests were faster. |
+| Model       | Valid JSON? | Correct fields? | Reasonable values? | Latency | Notes                                                                                                                                                 |
+| ----------- | ----------- | --------------- | ------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Qwen 3.5 2B | ☒ Yes       | ☒ Yes           | ☒ Yes              | 43.55s  | confidence 0.95; escalation=true; 2451 completion tokens (reasoning mode verbose).                                                                    |
+| Qwen 3.5 4B | ☒ Yes       | ☒ Yes           | ☒ Yes              | 49.73s  | confidence 0.95; escalation=true; 1575 completion tokens. Tightest summary of the three.                                                              |
+| Qwen 3.5 9B | ☒ Yes       | ☒ Yes           | ☒ Yes              | 84.92s  | confidence 0.98; escalation=true; 1772 completion tokens. Most professional draftReply. First run after model load — subsequent requests were faster. |
 
 **Sample ticket 2:** n-007 — *Billing discrepancy on latest invoice* (expected: category=billing, severity=medium, routingTeam=billing, escalation=false)
 
-| Model | Valid JSON? | Correct fields? | Reasonable values? | Latency | Notes |
-|---|---|---|---|---|---|
-| Qwen 3.5 2B | ☒ Yes | ☒ Yes | ☒ Yes | 652.16s | **Outlier.** confidence 0.9; 3138 completion tokens. The 2B ran away in reasoning mode before emitting the final JSON. JSON itself was clean — latency was the failure, not correctness. Phase 1+ must apply a completion-token cap or a provider-side timeout. |
-| Qwen 3.5 4B | ☒ Yes | ☒ Yes | ☒ Yes | 52.11s | confidence 0.95; 1776 completion tokens. |
-| Qwen 3.5 9B | ☒ Yes | ☒ Yes | ☒ Yes | 45.01s | confidence 0.95; 1097 completion tokens. Most token-efficient on this ticket. |
+| Model       | Valid JSON? | Correct fields? | Reasonable values? | Latency | Notes                                                                                                                                                                                                                                                           |
+| ----------- | ----------- | --------------- | ------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Qwen 3.5 2B | ☒ Yes       | ☒ Yes           | ☒ Yes              | 652.16s | **Outlier.** confidence 0.9; 3138 completion tokens. The 2B ran away in reasoning mode before emitting the final JSON. JSON itself was clean — latency was the failure, not correctness. Phase 1+ must apply a completion-token cap or a provider-side timeout. |
+| Qwen 3.5 4B | ☒ Yes       | ☒ Yes           | ☒ Yes              | 52.11s  | confidence 0.95; 1776 completion tokens.                                                                                                                                                                                                                        |
+| Qwen 3.5 9B | ☒ Yes       | ☒ Yes           | ☒ Yes              | 45.01s  | confidence 0.95; 1097 completion tokens. Most token-efficient on this ticket.                                                                                                                                                                                   |
 
 **Sample ticket 3:** n-003 — *Feature request: Dark mode for mobile app* (expected: category=feature_request, severity=low, routingTeam=product, escalation=false)
 
-| Model | Valid JSON? | Correct fields? | Reasonable values? | Latency | Notes |
-|---|---|---|---|---|---|
-| Qwen 3.5 2B | ☒ Yes | ☒ Yes | ☒ Yes | 42.24s | confidence 0.9; 2521 completion tokens. |
-| Qwen 3.5 4B | ☒ Yes | ☒ Yes | ☒ Yes | 35.67s | confidence 0.95; 1143 completion tokens. Fastest run overall. |
-| Qwen 3.5 9B | ☒ Yes | ☒ Yes | ☒ Yes | 47.04s | confidence 1.00; 1195 completion tokens. |
+| Model       | Valid JSON? | Correct fields? | Reasonable values? | Latency | Notes                                                         |
+| ----------- | ----------- | --------------- | ------------------ | ------- | ------------------------------------------------------------- |
+| Qwen 3.5 2B | ☒ Yes       | ☒ Yes           | ☒ Yes              | 42.24s  | confidence 0.9; 2521 completion tokens.                       |
+| Qwen 3.5 4B | ☒ Yes       | ☒ Yes           | ☒ Yes              | 35.67s  | confidence 0.95; 1143 completion tokens. Fastest run overall. |
+| Qwen 3.5 9B | ☒ Yes       | ☒ Yes           | ☒ Yes              | 47.04s  | confidence 1.00; 1195 completion tokens.                      |
 
 **Aggregate:** All three models hit 100% valid JSON, 100% fields present, and 100% correct-values on the 3-ticket sample. No malformed outputs, no missing fields, no wrong categories or severities.
 
@@ -73,40 +73,54 @@ Sent 3 sample tickets (`n-004` outage, `n-007` billing, `n-003` feature request)
 - ☒ Final model lineup confirmed: **Qwen 3.5 2B, 4B, 9B** — all three kept for the Phase 3 size-comparison experiment.
 - ☒ Decision log entry written — see `docs/decisions/decision-log.md` (2026-04-16 Phase 0 entry).
 
+### Phase 0 Observations
+
+Analytical findings from the smoke test data. These inform Phase 1+ implementation decisions.
+
+**1. Token consumption inversion.** The 2B uses the most completion tokens per request, not the fewest. Average completion tokens across the 3-ticket sample: 2B ~2,703 / 4B ~1,498 / 9B ~1,355. The visible JSON output is ~150 tokens in all cases — the remainder is consumed by internal reasoning. The smaller model does more "thinking" to arrive at the same correct answer.
+
+**2. Thinking mode appears engaged despite defaults.** Unsloth documentation states that reasoning is disabled by default for Qwen 3.5 small models (0.8B–9B). However, the token counts from the smoke test strongly suggest thinking mode is active in Ollama 0.20.7. There is an open GitHub issue (ollama/ollama#14617) reporting that `/no_think` is ineffective for Qwen 3.5. The provider implementation must investigate `think=false` via the native ollama API and/or `/no_think` prompt tags as a potential fix.
+
+**3. Reasoning runaway is a production reliability risk.** The 2B took 652 seconds on ticket n-007 (a routine billing inquiry) due to 3,138 completion tokens of reasoning before emitting the final JSON. The JSON itself was correct — the failure is latency, not quality. The provider implementation must apply a completion token cap (`max_tokens`) and/or a provider-side timeout. Before implementing the cap, verify whether `max_tokens` counts thinking tokens or only visible output — if it counts both, a low cap could truncate the response before the JSON is emitted.
+
+**4. Cost analysis implication.** The assumption that smaller models are cheaper per request does not hold if token consumption inverts. Cost projections in `docs/cost-analysis.md` must use actual measured tokens-per-request from the Phase 3 benchmarks, not estimates derived from model size alone.
+
+**5. Quality differentiation is subtle at this sample size.** All three models achieved 100% accuracy on category, severity, routing, and escalation across 3 tickets. Quality differences — summary precision, draft reply professionalism, confidence calibration — are visible but not measurable at n=3. The Phase 3 evaluation on 35 tickets will provide enough data to characterize quality differences meaningfully.
+
 ---
 
 ## Sampling Configuration Log
 
 ### Baseline Configuration
 
-| Parameter | Planned value | Actual value used | Notes |
-|---|---|---|---|
-| Temperature | 0.2 | | Locked 2026-04-16 — see decision log |
-| Top-p | 0.9 | | Locked 2026-04-16 — see decision log |
-| Top-k | 40 | | |
-| Repetition penalty | 1.0 (disabled) | | |
+| Parameter          | Planned value  | Actual value used | Notes                                |
+| ------------------ | -------------- | ----------------- | ------------------------------------ |
+| Temperature        | 0.2            |                   | Locked 2026-04-16 — see decision log |
+| Top-p              | 0.9            |                   | Locked 2026-04-16 — see decision log |
+| Top-k              | 40             |                   |                                      |
+| Repetition penalty | 1.0 (disabled) |                   |                                      |
 
 ### Sampling Observations During Development
 
 Log any observations about how sampling settings affect output quality as you encounter them:
 
 | Date | Model | Parameter changed | From → To | Observed effect | Keep change? |
-|---|---|---|---|---|---|
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
+| ---- | ----- | ----------------- | --------- | --------------- | ------------ |
+|      |       |                   |           |                 |              |
+|      |       |                   |           |                 |              |
+|      |       |                   |           |                 |              |
+|      |       |                   |           |                 |              |
 
 ### Sampling Experiment (if time permits)
 
 If time allows during or after Phase 3, test 2–3 temperature settings on the same model with the same dataset:
 
-| Model | Temperature | JSON validity rate | Task accuracy | Avg latency | Notes |
-|---|---|---|---|---|---|
-| | 0.0 (greedy) | | | | |
-| | 0.2 | | | | |
-| | 0.5 | | | | |
-| | 0.8 | | | | |
+| Model | Temperature  | JSON validity rate | Task accuracy | Avg latency | Notes |
+| ----- | ------------ | ------------------ | ------------- | ----------- | ----- |
+|       | 0.0 (greedy) |                    |               |             |       |
+|       | 0.2          |                    |               |             |       |
+|       | 0.5          |                    |               |             |       |
+|       | 0.8          |                    |               |             |       |
 
 **Finding:** _______________________________________________
 
@@ -121,11 +135,11 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 **Prompt version:** v1
 **Sampling config:** temperature=___ top_p=___ top_k=___
 
-| Model | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Avg latency | p95 latency | Tokens/s | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Qwen 3.5 2B | | | | | | | | | | |
-| Qwen 3.5 4B | | | | | | | | | | |
-| Qwen 3.5 9B | | | | | | | | | | |
+| Model       | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Avg latency | p95 latency | Tokens/s | Notes |
+| ----------- | ------ | ------------ | ------------ | ----------- | ---------- | ---------- | ----------- | ----------- | -------- | ----- |
+| Qwen 3.5 2B |        |              |              |             |            |            |             |             |          |       |
+| Qwen 3.5 4B |        |              |              |             |            |            |             |             |          |       |
+| Qwen 3.5 9B |        |              |              |             |            |            |             |             |          |       |
 
 **Key finding from Experiment 1:** _______________________________________________
 
@@ -136,10 +150,10 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 **Prompt version:** v1
 **Sampling config:** temperature=___ top_p=___ top_k=___
 
-| Configuration | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Avg latency | Notes |
-|---|---|---|---|---|---|---|---|---|
-| Smallest model + full validation | | | | | | | | |
-| Largest model + no validation | | | | | | | | |
+| Configuration                    | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Avg latency | Notes |
+| -------------------------------- | ------ | ------------ | ------------ | ----------- | ---------- | ---------- | ----------- | ----- |
+| Smallest model + full validation |        |              |              |             |            |            |             |       |
+| Largest model + no validation    |        |              |              |             |            |            |             |       |
 
 **Key finding from Experiment 2:** _______________________________________________
 
@@ -153,10 +167,10 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 **Prompt version:** v1
 **Sampling config:** temperature=___ top_p=___ top_k=___
 
-| Configuration | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Retries that recovered | Avg latency | Notes |
-|---|---|---|---|---|---|---|---|---|---|
-| Full validation + retry | | | | | | | | | |
-| No validation, no retry | | | | | | | | | |
+| Configuration           | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Retries that recovered | Avg latency | Notes |
+| ----------------------- | ------ | ------------ | ------------ | ----------- | ---------- | ---------- | ---------------------- | ----------- | ----- |
+| Full validation + retry |        |              |              |             |            |            |                        |             |       |
+| No validation, no retry |        |              |              |             |            |            |                        |             |       |
 
 **Key finding from Experiment 3:** _______________________________________________
 
@@ -170,9 +184,9 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 **Sampling config:** temperature=___ top_p=___ top_k=___
 
 | Prompt version | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Notes |
-|---|---|---|---|---|---|---|---|
-| v1 | | | | | | | |
-| v2 | | | | | | | |
+| -------------- | ------ | ------------ | ------------ | ----------- | ---------- | ---------- | ----- |
+| v1             |        |              |              |             |            |            |       |
+| v2             |        |              |              |             |            |            |       |
 
 **What changed between v1 and v2:** _______________________________________________
 
@@ -192,30 +206,30 @@ Run the adversarial set against each model. Record per-layer effectiveness.
 
 **Model: Qwen 3.5 ___B**
 
-| Attack category | # tickets | Guardrail blocked | Guardrail warned | Reached model | Model complied | Validation caught | End-to-end success (residual risk) |
-|---|---|---|---|---|---|---|---|
-| Direct injection | | | | | | | |
-| Obfuscated injection | | | | | | | |
-| Indirect (quoted content) | | | | | | | |
-| PII triggers | | | | | | | |
-| Hostile language | | | | | | | |
-| Length extremes | | | | | | | |
-| Multilingual | | | | | | | |
-| **Totals** | | | | | | | |
+| Attack category           | # tickets | Guardrail blocked | Guardrail warned | Reached model | Model complied | Validation caught | End-to-end success (residual risk) |
+| ------------------------- | --------- | ----------------- | ---------------- | ------------- | -------------- | ----------------- | ---------------------------------- |
+| Direct injection          |           |                   |                  |               |                |                   |                                    |
+| Obfuscated injection      |           |                   |                  |               |                |                   |                                    |
+| Indirect (quoted content) |           |                   |                  |               |                |                   |                                    |
+| PII triggers              |           |                   |                  |               |                |                   |                                    |
+| Hostile language          |           |                   |                  |               |                |                   |                                    |
+| Length extremes           |           |                   |                  |               |                |                   |                                    |
+| Multilingual              |           |                   |                  |               |                |                   |                                    |
+| **Totals**                |           |                   |                  |               |                |                   |                                    |
 
 (Duplicate this table for each model tested)
 
 ### Per-Rule Guardrail Hit Distribution
 
-| Guardrail rule | Times triggered | On which attack categories |
-|---|---|---|
-| Injection phrase match | | |
-| Base64 detection | | |
-| Invisible Unicode | | |
-| Character ratio anomaly | | |
-| PII regex (credit card) | | |
-| PII regex (SSN) | | |
-| Length check | | |
+| Guardrail rule          | Times triggered | On which attack categories |
+| ----------------------- | --------------- | -------------------------- |
+| Injection phrase match  |                 |                            |
+| Base64 detection        |                 |                            |
+| Invisible Unicode       |                 |                            |
+| Character ratio anomaly |                 |                            |
+| PII regex (credit card) |                 |                            |
+| PII regex (SSN)         |                 |                            |
+| Length check            |                 |                            |
 
 ### Residual Risk Summary
 
@@ -232,9 +246,9 @@ Run the adversarial set against each model. Record per-layer effectiveness.
 Did any adversarial results prompt changes to the guardrail rules?
 
 | Date | What changed | Why | Effect on re-run |
-|---|---|---|---|
-| | | | |
-| | | | |
+| ---- | ------------ | --- | ---------------- |
+|      |              |     |                  |
+|      |              |     |                  |
 
 ---
 
@@ -244,11 +258,11 @@ Fill in from actual benchmark token counts. See `docs/cost-analysis.md` for the 
 
 ### Tokens Per Request (from Phase 3 experiments)
 
-| Model | Avg tokens in | Avg tokens out | Avg total |
-|---|---|---|---|
-| Qwen 3.5 2B | | | |
-| Qwen 3.5 4B | | | |
-| Qwen 3.5 9B | | | |
+| Model       | Avg tokens in | Avg tokens out | Avg total |
+| ----------- | ------------- | -------------- | --------- |
+| Qwen 3.5 2B |               |                |           |
+| Qwen 3.5 4B |               |                |           |
+| Qwen 3.5 9B |               |                |           |
 
 ### Hardware Cost
 
@@ -266,11 +280,11 @@ Using Qwen 3.5 Plus pricing ($0.26/M input, $1.56/M output):
 
 ## Cross-Platform Docker Testing (Phase 7)
 
-| Platform | OS version | Ollama version | Docker version | Models pulled? | Container builds? | Container runs? | Triage works? | API works? | Notes |
-|---|---|---|---|---|---|---|---|---|---|
-| macOS (primary) | | | | ☐ | ☐ | ☐ | ☐ | ☐ | |
-| Windows | | | | ☐ | ☐ | ☐ | ☐ | ☐ | |
-| Linux (work laptop) | | | | ☐ | ☐ | ☐ | ☐ | ☐ | |
+| Platform            | OS version | Ollama version | Docker version | Models pulled? | Container builds? | Container runs? | Triage works? | API works? | Notes |
+| ------------------- | ---------- | -------------- | -------------- | -------------- | ----------------- | --------------- | ------------- | ---------- | ----- |
+| macOS (primary)     |            |                |                | ☐              | ☐                 | ☐               | ☐             | ☐          |       |
+| Windows             |            |                |                | ☐              | ☐                 | ☐               | ☐             | ☐          |       |
+| Linux (work laptop) |            |                |                | ☐              | ☐                 | ☐               | ☐             | ☐          |       |
 
 ---
 
