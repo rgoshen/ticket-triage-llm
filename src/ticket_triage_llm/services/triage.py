@@ -40,9 +40,7 @@ def run_triage(
     # The provider handles prompt construction internally via get_prompt().
     # The LlmProvider Protocol takes (ticket_body, prompt_version).
     try:
-        model_result = provider.generate_structured_ticket(
-            ticket_body, prompt_version
-        )
+        model_result = provider.generate_structured_ticket(ticket_body, prompt_version)
         raw_output = model_result.raw_output
     except ProviderError as exc:
         logger.warning("Provider error: %s", exc)

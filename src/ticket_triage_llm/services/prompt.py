@@ -8,9 +8,7 @@ from ticket_triage_llm.prompts.triage_v1 import (
 )
 
 
-def get_prompt(
-    version: str, ticket_subject: str, ticket_body: str
-) -> tuple[str, str]:
+def get_prompt(version: str, ticket_subject: str, ticket_body: str) -> tuple[str, str]:
     """
     Get system and user prompts for the specified version.
 

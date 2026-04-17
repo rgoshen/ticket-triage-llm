@@ -1,6 +1,4 @@
-from datetime import UTC, datetime
-
-import pytest
+from datetime import datetime
 
 from ticket_triage_llm.providers.errors import ProviderError
 from ticket_triage_llm.schemas.model_result import ModelResult

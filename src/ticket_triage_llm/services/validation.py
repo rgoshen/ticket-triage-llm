@@ -7,9 +7,7 @@ from pydantic import ValidationError
 
 from ticket_triage_llm.schemas.triage_output import TriageOutput
 
-_FENCE_RE = re.compile(
-    r"^\s*```(?:json)?\s*\n(.*?)\n\s*```\s*$", re.DOTALL
-)
+_FENCE_RE = re.compile(r"^\s*```(?:json)?\s*\n(.*?)\n\s*```\s*$", re.DOTALL)
 
 
 def parse_json(raw_output: str) -> dict | None:

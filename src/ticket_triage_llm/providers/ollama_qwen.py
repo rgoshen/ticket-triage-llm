@@ -27,9 +27,7 @@ class OllamaQwenProvider:
     def generate_structured_ticket(
         self, ticket_body: str, prompt_version: str
     ) -> ModelResult:
-        system_prompt, user_prompt = get_prompt(
-            prompt_version, "", ticket_body
-        )
+        system_prompt, user_prompt = get_prompt(prompt_version, "", ticket_body)
 
         start = time.perf_counter()
         try:

@@ -3,8 +3,8 @@
 from fastapi import APIRouter
 
 from ticket_triage_llm.providers.base import LlmProvider
-from ticket_triage_llm.schemas.triage_input import TriageInput
 from ticket_triage_llm.schemas.trace import TriageResult
+from ticket_triage_llm.schemas.triage_input import TriageInput
 from ticket_triage_llm.services.triage import run_triage
 from ticket_triage_llm.storage.trace_repo import TraceRepository
 

@@ -1,7 +1,8 @@
 """Trace recording and retrieval — Phase 1."""
+
 import json
 import sqlite3
-from datetime import UTC, datetime
+from datetime import datetime
 
 from ticket_triage_llm.schemas.trace import TraceRecord
 
@@ -73,9 +74,7 @@ class SqliteTraceRepository:
 
     @staticmethod
     def _row_to_trace(columns: list[str], row: tuple) -> TraceRecord:
-        data = dict(zip(columns, row))
+        data = dict(zip(columns, row, strict=True))
         data["timestamp"] = datetime.fromisoformat(data["timestamp"])
-        data["guardrail_matched_rules"] = json.loads(
-            data["guardrail_matched_rules"]
-        )
+        data["guardrail_matched_rules"] = json.loads(data["guardrail_matched_rules"])
         return TraceRecord.model_validate(data)

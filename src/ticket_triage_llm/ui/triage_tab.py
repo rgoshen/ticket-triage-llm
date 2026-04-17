@@ -8,9 +8,7 @@ from ticket_triage_llm.services.triage import run_triage
 from ticket_triage_llm.storage.trace_repo import TraceRepository
 
 
-def build_triage_tab(
-    provider: LlmProvider, trace_repo: TraceRepository
-) -> gr.Blocks:
+def build_triage_tab(provider: LlmProvider, trace_repo: TraceRepository) -> gr.Blocks:
     def handle_triage(ticket_subject: str, ticket_body: str):
         if not ticket_body.strip():
             return "Error: ticket body is required", ""
@@ -56,8 +54,7 @@ def build_triage_tab(
             )
             if result.raw_model_output:
                 result_text += (
-                    f"\n\n**Raw Output:**\n```\n"
-                    f"{result.raw_model_output[:500]}\n```"
+                    f"\n\n**Raw Output:**\n```\n{result.raw_model_output[:500]}\n```"
                 )
             trace = trace_repo.get_recent_traces(1)[0]
             trace_text = (
@@ -73,9 +70,7 @@ def build_triage_tab(
 
     with gr.Blocks(title="Ticket Triage LLM") as demo:
         gr.Markdown("# Ticket Triage LLM")
-        gr.Markdown(
-            f"Using model: **{provider.name}** | Prompt: **v1**"
-        )
+        gr.Markdown(f"Using model: **{provider.name}** | Prompt: **v1**")
 
         with gr.Row():
             with gr.Column(scale=1):

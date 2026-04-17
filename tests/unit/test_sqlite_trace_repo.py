@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 import pytest
 
 from ticket_triage_llm.schemas.trace import TraceRecord
-from ticket_triage_llm.storage.db import get_connection, init_schema
 from ticket_triage_llm.services.trace import SqliteTraceRepository
+from ticket_triage_llm.storage.db import get_connection, init_schema
 
 
 def _make_trace(**overrides) -> TraceRecord:
@@ -42,9 +42,7 @@ class TestSaveTrace:
     def test_save_and_count(self, repo):
         trace = _make_trace()
         repo.save_trace(trace)
-        rows = repo._conn.execute(
-            "SELECT count(*) FROM traces"
-        ).fetchone()
+        rows = repo._conn.execute("SELECT count(*) FROM traces").fetchone()
         assert rows[0] == 1
 
     def test_save_stores_correct_fields(self, repo):
@@ -91,14 +89,18 @@ class TestSaveTrace:
 
 class TestGetRecentTraces:
     def test_returns_traces_newest_first(self, repo):
-        repo.save_trace(_make_trace(
-            request_id="old",
-            timestamp=datetime(2026, 4, 17, 10, 0, 0, tzinfo=UTC),
-        ))
-        repo.save_trace(_make_trace(
-            request_id="new",
-            timestamp=datetime(2026, 4, 17, 12, 0, 0, tzinfo=UTC),
-        ))
+        repo.save_trace(
+            _make_trace(
+                request_id="old",
+                timestamp=datetime(2026, 4, 17, 10, 0, 0, tzinfo=UTC),
+            )
+        )
+        repo.save_trace(
+            _make_trace(
+                request_id="new",
+                timestamp=datetime(2026, 4, 17, 12, 0, 0, tzinfo=UTC),
+            )
+        )
         traces = repo.get_recent_traces(10)
         assert len(traces) == 2
         assert traces[0].request_id == "new"
@@ -106,10 +108,12 @@ class TestGetRecentTraces:
 
     def test_respects_limit(self, repo):
         for i in range(5):
-            repo.save_trace(_make_trace(
-                request_id=f"req-{i}",
-                timestamp=datetime(2026, 4, 17, i, 0, 0, tzinfo=UTC),
-            ))
+            repo.save_trace(
+                _make_trace(
+                    request_id=f"req-{i}",
+                    timestamp=datetime(2026, 4, 17, i, 0, 0, tzinfo=UTC),
+                )
+            )
         traces = repo.get_recent_traces(2)
         assert len(traces) == 2
 

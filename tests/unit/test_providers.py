@@ -1,11 +1,12 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from openai import APIConnectionError
 
 from ticket_triage_llm.providers.base import LlmProvider
 from ticket_triage_llm.providers.cloud_qwen import CloudQwenProvider
-from ticket_triage_llm.providers.ollama_qwen import OllamaQwenProvider
 from ticket_triage_llm.providers.errors import ProviderError
+from ticket_triage_llm.providers.ollama_qwen import OllamaQwenProvider
 from ticket_triage_llm.schemas.model_result import ModelResult
 
 
