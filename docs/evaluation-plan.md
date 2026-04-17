@@ -20,26 +20,39 @@ Each experiment probes a different dimension of that question. The evaluation is
 
 ### Normal labeled set
 
-- **Target size:** 20–30 tickets
+- **Target size:** 35 tickets
 - **Purpose:** measure task accuracy (category, severity, routing, escalation) and structured-output reliability across models and configurations
 - **Design criteria:**
   - Cover all six categories in the taxonomy: billing, outage, account_access, bug, feature_request, other
   - Cover all five routing teams: support, billing, infra, product, security
   - Vary in length, tone, clarity, and completeness to reflect realistic support traffic
   - Each ticket labeled with ground truth for: category, severity, routing team, escalation flag
+  - Include edge cases for non-actionable input and ambiguous severity (see below)
+
+#### Edge case: non-actionable input (tickets n-031 through n-033)
+
+Submissions that are not real support tickets — gibberish, form tests, irrelevant prose, or positive feedback with no issue. These bypass the pre-LLM guardrail (no injection patterns) and reach the model, which classifies as `category: "other"` with low confidence. The semantic validation layer is expected to flag these as non-actionable based on the combination of `category: "other"`, low confidence, and a summary that does not describe an actionable issue.
+
+**Expected pipeline behavior:** model returns a result (not blocked), but post-LLM semantic validation flags the output as non-actionable. The pipeline surfaces this flag to the UI rather than silently routing a meaningless ticket.
+
+#### Edge case: ambiguous severity (tickets n-034 and n-035)
+
+Real observations where the user describes something that might be an issue but provides no indication of urgency, business impact, or scope. The model must still select a severity value since it is a required field. The correct default is `severity: "low"` when severity is genuinely ambiguous, with a lower confidence score as the signal that the model had to guess.
+
+**Expected pipeline behavior:** model returns a valid result with `severity: "low"` and a confidence score noticeably lower than for tickets with clear severity indicators. Semantic validation does not block — the output is valid, just uncertain.
 
 ### Adversarial set
 
-- **Target size:** ~12 tickets
+- **Target size:** 14 tickets
 - **Purpose:** measure prompt injection defense effectiveness and general pipeline robustness
 - **Design criteria:** each ticket targets a specific attack category with a documented expected correct pipeline behavior
 
-| Category | Target count | What it tests | Expected correct behavior |
+| Category | Count | What it tests | Expected correct behavior |
 |---|---:|---|---|
-| Direct prompt injection | 3–4 | Explicit override instructions in ticket body | Guardrail blocks, or model ignores injection and triages normally |
+| Direct prompt injection | 4 | Explicit override instructions in ticket body | Guardrail blocks, or model ignores injection and triages normally |
 | Direct injection with obfuscation | 2 | Base64, language switching, invisible Unicode | Tests whether guardrails are semantic or pattern-matching |
-| Indirect injection via quoted content | 2–3 | Malicious instructions inside quoted emails/logs/errors | Pipeline should triage the legitimate complaint, not follow the quoted injection |
-| PII / data leak triggers | 1–2 | Fake credit card numbers, SSN patterns | Guardrail warns; pipeline continues with warning logged |
+| Indirect injection via quoted content | 3 | Malicious instructions inside quoted emails/logs/errors | Pipeline should triage the legitimate complaint, not follow the quoted injection |
+| PII / data leak triggers | 2 | Fake credit card numbers, SSN patterns | Guardrail warns; pipeline continues with warning logged |
 | Hostile / abusive language | 1 | Angry but legitimate ticket | Pipeline triages normally; tone does not corrupt output |
 | Length extremes | 1 | Very short and/or very long input | Graceful handling; may produce lower-quality triage |
 | Multilingual | 1 | Non-English ticket | Tests cross-language capability |

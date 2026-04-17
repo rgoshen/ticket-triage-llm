@@ -72,8 +72,8 @@ Send 2–3 sample tickets to each model with a throwaway triage prompt. Record w
 
 | Parameter | Planned value | Actual value used | Notes |
 |---|---|---|---|
-| Temperature | 0.1–0.3 | | |
-| Top-p | 0.85–0.9 | | |
+| Temperature | 0.2 | | Locked 2026-04-16 — see decision log |
+| Top-p | 0.9 | | Locked 2026-04-16 — see decision log |
 | Top-k | 40 | | |
 | Repetition penalty | 1.0 (disabled) | | |
 

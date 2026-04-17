@@ -665,8 +665,8 @@ Output: pipeline supports all local models with one-click switching. Retry logic
 
 ### Phase 3: Evaluation harness and labeled datasets
 
-- build the `gold_tickets.json` normal labeled set (20–30 tickets)
-- build the `adversarial_tickets.json` adversarial set (~12 tickets, organized by attack category)
+- build the `gold_tickets.json` normal labeled set (35 tickets, including non-actionable and ambiguous-severity edge cases)
+- build the `adversarial_tickets.json` adversarial set (14 tickets, organized by attack category)
 - write the eval runners for each of the four experiments
 - run each experiment, store results to SQLite
 - generate the first real benchmark table (replacing the placeholder TBDs in this document)
@@ -738,7 +738,7 @@ Minimum viable strong version:
 - Qwen 3.5 local at three sizes (subject to Phase 0 smoke test, default plan: 2B / 4B / 9B)
 - validator-first pipeline with bounded retry
 - guardrail layer with explicit attention to prompt injection
-- 20–30 labeled normal tickets + ~12 labeled adversarial tickets
+- 35 labeled normal tickets (including non-actionable and ambiguous-severity edge cases) + 14 labeled adversarial tickets
 - four experiments (size, size-vs-controls interaction, validation-on/off, prompt-v1-vs-v2)
 - prompt injection sub-evaluation across attack categories
 - built-in metrics dashboard and trace explorer
@@ -786,7 +786,7 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: heu
 
 ### ~~OD-7: Adversarial set final size and exact composition~~ — RESOLVED
 
-Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: seven categories, ~12 tickets total. Categories and target counts are locked. Actual ticket text will be authored during Phase 3. Each ticket will be labeled with attack type and expected correct pipeline behavior.
+Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: seven categories, 14 tickets total. Categories and counts are locked. Ticket text authored and stored in `data/adversarial_set.jsonl`. Each ticket is labeled with attack type and expected correct pipeline behavior.
 
 ---
 

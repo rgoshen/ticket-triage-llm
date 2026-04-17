@@ -8,6 +8,27 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-16 — Dataset finalized: 35 normal tickets (with edge cases) + 14 adversarial tickets
+
+**Decision:** Both evaluation datasets are authored and stored in `data/`. Final sizes and composition:
+
+- **Normal set (`data/normal_set.jsonl`):** 35 tickets. 30 standard tickets covering all 6 categories, 5 routing teams, 4 severity levels (low/medium/high/critical), with realistic variation in length, tone, and clarity. Plus 5 edge-case tickets:
+  - Tickets n-031 through n-033: non-actionable input (gibberish, irrelevant prose, positive feedback with no issue). These are not blocked by the guardrail — they reach the model, which classifies as `category: "other"` with low confidence. The semantic validation layer flags them as non-actionable based on the combination of low confidence and a summary that does not describe an actionable issue.
+  - Tickets n-034 and n-035: ambiguous severity (real observations with no clear urgency or business impact). The model defaults to `severity: "low"` with a lower confidence score as the signal that severity was uncertain.
+
+- **Adversarial set (`data/adversarial_set.jsonl`):** 14 tickets across 7 attack categories (4 direct injection, 2 obfuscated, 3 indirect via quoted content, 2 PII, 1 hostile, 1 length extremes, 1 multilingual).
+
+**Severity taxonomy locked:** 4 values — `low`, `medium`, `high`, `critical`.
+
+**Design decisions:**
+- Non-actionable tickets bypass the pre-LLM guardrail intentionally. The guardrail is for injection defense, not content quality filtering. Trying to detect "not a real ticket" at the guardrail level would require either a second model or brittle heuristics — neither is worth the complexity for this iteration.
+- Confidence is the unified signal for "the model had to guess." Both non-actionable and ambiguous-severity scenarios use lower confidence as the flag, keeping the mechanism simple and consistent.
+- Non-actionable tickets go in the normal set (not adversarial) because they are not attack vectors — they are edge cases of legitimate usage.
+
+**Updated:** `docs/evaluation-plan.md` (dataset sizes, new scenario documentation), `docs/PLAN.md` (size references in Phases 3 and Final Recommendation, OD-7 resolution). See also [ADR 0010](adr/0010-non-actionable-and-ambiguous-input-handling.md) for the architectural decision on where in the pipeline this detection belongs.
+
+---
+
 ## 2026-04-15 — API endpoint: FastAPI alongside Gradio for rubric compliance
 
 The rubric's Environment Setup criterion requires the model to be "accessible via an API endpoint." The original single-app Gradio architecture (ADR 0006) did not explicitly address this. Gradio auto-generates internal API endpoints, but these are framework-determined, not project-designed, and lack Swagger/OpenAPI documentation.
@@ -67,15 +88,15 @@ Cloud deployment (AWS, etc.) was considered and rejected because it would confli
 
 The adversarial set categories and target counts are locked:
 
-| Category | Target count | What it tests |
-|---|---:|---|
-| Direct prompt injection | 3–4 | Explicit attempts to override model behavior |
-| Direct injection with obfuscation | 2 | Base64, language switching, invisible Unicode — tests whether guardrails are semantic or pattern-matching |
-| Indirect injection via quoted content | 2–3 | Malicious instructions inside quoted emails, error messages, or log excerpts |
-| PII / data leak triggers | 1–2 | Fake credit card numbers or other PII that should trigger a guardrail |
-| Hostile / abusive language | 1 | Emotionally charged but legitimate tickets |
-| Length extremes | 1 | Very short and/or very long input |
-| Multilingual | 1 | Non-English ticket |
+| Category                              | Target count | What it tests                                                                                             |
+| ------------------------------------- | -----------: | --------------------------------------------------------------------------------------------------------- |
+| Direct prompt injection               |          3–4 | Explicit attempts to override model behavior                                                              |
+| Direct injection with obfuscation     |            2 | Base64, language switching, invisible Unicode — tests whether guardrails are semantic or pattern-matching |
+| Indirect injection via quoted content |          2–3 | Malicious instructions inside quoted emails, error messages, or log excerpts                              |
+| PII / data leak triggers              |          1–2 | Fake credit card numbers or other PII that should trigger a guardrail                                     |
+| Hostile / abusive language            |            1 | Emotionally charged but legitimate tickets                                                                |
+| Length extremes                       |            1 | Very short and/or very long input                                                                         |
+| Multilingual                          |            1 | Non-English ticket                                                                                        |
 
 Total target: ~12 adversarial tickets (expanded from the original 8–12 range to accommodate the agreed categories).
 
@@ -217,3 +238,22 @@ Documentation will be split across three distinct artifact types, each with a cl
 3. **The decision log** (this file) — chronological, informal, captures scope, framing, and strategy decisions that are not architectural. Newest entries at the top.
 
 The instructor's emphasis on "factors weighing" in decision-making means that the *process* of decision-making is itself a graded artifact, not just the final answers. The decision log and the ADRs together form the trail of that process.
+
+## 2026-04-16 — Sampling parameters locked
+
+**Decision:** Sampling parameters are no longer ranges — they are fixed values for all pipeline and evaluation use:
+
+| Parameter          | Previous (range) | Locked value        |
+| ------------------ | ---------------- | ------------------- |
+| Temperature        | 0.1–0.3          | **0.2**             |
+| Top-p              | 0.85–0.9         | **0.9**             |
+| Top-k              | 40               | **40** (unchanged)  |
+| Repetition penalty | 1.0              | **1.0** (unchanged) |
+
+**Rationale:** The Phase 0 smoke test, all four experiments, and the production pipeline must use identical sampling parameters so results are directly comparable. Ranges introduce an uncontrolled variable — if the smoke test runs at temperature=0.1 and a later experiment runs at 0.3, any difference in output quality is confounded. Locking values eliminates that.
+
+**Values chosen:** Temperature 0.2 is low enough to keep structured JSON output consistent but avoids the repetition loops that fully greedy decoding (0.0) can cause in some models. Top-p 0.9 is a standard conservative setting.
+
+**Change process:** Any future change to these values requires a new decision-log entry and must be reflected in the Sampling Observations table in `docs/evaluation-checklist.md`.
+
+**Updated:** `CLAUDE.md` (Hardware & model constraints section) — ranges replaced with locked values.
