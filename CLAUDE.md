@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status: Phase 2 complete, Phase 3 next
 
-Phases 0 (smoke test), F (foundation), 1 (happy-path slice), and 2 (provider router, retry, guardrail) are complete. The repository has 174 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, and all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI). Phase 3 (evaluation harness) is next — see `TODO.md` for the full phase plan with checkboxes.
+Phases 0 (smoke test), F (foundation), 1 (happy-path slice), and 2 (provider router, retry, guardrail) are complete. The repository has 178 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, and all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI). Phase 3 (evaluation harness) is next — see `TODO.md` for the full phase plan with checkboxes.
 
 Do not invent tooling — the stack is fixed (see below) and decisions about deviation belong in an ADR or the decision log. When adding new modules, follow the existing layout under `src/ticket_triage_llm/`.
 
