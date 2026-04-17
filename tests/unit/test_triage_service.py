@@ -349,7 +349,7 @@ class TestRunTriageRetryIntegration:
         assert trace.tokens_output == 50
         assert trace.tokens_total == 150
 
-    def test_retry_trace_nulls_tokens_per_second(self):
+    def test_retry_trace_recomputes_tokens_per_second(self):
         repo = FakeTraceRepo()
         provider = RetrySuccessProvider()
         result, trace = run_triage(
@@ -360,4 +360,4 @@ class TestRunTriageRetryIntegration:
             trace_repo=repo,
         )
         assert isinstance(result, TriageSuccess)
-        assert trace.tokens_per_second is None
+        assert trace.tokens_per_second == 50 / 0.2

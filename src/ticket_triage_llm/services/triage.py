@@ -102,14 +102,18 @@ def run_triage(
 
     repair_mr = retry.repair_model_result
     if model_result and repair_mr:
+        total_output = model_result.tokens_output + repair_mr.tokens_output
+        total_ms = model_result.latency_ms + repair_mr.latency_ms
         combined_result = ModelResult(
             raw_output=repair_mr.raw_output,
             model=model_result.model,
-            latency_ms=model_result.latency_ms + repair_mr.latency_ms,
+            latency_ms=total_ms,
             tokens_input=model_result.tokens_input + repair_mr.tokens_input,
-            tokens_output=model_result.tokens_output + repair_mr.tokens_output,
+            tokens_output=total_output,
             tokens_total=model_result.tokens_total + repair_mr.tokens_total,
-            tokens_per_second=None,
+            tokens_per_second=(
+                (total_output / (total_ms / 1000)) if total_ms > 0 else None
+            ),
         )
     else:
         combined_result = model_result
