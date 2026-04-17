@@ -30,8 +30,8 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 - [x] Lint/format cleanup
 - [x] SUMMARY.md + TODO.md updated
 - [x] PR #4 opened (feature/phase-foundation → develop)
-- [ ] CI green on PR #4
-- [ ] PR #4 merged to `develop`
+- [x] CI green on PR #4
+- [x] PR #4 merged to `develop`
 
 **Dependencies:** none — branches off `develop` directly.
 **PLAN.md mapping:** predecessor scaffolding for PLAN.md Phase 1.
@@ -40,17 +40,17 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
-## [2026-04-17] Phase 1 — Single happy-path slice
+## [2026-04-17] Phase 1 — Single happy-path slice (COMPLETE)
 
-- [ ] Concrete `OllamaQwenProvider` against one model (likely 4B per OD-4)
-- [ ] `services/triage.py::run_triage()` — prompt builder → provider → JSON parse → schema validation (no retry yet)
-- [ ] Prompt module `prompts/triage_v1.py` wired into the service layer
-- [ ] Minimal SQLite trace insert on every request via `TraceRepository`
-- [ ] FastAPI app in `app.py` with Gradio mounted as sub-application (ADR 0006). `POST /api/v1/triage` + Triage tab
-- [ ] `Dockerfile` for app container only (Ollama on host per ADR 0007)
-- [ ] Service-layer tests (TDD), API route smoke test, Dockerfile build check
-- [ ] Happy-path integration test (mocked provider) + failed-parse unit test
-- [ ] SUMMARY.md + TODO.md updated
+- [x] Concrete `OllamaQwenProvider` against one model (likely 4B per OD-4)
+- [x] `services/triage.py::run_triage()` — prompt builder → provider → JSON parse → schema validation (no retry yet)
+- [x] Prompt module `prompts/triage_v1.py` wired into the service layer
+- [x] Minimal SQLite trace insert on every request via `TraceRepository`
+- [x] FastAPI app in `app.py` with Gradio mounted as sub-application (ADR 0006). `POST /api/v1/triage` + Triage tab
+- [x] `Dockerfile` for app container only (Ollama on host per ADR 0007)
+- [x] Service-layer tests (TDD), API route smoke test, Dockerfile build check
+- [x] Happy-path integration test (mocked provider) + failed-parse unit test
+- [x] SUMMARY.md + TODO.md updated
 - [ ] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F).
@@ -185,6 +185,14 @@ P2 and P3 can kick off in parallel once P1 merges, subject to the "E3 needs retr
 ---
 
 ## Completed phases
+
+### [2026-04-17] Phase 1 — Single happy-path slice (COMPLETE)
+
+**Objective:** Deliver the first end-to-end triage slice: OllamaQwenProvider → prompt builder → JSON parse → schema validation → trace storage, with FastAPI + Gradio UI and a Dockerfile.
+
+**Outcome:** 130 tests, 99.64% coverage (excluding UI/entry point), ruff clean. 11 atomic commits on `feature/phase-1-happy-path`. Flat procedural pipeline in `run_triage()`. Docker build verified. System demo-able natively and via Docker.
+
+**References:** `SUMMARY.md` (Phase 1 entry), design spec at `docs/superpowers/specs/2026-04-17-phase-1-happy-path-design.md`, implementation plan at `docs/superpowers/plans/2026-04-17-phase-1-happy-path.md`.
 
 ### [2026-04-17] Phase F — Foundation (COMPLETE)
 
