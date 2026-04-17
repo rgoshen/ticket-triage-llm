@@ -2,7 +2,7 @@
 
 A production-style support ticket triage system built on local LLMs, with a focus on prompt injection defense and structured-output reliability under realistic adversarial conditions.
 
-> **Status:** Foundation phase complete. Phase 1 (first end-to-end slice) is next.
+> **Status:** Phase 1 complete — first end-to-end triage slice working. Phase 2 (provider router, retry, guardrail) is next.
 
 ## What this project is
 
@@ -63,22 +63,20 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
-### Commands available after Phase 1
-
-The following commands are planned but not yet functional:
+### Run the app
 
 ```bash
-# Run the app natively (FastAPI + Gradio on :7860)
-uv run python -m ticket_triage_llm.app
-
-# Run in Docker (app container only — Ollama stays on host)
-docker build -t ticket-triage-llm .
-docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
-
 # Ollama prerequisites (must be pulled before the app works)
 ollama pull qwen3.5:2b
 ollama pull qwen3.5:4b
 ollama pull qwen3.5:9b
+
+# Run the app natively (FastAPI + Gradio on :7860)
+OLLAMA_MODEL=qwen3.5:4b uv run python -m ticket_triage_llm.app
+
+# Run in Docker (app container only — Ollama stays on host)
+docker build -t ticket-triage-llm .
+docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
 ```
 
 ## Repository structure
@@ -123,20 +121,28 @@ ticket-triage-llm/
 │   │   └── errors.py                  # assert_never helper
 │   ├── providers/                     # LLM provider abstraction
 │   │   ├── base.py                    # LlmProvider Protocol
-│   │   ├── ollama_qwen.py             # OllamaQwenProvider (stub)
-│   │   └── cloud_qwen.py              # CloudQwenProvider (stub)
+│   │   ├── errors.py                  # ProviderError exception
+│   │   ├── ollama_qwen.py             # OllamaQwenProvider (implemented)
+│   │   └── cloud_qwen.py              # CloudQwenProvider (stub — future work)
 │   ├── storage/                       # SQLite + repository pattern
 │   │   ├── db.py                      # Connection + schema init
-│   │   └── trace_repo.py             # TraceRepository Protocol
-│   ├── services/                      # Business logic (stubs)
-│   ├── ui/                            # Gradio tabs (stubs)
-│   ├── api/                           # FastAPI routes (stubs)
+│   │   └── trace_repo.py              # TraceRepository Protocol
+│   ├── services/                      # Business logic
+│   │   ├── triage.py                  # Pipeline orchestrator (run_triage)
+│   │   ├── prompt.py                  # Prompt version dispatch
+│   │   ├── validation.py              # JSON parse + schema validation
+│   │   └── trace.py                   # SqliteTraceRepository
+│   ├── ui/                            # Gradio tabs
+│   │   └── triage_tab.py              # Triage tab (implemented)
+│   ├── api/                           # FastAPI routes
+│   │   └── triage_route.py            # POST /api/v1/triage
 │   ├── prompts/                       # Prompt templates
 │   └── eval/runners/                  # Evaluation harness (stubs)
+├── Dockerfile                         # Multi-stage app container build
 ├── tests/
-│   ├── unit/                          # 73 tests, 89% coverage
-│   ├── integration/                   # (stub)
-│   └── eval/                          # (stub)
+│   ├── unit/                          # 127 unit tests
+│   ├── integration/                   # API route smoke tests
+│   └── eval/                          # (stub — Phase 3)
 ├── data/
 │   ├── normal_set.jsonl               # 35 normal tickets
 │   └── adversarial_set.jsonl          # Adversarial test set
