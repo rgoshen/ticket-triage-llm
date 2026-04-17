@@ -100,11 +100,15 @@ Each rule has a namespaced string identifier stored in `matched_rules` on every 
 **Injection phrase rules** (trigger `block`):
 - `injection:ignore_previous` — matches "ignore previous/all/above instructions"
 - `injection:disregard` — matches "disregard above/previous/all"
-- `injection:you_are_now` — matches "you are now"
-- `injection:act_as` — matches "act as"
 - `injection:pretend_you_are` — matches "pretend you are"
 - `injection:system_prompt` — matches "system prompt:"
 - `injection:new_instructions` — matches "new instructions:"
+
+**FP-prone injection rules** (demoted to `warn`):
+- `injection:you_are_now` — matches "you are now" (FP: "you are now on the escalation list")
+- `injection:act_as` — matches "act as" (FP: "please act as a liaison", "act as a backup key")
+
+These were initially `block` rules but have high false-positive rates on legitimate tickets. Demoted to `warn` so they are recorded for Phase 4 per-rule analysis without blocking legitimate traffic. Phase 4 will measure actual FP rates and determine whether to promote them back to `block`, narrow the patterns, or leave as `warn`.
 
 **Structural marker rules** (trigger `block`):
 - `structural:system_tag` — matches `<system>` / `</system>` tags

@@ -18,14 +18,19 @@ _INJECTION_RULES: list[tuple[str, re.Pattern[str]]] = [
         "injection:disregard",
         re.compile(r"disregard\s+(above|previous|all)", re.IGNORECASE),
     ),
-    ("injection:you_are_now", re.compile(r"you\s+are\s+now\b", re.IGNORECASE)),
-    ("injection:act_as", re.compile(r"\bact\s+as\b", re.IGNORECASE)),
     ("injection:pretend_you_are", re.compile(r"pretend\s+you\s+are\b", re.IGNORECASE)),
     ("injection:system_prompt", re.compile(r"system\s+prompt\s*:", re.IGNORECASE)),
     (
         "injection:new_instructions",
         re.compile(r"new\s+instructions\s*:", re.IGNORECASE),
     ),
+]
+
+# FP-prone injection rules demoted to warn — "act as" matches "act as a liaison",
+# "you are now" matches "you are now on the escalation list". Phase 4 will measure.
+_INJECTION_WARN_RULES: list[tuple[str, re.Pattern[str]]] = [
+    ("injection:you_are_now", re.compile(r"you\s+are\s+now\b", re.IGNORECASE)),
+    ("injection:act_as", re.compile(r"\bact\s+as\b", re.IGNORECASE)),
 ]
 
 _STRUCTURAL_RULES: list[tuple[str, re.Pattern[str]]] = [
@@ -63,6 +68,11 @@ def check_guardrail(ticket_body: str, max_length: int = 10_000) -> GuardrailResu
         if pattern.search(ticket_body):
             matched.append(rule_name)
             has_block = True
+
+    for rule_name, pattern in _INJECTION_WARN_RULES:
+        if pattern.search(ticket_body):
+            matched.append(rule_name)
+            has_warn = True
 
     if len(ticket_body) > max_length:
         matched.append("length:exceeded")
