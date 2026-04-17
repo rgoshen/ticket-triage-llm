@@ -169,6 +169,11 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 - [ ] Update design spec and plan docs to reflect final signatures (`run_triage` returns tuple, provider catches `APIError`) or add staleness note
 - [ ] Extract shared `FakeProvider`/`FakeTraceRepo` into `tests/conftest.py` or `tests/fakes.py`
 - [ ] Rename `_trace` to `_` in API route if genuinely unused, or keep named if Phase 2 will use it
+- [ ] Refactor `api/triage_route.py` module-level globals to FastAPI `app.state` or `Depends()` pattern (prevents test state leakage, enables multiple app instances)
+- [ ] Harden repair prompt delimiter — `prompts/repair_json_v1.py` wraps raw output in triple backticks; if the model's failed output itself contains backticks, the message is structurally ambiguous
+- [ ] Include pre-repair error in `TriageFailure.message` when repair ProviderError drops the original schema error detail (retry.py)
+- [ ] Extract `RetryResult(TriageFailure(...))` helper in `retry.py` to reduce ~30 lines of near-identical construction
+- [ ] Fix `.gitignore` oddities: `Icon[]` split across lines, `*/memory/` should be `**/memory/`
 
 **Dependencies:** none — can run anytime after Phase 1.
 **PLAN.md mapping:** none — these are PR review polish items, not plan phases.
