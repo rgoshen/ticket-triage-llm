@@ -19,6 +19,39 @@ Related artifacts:
 
 ---
 
+## [2026-04-17] Phase F — Foundation
+
+**What was done:**
+
+- Established the shared contract layer that every downstream phase builds against: pydantic schemas (`TriageInput`, `TriageOutput`, `ModelResult`, `TraceRecord`, `TriageSuccess`, `TriageFailure`, `FailureReason`), the `LlmProvider` Protocol, the `TraceRepository` Protocol, the SQLite `traces` table schema, a pydantic-settings config loader with locked sampling defaults, structured logging, module stubs for all future phases, and a GitHub Actions CI workflow.
+- 73 unit tests covering all schema contracts, Protocol structural typing, storage idempotency, config env-var parsing, and stub behavior. 89% coverage (80% floor enforced in CI).
+- Full ruff lint and format compliance across the codebase (including retroactive fixes to the Phase 0 smoke-test script).
+
+**How it was done:**
+
+- Strict RED/GREEN/REFACTOR TDD for all schema and contract code (Tasks 3–13 in the implementation plan). Each task: write failing tests first, implement minimal code to pass, commit atomically.
+- Judgment-based approach for config, logging, CI workflow, and module stubs (Tasks 1–2, 14–16) per CLAUDE.md guidance.
+- 17 atomic commits on `feature/phase-foundation`, each representing one logical change. Conventional Commits format throughout.
+- Branch cut from `develop` after Phase 0 merge.
+
+**Issues encountered:**
+
+1. **ruff lint violations after initial implementation.** Nine errors across four files: E501 (line length), E402 (mid-file imports in test_providers.py), I001 (import sort order), UP017 (`timezone.utc` vs `datetime.UTC` alias).
+2. **Terminal crash during Task 16.** The terminal closed after Task 15 (module stubs) was committed but before Task 16 (CI workflow) and Task 17 (final cleanup) ran.
+
+**How those issues were resolved:**
+
+1. Fixed all lint violations: moved imports to top of file in test_providers.py, switched to `datetime.UTC` alias, reformatted long lines in the Phase 0 script, and ran `ruff format` to catch two files with whitespace issues. Single commit for all style fixes.
+2. No data loss — all prior work was in atomic commits. Recovery: inspected `git log`, `git status`, and the implementation plan to determine exact stopping point (end of Task 15), then resumed from Task 16.
+
+**Exit state:**
+
+- All 17 tasks complete. `uv sync` succeeds, `uv run pytest` passes at 89% coverage, `ruff check` and `ruff format --check` both clean.
+- CI workflow committed but not yet validated by GitHub Actions (requires PR push).
+- PR to `develop` pending.
+
+---
+
 ## [2026-04-16] Phase 0 — Smoke test
 
 **What was done:**

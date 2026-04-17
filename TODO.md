@@ -16,7 +16,7 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
-## [2026-04-17] Phase F — Foundation
+## [2026-04-17] Phase F — Foundation (COMPLETE)
 
 **Objective:** Establish the shared skeleton that every subsequent phase depends on: package scaffolding, shared pydantic schemas, the `LlmProvider` Protocol, the `TriageResult` discriminated union, the SQLite `traces` table contract, the logging configuration, and CI. Nothing here contains business logic; the point is to publish the contracts so downstream phases can be built against them in parallel without merge conflicts.
 
@@ -251,6 +251,14 @@ P2 and P3 can kick off in parallel once P1 merges, subject to the "E3 needs retr
 ---
 
 ## Completed phases
+
+### [2026-04-17] Phase F — Foundation (COMPLETE)
+
+**Objective:** Establish the shared skeleton that every subsequent phase depends on: package scaffolding, shared pydantic schemas, the `LlmProvider` Protocol, the `TriageResult` discriminated union, the SQLite `traces` table contract, the logging configuration, and CI.
+
+**Outcome:** 73 unit tests, 89% coverage, ruff clean, CI workflow committed. 17 atomic commits on `feature/phase-foundation`. All contracts published; downstream phases unblocked.
+
+**References:** `SUMMARY.md` (Phase F entry), PR pending (feature/phase-foundation → develop).
 
 ### [2026-04-16] Phase 0 — Smoke test (COMPLETE)
 
