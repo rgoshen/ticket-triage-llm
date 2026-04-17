@@ -12,6 +12,7 @@ def build_triage_tab(
     registry: ProviderRegistry,
     trace_repo: TraceRepository,
     default_provider: str | None = None,
+    guardrail_max_length: int = 10_000,
 ) -> gr.Blocks:
     provider_names = registry.list_names()
     default_value = (
@@ -29,6 +30,7 @@ def build_triage_tab(
             provider=provider,
             prompt_version="v1",
             trace_repo=trace_repo,
+            guardrail_max_length=guardrail_max_length,
         )
 
         trace_text = (

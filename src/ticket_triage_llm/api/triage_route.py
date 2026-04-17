@@ -12,12 +12,18 @@ router = APIRouter(prefix="/api/v1", tags=["triage"])
 
 _registry: ProviderRegistry | None = None
 _trace_repo: TraceRepository | None = None
+_guardrail_max_length: int = 10_000
 
 
-def configure(registry: ProviderRegistry, trace_repo: TraceRepository) -> None:
-    global _registry, _trace_repo  # noqa: PLW0603
+def configure(
+    registry: ProviderRegistry,
+    trace_repo: TraceRepository,
+    guardrail_max_length: int = 10_000,
+) -> None:
+    global _registry, _trace_repo, _guardrail_max_length  # noqa: PLW0603
     _registry = registry
     _trace_repo = trace_repo
+    _guardrail_max_length = guardrail_max_length
 
 
 @router.post("/triage")
@@ -35,5 +41,6 @@ def triage_ticket(payload: TriageInput) -> TriageResult:
         provider=provider,
         prompt_version=payload.prompt_version,
         trace_repo=_trace_repo,
+        guardrail_max_length=_guardrail_max_length,
     )
     return result

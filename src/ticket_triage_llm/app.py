@@ -40,12 +40,13 @@ def create_app() -> FastAPI:
         )
         registry.register(provider)
 
-    configure_api(registry, trace_repo)
+    configure_api(registry, trace_repo, settings.guardrail_max_length)
 
     gradio_app = build_triage_tab(
         registry,
         trace_repo,
         default_provider=f"ollama:{settings.ollama_model}",
+        guardrail_max_length=settings.guardrail_max_length,
     )
     app = FastAPI(title="Ticket Triage LLM", version="0.2.0")
     app.include_router(api_router)
