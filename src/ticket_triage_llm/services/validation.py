@@ -50,3 +50,19 @@ def validate_schema(data: dict) -> TriageOutput | None:
         return TriageOutput.model_validate(data)
     except ValidationError:
         return None
+
+
+def validate_schema_with_error(data: dict) -> tuple[TriageOutput | None, str | None]:
+    """Validate dict against TriageOutput schema, returning error detail.
+
+    Args:
+        data: Dict to validate
+
+    Returns:
+        Tuple of (TriageOutput instance, None) if valid,
+        or (None, error string) if invalid
+    """
+    try:
+        return TriageOutput.model_validate(data), None
+    except ValidationError as exc:
+        return None, str(exc)
