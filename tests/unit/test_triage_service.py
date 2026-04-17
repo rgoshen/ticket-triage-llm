@@ -25,7 +25,7 @@ class FakeProvider:
         self._raw_output = raw_output
 
     def generate_structured_ticket(
-        self, ticket_body: str, prompt_version: str
+        self, ticket_body: str, prompt_version: str, ticket_subject: str = ""
     ) -> ModelResult:
         return ModelResult(
             raw_output=self._raw_output,
@@ -41,7 +41,7 @@ class ErrorProvider:
     name: str = "error:test"
 
     def generate_structured_ticket(
-        self, ticket_body: str, prompt_version: str
+        self, ticket_body: str, prompt_version: str, ticket_subject: str = ""
     ) -> ModelResult:
         raise ProviderError("Connection refused")
 
@@ -72,7 +72,7 @@ class FakeTraceRepo:
 class TestRunTriageHappyPath:
     def test_returns_triage_success(self):
         repo = FakeTraceRepo()
-        result = run_triage(
+        result, trace = run_triage(
             ticket_body="I have a billing question",
             ticket_subject="Billing",
             provider=FakeProvider(),
@@ -85,7 +85,7 @@ class TestRunTriageHappyPath:
 
     def test_saves_trace_on_success(self):
         repo = FakeTraceRepo()
-        run_triage(
+        result, trace = run_triage(
             ticket_body="I have a billing question",
             ticket_subject="Billing",
             provider=FakeProvider(),
@@ -93,28 +93,38 @@ class TestRunTriageHappyPath:
             trace_repo=repo,
         )
         assert len(repo.traces) == 1
-        trace = repo.traces[0]
         assert trace.status == "success"
         assert trace.failure_category is None
         assert trace.validation_status == "valid"
 
     def test_trace_has_request_id(self):
         repo = FakeTraceRepo()
-        run_triage(
+        result, trace = run_triage(
             ticket_body="test",
             ticket_subject="",
             provider=FakeProvider(),
             prompt_version="v1",
             trace_repo=repo,
         )
-        assert repo.traces[0].request_id is not None
-        assert len(repo.traces[0].request_id) > 0
+        assert trace.request_id is not None
+        assert len(trace.request_id) > 0
+
+    def test_returned_trace_matches_saved_trace(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="test",
+            ticket_subject="",
+            provider=FakeProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+        )
+        assert trace is repo.traces[0]
 
 
 class TestRunTriageParseFailure:
     def test_returns_triage_failure_on_bad_json(self):
         repo = FakeTraceRepo()
-        result = run_triage(
+        result, trace = run_triage(
             ticket_body="test",
             ticket_subject="",
             provider=FakeProvider(raw_output="not json"),
@@ -128,7 +138,7 @@ class TestRunTriageParseFailure:
 
     def test_saves_trace_on_parse_failure(self):
         repo = FakeTraceRepo()
-        run_triage(
+        result, trace = run_triage(
             ticket_body="test",
             ticket_subject="",
             provider=FakeProvider(raw_output="not json"),
@@ -136,14 +146,14 @@ class TestRunTriageParseFailure:
             trace_repo=repo,
         )
         assert len(repo.traces) == 1
-        assert repo.traces[0].status == "failure"
-        assert repo.traces[0].failure_category == "parse_failure"
+        assert trace.status == "failure"
+        assert trace.failure_category == "parse_failure"
 
 
 class TestRunTriageSchemaFailure:
     def test_returns_triage_failure_on_invalid_schema(self):
         repo = FakeTraceRepo()
-        result = run_triage(
+        result, trace = run_triage(
             ticket_body="test",
             ticket_subject="",
             provider=FakeProvider(raw_output='{"category": "billing"}'),
@@ -156,21 +166,21 @@ class TestRunTriageSchemaFailure:
 
     def test_saves_trace_on_schema_failure(self):
         repo = FakeTraceRepo()
-        run_triage(
+        result, trace = run_triage(
             ticket_body="test",
             ticket_subject="",
             provider=FakeProvider(raw_output='{"category": "billing"}'),
             prompt_version="v1",
             trace_repo=repo,
         )
-        assert repo.traces[0].status == "failure"
-        assert repo.traces[0].failure_category == "schema_failure"
+        assert trace.status == "failure"
+        assert trace.failure_category == "schema_failure"
 
 
 class TestRunTriageProviderError:
     def test_returns_triage_failure_on_provider_error(self):
         repo = FakeTraceRepo()
-        result = run_triage(
+        result, trace = run_triage(
             ticket_body="test",
             ticket_subject="",
             provider=ErrorProvider(),
@@ -183,7 +193,7 @@ class TestRunTriageProviderError:
 
     def test_saves_trace_on_provider_error(self):
         repo = FakeTraceRepo()
-        run_triage(
+        result, trace = run_triage(
             ticket_body="test",
             ticket_subject="",
             provider=ErrorProvider(),
@@ -191,5 +201,5 @@ class TestRunTriageProviderError:
             trace_repo=repo,
         )
         assert len(repo.traces) == 1
-        assert repo.traces[0].status == "failure"
-        assert repo.traces[0].failure_category == "model_unreachable"
+        assert trace.status == "failure"
+        assert trace.failure_category == "model_unreachable"

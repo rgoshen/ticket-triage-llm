@@ -13,12 +13,22 @@ def build_triage_tab(provider: LlmProvider, trace_repo: TraceRepository) -> gr.B
         if not ticket_body.strip():
             return "Error: ticket body is required", ""
 
-        result = run_triage(
+        result, trace = run_triage(
             ticket_body=ticket_body,
             ticket_subject=ticket_subject,
             provider=provider,
             prompt_version="v1",
             trace_repo=trace_repo,
+        )
+
+        trace_text = (
+            f"Request ID: {trace.request_id}\n"
+            f"Model: {trace.model}\n"
+            f"Latency: {trace.latency_ms:.0f} ms\n"
+            f"Tokens: {trace.tokens_total} "
+            f"(in={trace.tokens_input}, out={trace.tokens_output})\n"
+            f"Validation: {trace.validation_status}\n"
+            f"Retry Count: {trace.retry_count}"
         )
 
         if isinstance(result, TriageSuccess):
@@ -33,16 +43,6 @@ def build_triage_tab(provider: LlmProvider, trace_repo: TraceRepository) -> gr.B
                 f"**Business Impact:** {output.business_impact}\n\n"
                 f"**Draft Reply:** {output.draft_reply}"
             )
-            trace = trace_repo.get_recent_traces(1)[0]
-            trace_text = (
-                f"Request ID: {trace.request_id}\n"
-                f"Model: {trace.model}\n"
-                f"Latency: {trace.latency_ms:.0f} ms\n"
-                f"Tokens: {trace.tokens_total} "
-                f"(in={trace.tokens_input}, out={trace.tokens_output})\n"
-                f"Validation: {trace.validation_status}\n"
-                f"Retry Count: {trace.retry_count}"
-            )
             return result_text, trace_text
 
         if isinstance(result, TriageFailure):
@@ -56,14 +56,6 @@ def build_triage_tab(provider: LlmProvider, trace_repo: TraceRepository) -> gr.B
                 result_text += (
                     f"\n\n**Raw Output:**\n```\n{result.raw_model_output[:500]}\n```"
                 )
-            trace = trace_repo.get_recent_traces(1)[0]
-            trace_text = (
-                f"Request ID: {trace.request_id}\n"
-                f"Model: {trace.model}\n"
-                f"Latency: {trace.latency_ms:.0f} ms\n"
-                f"Status: {trace.status}\n"
-                f"Failure: {trace.failure_category}"
-            )
             return result_text, trace_text
 
         return "Unexpected result type", ""

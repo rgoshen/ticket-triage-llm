@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from openai import APIConnectionError
+from openai import APIConnectionError, APIStatusError
 
 from ticket_triage_llm.providers.base import LlmProvider
 from ticket_triage_llm.providers.cloud_qwen import CloudQwenProvider
@@ -16,7 +16,7 @@ class FakeProvider:
     name: str = "fake"
 
     def generate_structured_ticket(
-        self, ticket_body: str, prompt_version: str
+        self, ticket_body: str, prompt_version: str, ticket_subject: str = ""
     ) -> ModelResult:
         return ModelResult(
             raw_output='{"category": "billing"}',
@@ -133,6 +133,25 @@ class TestOllamaQwenProviderConcrete:
         mock_openai_cls.return_value = mock_client
         mock_client.chat.completions.create.side_effect = APIConnectionError(
             request=MagicMock()
+        )
+
+        provider = OllamaQwenProvider(
+            model="qwen3.5:4b", base_url="http://localhost:11434/v1"
+        )
+        with pytest.raises(ProviderError):
+            provider.generate_structured_ticket("test ticket", "v1")
+
+    @patch("ticket_triage_llm.providers.ollama_qwen.OpenAI")
+    def test_generate_raises_provider_error_on_status_error(self, mock_openai_cls):
+        mock_client = MagicMock()
+        mock_openai_cls.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.headers = {}
+        mock_client.chat.completions.create.side_effect = APIStatusError(
+            message="Internal Server Error",
+            response=mock_response,
+            body=None,
         )
 
         provider = OllamaQwenProvider(

@@ -8,5 +8,8 @@ class LlmProvider(Protocol):
     name: str
 
     def generate_structured_ticket(
-        self, ticket_body: str, prompt_version: str
+        self,
+        ticket_body: str,
+        prompt_version: str,
+        ticket_subject: str = "",
     ) -> ModelResult: ...

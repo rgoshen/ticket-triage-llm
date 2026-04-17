@@ -22,13 +22,16 @@ def configure(provider: LlmProvider, trace_repo: TraceRepository) -> None:
 
 @router.post("/triage")
 def triage_ticket(payload: TriageInput) -> TriageResult:
-    assert _provider is not None, "Provider not configured"
-    assert _trace_repo is not None, "TraceRepository not configured"
+    if _provider is None or _trace_repo is None:
+        raise RuntimeError(
+            "API dependencies not configured — call configure() at startup"
+        )
 
-    return run_triage(
+    result, _trace = run_triage(
         ticket_body=payload.ticket_body,
         ticket_subject=payload.ticket_subject,
         provider=_provider,
         prompt_version=payload.prompt_version,
         trace_repo=_trace_repo,
     )
+    return result

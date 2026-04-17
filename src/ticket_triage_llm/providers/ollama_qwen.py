@@ -1,6 +1,6 @@
 import time
 
-from openai import APIConnectionError, APITimeoutError, OpenAI
+from openai import APIConnectionError, APIError, APITimeoutError, OpenAI
 
 from ticket_triage_llm.config import (
     REPETITION_PENALTY,
@@ -25,9 +25,14 @@ class OllamaQwenProvider:
         return f"ollama:{self._model}"
 
     def generate_structured_ticket(
-        self, ticket_body: str, prompt_version: str
+        self,
+        ticket_body: str,
+        prompt_version: str,
+        ticket_subject: str = "",
     ) -> ModelResult:
-        system_prompt, user_prompt = get_prompt(prompt_version, "", ticket_body)
+        system_prompt, user_prompt = get_prompt(
+            prompt_version, ticket_subject, ticket_body
+        )
 
         start = time.perf_counter()
         try:
@@ -45,7 +50,7 @@ class OllamaQwenProvider:
                     "repetition_penalty": REPETITION_PENALTY,
                 },
             )
-        except (APIConnectionError, APITimeoutError) as exc:
+        except (APIConnectionError, APITimeoutError, APIError) as exc:
             raise ProviderError(str(exc)) from exc
         elapsed_ms = (time.perf_counter() - start) * 1000
 

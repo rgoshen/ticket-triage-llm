@@ -25,7 +25,7 @@ def run_triage(
     provider: LlmProvider,
     prompt_version: str,
     trace_repo: TraceRepository,
-) -> TriageResult:
+) -> tuple[TriageResult, TraceRecord]:
     request_id = str(uuid.uuid4())
     start = time.perf_counter()
 
@@ -37,10 +37,10 @@ def run_triage(
     raw_output: str | None = None
     result: TriageResult
 
-    # The provider handles prompt construction internally via get_prompt().
-    # The LlmProvider Protocol takes (ticket_body, prompt_version).
     try:
-        model_result = provider.generate_structured_ticket(ticket_body, prompt_version)
+        model_result = provider.generate_structured_ticket(
+            ticket_body, prompt_version, ticket_subject=ticket_subject
+        )
         raw_output = model_result.raw_output
     except ProviderError as exc:
         logger.warning("Provider error: %s", exc)
@@ -50,7 +50,7 @@ def run_triage(
             message=str(exc),
             retry_count=0,
         )
-        _save_trace(
+        trace = _save_trace(
             trace_repo=trace_repo,
             request_id=request_id,
             start=start,
@@ -63,7 +63,7 @@ def run_triage(
             raw_output=None,
             result=result,
         )
-        return result
+        return result, trace
 
     parsed = parse_json(raw_output)
     if parsed is None:
@@ -74,7 +74,7 @@ def run_triage(
             raw_model_output=raw_output,
             retry_count=0,
         )
-        _save_trace(
+        trace = _save_trace(
             trace_repo=trace_repo,
             request_id=request_id,
             start=start,
@@ -87,7 +87,7 @@ def run_triage(
             raw_output=raw_output,
             result=result,
         )
-        return result
+        return result, trace
 
     triage_output = validate_schema(parsed)
     if triage_output is None:
@@ -98,7 +98,7 @@ def run_triage(
             raw_model_output=raw_output,
             retry_count=0,
         )
-        _save_trace(
+        trace = _save_trace(
             trace_repo=trace_repo,
             request_id=request_id,
             start=start,
@@ -111,14 +111,14 @@ def run_triage(
             raw_output=raw_output,
             result=result,
         )
-        return result
+        return result, trace
 
     result = TriageSuccess(
         output=triage_output,
         retry_count=0,
     )
 
-    _save_trace(
+    trace = _save_trace(
         trace_repo=trace_repo,
         request_id=request_id,
         start=start,
@@ -131,7 +131,7 @@ def run_triage(
         raw_output=raw_output,
         result=result,
     )
-    return result
+    return result, trace
 
 
 def _save_trace(
@@ -147,7 +147,7 @@ def _save_trace(
     model_result: object | None,
     raw_output: str | None,
     result: TriageResult,
-) -> None:
+) -> TraceRecord:
     elapsed_ms = (time.perf_counter() - start) * 1000
 
     is_success = isinstance(result, TriageSuccess)
@@ -180,3 +180,4 @@ def _save_trace(
         triage_output_json=triage_output_json,
     )
     trace_repo.save_trace(trace)
+    return trace
