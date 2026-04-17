@@ -19,6 +19,54 @@ Related artifacts:
 
 ---
 
+## [2026-04-17] Phase 2 — Provider abstraction, retry, and guardrail
+
+**What was done:**
+
+- Implemented `ProviderRegistry` for config-driven multi-model switching via `OLLAMA_MODELS` env var. Dropdown in Triage tab driven by registry; API route resolves provider from request payload.
+- Implemented bounded retry service (`services/retry.py`) with repair prompt (`prompts/repair_json_v1.py`). On parse or schema failure, sends the failed output + specific error back to the same model for self-correction. Exactly one retry per ADR 0002.
+- Implemented heuristic guardrail (`services/guardrail.py`) per ADR 0008. Pattern matching for injection phrases (5 block + 2 warn), structural markers (3 rules), PII (2 rules), and length checks. `act_as` and `you_are_now` demoted to `warn` after PR review identified high false-positive rates on legitimate tickets. Returns `pass`/`warn`/`block` with namespaced `matched_rules` for Phase 4 per-rule analysis.
+- Added `validate_schema_with_error()` to validation service — returns the error string for inclusion in repair prompts.
+- Refactored `run_triage()` to compose: guardrail → provider → validate_or_retry → trace. Three exit points, reduced `_save_trace` duplication.
+- Updated Triage tab with `gr.Dropdown` for model selection, guardrail status in trace summary.
+- Updated API route to resolve provider from `ProviderRegistry`.
+- Retry traces sum tokens from both initial and repair attempts; `tokens_per_second` recomputed from summed values so monitoring queries are accurate.
+- API route returns 422 (not 500) for unknown provider names.
+- `GUARDRAIL_MAX_LENGTH` config wired through app → triage_tab/api_route → `run_triage()`.
+- `__repair__` prompt version registered as pass-through in `get_prompt()` to prevent ValueError against real Ollama provider.
+- 178 tests total, 98.76% coverage, ruff clean.
+
+**How it was done:**
+
+- Strict RED/GREEN/REFACTOR TDD for all three services (provider router, guardrail, retry) and the validation enhancement.
+- Subagent-driven development: fresh subagent per task with parallel dispatch for independent tasks on `feature/phase-2-providers-retry-guardrail`.
+- Each service is independently testable with pure functions/classes and clear inputs/outputs.
+- PR review identified 4 mediums and 4 lows; mediums fixed in follow-up commits, lows deferred to Phase C.
+
+**Issues encountered:**
+
+1. **API route integration test regression.** The integration test for `POST /api/v1/triage` passed a `FakeProvider` directly to `configure()`, which now expects a `ProviderRegistry`. Tests failed with `AttributeError: 'FakeProvider' object has no attribute 'default'`.
+2. **Existing parse/schema failure tests affected by retry.** The Phase 1 tests used `FakeProvider` which always returns valid JSON — so after retry integration, parse failure tests would succeed on retry instead of failing. Required new test helpers (`AlwaysBadJsonProvider`, `AlwaysBadSchemaProvider`) that consistently fail.
+3. **Repair prompt version not registered.** `_attempt_repair()` called the provider with `prompt_version="__repair__"`, but `get_prompt()` only knew `"v1"`. Any retry on a real Ollama provider would crash with `ValueError`.
+4. **Retry traces undercounted tokens.** Only the initial `ModelResult` was recorded in the trace; the repair attempt's tokens were lost.
+5. **`act_as`/`you_are_now` guardrail rules too aggressive.** Matched legitimate phrases like "act as a liaison" and "you are now on the escalation list."
+
+**How those issues were resolved:**
+
+1. Updated `tests/integration/test_api_route.py` to wrap `FakeProvider` in a `ProviderRegistry` before passing to `configure()`.
+2. Created dedicated test helpers that always return invalid output, ensuring the retry service also fails and the test exercises the intended failure path.
+3. Added `"__repair__"` as a pass-through version in `get_prompt()` that returns `(ticket_subject, ticket_body)` directly.
+4. `RetryResult` now carries `repair_model_result`; `triage.py` sums token counts and recomputes `tokens_per_second` from the combined values.
+5. Demoted both rules from `block` to `warn`. Phase 4 will measure actual FP rates and determine final disposition.
+
+**Exit state:**
+
+- 178 tests pass, 98.76% coverage, ruff clean.
+- Phase 3 unblocked (eval harness). Phase 4 unblocked (adversarial eval uses the guardrail's `matched_rules` for per-rule analysis).
+- Low/nit PR review findings added to Phase C cleanup backlog.
+
+---
+
 ## [2026-04-17] Phase 1 — Single happy-path slice
 
 **What was done:**

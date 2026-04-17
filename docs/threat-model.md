@@ -93,6 +93,37 @@ The pipeline implements three layers of defense. No single layer is sufficient. 
 
 **Failure mode:** False negatives (attacks that pass undetected) and false positives (legitimate tickets that contain phrases like "ignore previous" in a non-attack context, e.g., "please ignore my previous ticket").
 
+#### Implemented rule catalog (Phase 2)
+
+Each rule has a namespaced string identifier stored in `matched_rules` on every trace, enabling per-rule analysis in the Phase 4 adversarial evaluation.
+
+**Injection phrase rules** (trigger `block`):
+- `injection:ignore_previous` — matches "ignore previous/all/above instructions"
+- `injection:disregard` — matches "disregard above/previous/all"
+- `injection:pretend_you_are` — matches "pretend you are"
+- `injection:system_prompt` — matches "system prompt:"
+- `injection:new_instructions` — matches "new instructions:"
+
+**FP-prone injection rules** (demoted to `warn`):
+- `injection:you_are_now` — matches "you are now" (FP: "you are now on the escalation list")
+- `injection:act_as` — matches "act as" (FP: "please act as a liaison", "act as a backup key")
+
+These were initially `block` rules but have high false-positive rates on legitimate tickets. Demoted to `warn` so they are recorded for Phase 4 per-rule analysis without blocking legitimate traffic. Phase 4 will measure actual FP rates and determine whether to promote them back to `block`, narrow the patterns, or leave as `warn`.
+
+**Structural marker rules** (trigger `block`):
+- `structural:system_tag` — matches `<system>` / `</system>` tags
+- `structural:inst_tag` — matches `[INST]` / `[/INST]` tags
+- `structural:sys_delimiter` — matches `<<<SYS>>>` / `<<SYS>>` delimiters
+
+**PII rules** (trigger `warn`):
+- `pii:ssn_pattern` — matches SSN format (NNN-NN-NNNN)
+- `pii:credit_card_pattern` — matches 13-19 digit card number sequences
+
+**Length rule** (triggers `warn`):
+- `length:exceeded` — ticket body exceeds configurable max length (default 10,000 chars)
+
+Decision priority: `block` > `warn` > `pass`. Multiple rules can match; all are recorded.
+
 ### Layer 2: Prompt design (structural separation)
 
 **What it does:** The system prompt is designed to separate instructions from user content as clearly as possible. The ticket body is placed inside explicit delimiters (e.g., `<ticket>...</ticket>`) with instructions that tell the model to treat everything inside the delimiters as data to analyze, not as instructions to follow.

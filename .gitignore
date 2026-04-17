@@ -4,7 +4,8 @@
 __MACOSX/
 .AppleDouble
 .LSOverride
-Icon[]
+Icon[
+]
 
 # Thumbnails
 ._*
@@ -260,3 +261,6 @@ __marimo__/
 data/*.db
 data/*.db-journal
 data/*.db-wal
+
+# Local claude memory files
+*/memory/

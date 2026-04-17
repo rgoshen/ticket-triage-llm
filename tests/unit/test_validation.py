@@ -1,5 +1,9 @@
 from ticket_triage_llm.schemas.triage_output import TriageOutput
-from ticket_triage_llm.services.validation import parse_json, validate_schema
+from ticket_triage_llm.services.validation import (
+    parse_json,
+    validate_schema,
+    validate_schema_with_error,
+)
 
 VALID_TRIAGE_JSON = (
     '{"category": "billing", "severity": "medium",'
@@ -107,3 +111,27 @@ class TestValidateSchema:
         result = validate_schema(data)
         assert result is not None
         assert result.routing_team == "infra"
+
+
+class TestValidateSchemaWithError:
+    def test_valid_data_returns_output_and_none_error(self):
+        data = {
+            "category": "billing",
+            "severity": "medium",
+            "routingTeam": "billing",
+            "summary": "Billing issue",
+            "businessImpact": "Cannot process payments",
+            "draftReply": "We are looking into it.",
+            "confidence": 0.85,
+            "escalation": False,
+        }
+        output, error = validate_schema_with_error(data)
+        assert isinstance(output, TriageOutput)
+        assert error is None
+
+    def test_invalid_data_returns_none_and_error_string(self):
+        data = {"category": "billing"}
+        output, error = validate_schema_with_error(data)
+        assert output is None
+        assert isinstance(error, str)
+        assert len(error) > 0

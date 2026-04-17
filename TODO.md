@@ -51,7 +51,7 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 - [x] Service-layer tests (TDD), API route smoke test, Dockerfile build check
 - [x] Happy-path integration test (mocked provider) + failed-parse unit test
 - [x] SUMMARY.md + TODO.md updated
-- [ ] PR opened, CI green, merged to `develop`
+- [x] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F).
 **Can run in parallel with:** nothing — everything else builds on the service layer this phase instantiates.
@@ -60,16 +60,16 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
-## [2026-04-17] Phase 2 — Provider abstraction + retry + guardrail stub
+## [2026-04-17] Phase 2 — Provider abstraction + retry + guardrail stub (COMPLETE)
 
-- [ ] `provider_router.py` registry keyed on config (no `if provider == ...` branches per ADR 0004)
-- [ ] Dropdown in Triage tab driven by registry
-- [ ] `services/retry.py` — bounded retry (max 1) with repair prompt (`prompts/repair_json_v1.py`)
-- [ ] `services/guardrail.py` — injection phrase regexes, structural markers, length checks, basic PII regex (ADR 0008)
-- [ ] Guardrail returns `pass`/`warn`/`block` + `matched_rules` list
-- [ ] Unit tests (TDD) for retry policy branches, guardrail rule matches/misses, provider router selection
-- [ ] SUMMARY.md + TODO.md updated
-- [ ] PR opened, CI green, merged to `develop`
+- [x] `provider_router.py` registry keyed on config (no `if provider == ...` branches per ADR 0004)
+- [x] Dropdown in Triage tab driven by registry
+- [x] `services/retry.py` — bounded retry (max 1) with repair prompt (`prompts/repair_json_v1.py`)
+- [x] `services/guardrail.py` — injection phrase regexes, structural markers, length checks, basic PII regex (ADR 0008)
+- [x] Guardrail returns `pass`/`warn`/`block` + `matched_rules` list
+- [x] Unit tests (TDD) for retry policy branches, guardrail rule matches/misses, provider router selection
+- [x] SUMMARY.md + TODO.md updated
+- [x] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F), Phase 1.
 **Can run in parallel with:** Phase 3 (eval harness can start against Phase 1 service layer while Phase 2 adds retry).
@@ -169,6 +169,11 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 - [ ] Update design spec and plan docs to reflect final signatures (`run_triage` returns tuple, provider catches `APIError`) or add staleness note
 - [ ] Extract shared `FakeProvider`/`FakeTraceRepo` into `tests/conftest.py` or `tests/fakes.py`
 - [ ] Rename `_trace` to `_` in API route if genuinely unused, or keep named if Phase 2 will use it
+- [ ] Refactor `api/triage_route.py` module-level globals to FastAPI `app.state` or `Depends()` pattern (prevents test state leakage, enables multiple app instances)
+- [ ] Harden repair prompt delimiter — `prompts/repair_json_v1.py` wraps raw output in triple backticks; if the model's failed output itself contains backticks, the message is structurally ambiguous
+- [ ] Include pre-repair error in `TriageFailure.message` when repair ProviderError drops the original schema error detail (retry.py)
+- [ ] Extract `RetryResult(TriageFailure(...))` helper in `retry.py` to reduce ~30 lines of near-identical construction
+- [ ] Fix `.gitignore` oddities: `Icon[]` split across lines, `*/memory/` should be `**/memory/`
 
 **Dependencies:** none — can run anytime after Phase 1.
 **PLAN.md mapping:** none — these are PR review polish items, not plan phases.

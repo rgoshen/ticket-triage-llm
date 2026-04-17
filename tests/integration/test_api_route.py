@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from ticket_triage_llm.api.triage_route import configure, router
 from ticket_triage_llm.schemas.model_result import ModelResult
 from ticket_triage_llm.schemas.trace import TraceRecord
+from ticket_triage_llm.services.provider_router import ProviderRegistry
 
 VALID_JSON = (
     '{"category": "billing", "severity": "medium",'
@@ -56,7 +57,9 @@ class FakeTraceRepo:
 def _build_test_app() -> FastAPI:
     test_app = FastAPI()
     test_app.include_router(router)
-    configure(FakeProvider(), FakeTraceRepo())
+    registry = ProviderRegistry()
+    registry.register(FakeProvider())
+    configure(registry, FakeTraceRepo())
     return test_app
 
 
@@ -89,3 +92,12 @@ class TestTriageEndpoint:
             json={"ticket_body": "   "},
         )
         assert response.status_code == 422
+
+    def test_unknown_model_returns_422(self):
+        client = TestClient(_build_test_app())
+        response = client.post(
+            "/api/v1/triage",
+            json={"ticket_body": "test", "model": "does-not-exist"},
+        )
+        assert response.status_code == 422
+        assert "Unknown provider" in response.json()["detail"]
