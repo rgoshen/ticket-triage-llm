@@ -161,6 +161,21 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
+## [2026-04-17] Phase C — Cleanup (deferred polish from PR reviews)
+
+- [ ] Type `_save_trace` `model_result` parameter as `ModelResult | None` instead of `object | None` (triage.py:149)
+- [ ] Reduce `_save_trace` call-site duplication — extract common kwargs or consolidate to single exit point (triage.py:53-133)
+- [ ] Remove verbose docstrings that restate type signatures (prompt.py, validation.py) per CLAUDE.md "no comments" default
+- [ ] Update design spec and plan docs to reflect final signatures (`run_triage` returns tuple, provider catches `APIError`) or add staleness note
+- [ ] Extract shared `FakeProvider`/`FakeTraceRepo` into `tests/conftest.py` or `tests/fakes.py`
+- [ ] Rename `_trace` to `_` in API route if genuinely unused, or keep named if Phase 2 will use it
+
+**Dependencies:** none — can run anytime after Phase 1.
+**PLAN.md mapping:** none — these are PR review polish items, not plan phases.
+**Branch:** `feature/phase-cleanup` or bundled into Phase 7 hardening.
+
+---
+
 ## Phase dependency graph
 
 ```text
