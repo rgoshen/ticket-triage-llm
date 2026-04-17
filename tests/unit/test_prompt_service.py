@@ -31,3 +31,8 @@ class TestGetPrompt:
     def test_unknown_version_raises_value_error(self):
         with pytest.raises(ValueError, match="Unknown prompt version"):
             get_prompt("v99", "Subject", "body")
+
+    def test_repair_version_passes_through_args(self):
+        system, user = get_prompt("__repair__", "system text", "user text")
+        assert system == "system text"
+        assert user == "user text"

@@ -17,5 +17,7 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = "http://localhost:11434/v1"
     ollama_model: str
+    ollama_models: str = ""
+    guardrail_max_length: int = 10_000
     db_path: str = "data/traces.db"
     log_level: str = "INFO"

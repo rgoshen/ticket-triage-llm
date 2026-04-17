@@ -82,3 +82,19 @@ class TestSettingsRequired:
         monkeypatch.delenv("OLLAMA_MODEL", raising=False)
         with pytest.raises(ValidationError):
             Settings(_env_file=None)
+
+
+class TestOllamaModelsConfig:
+    def test_ollama_models_parsed_from_env(self, monkeypatch):
+        monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        monkeypatch.setenv("OLLAMA_MODEL", "qwen3.5:4b")
+        monkeypatch.setenv("OLLAMA_MODELS", "qwen3.5:2b,qwen3.5:4b,qwen3.5:9b")
+        settings = Settings(_env_file=None)
+        assert settings.ollama_models == "qwen3.5:2b,qwen3.5:4b,qwen3.5:9b"
+
+    def test_guardrail_max_length_default(self, monkeypatch):
+        monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        monkeypatch.setenv("OLLAMA_MODEL", "qwen3.5:4b")
+        monkeypatch.setenv("OLLAMA_MODELS", "qwen3.5:4b")
+        settings = Settings(_env_file=None)
+        assert settings.guardrail_max_length == 10_000
