@@ -13,6 +13,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS traces (
             request_id TEXT PRIMARY KEY,
             run_id TEXT,
+            ticket_id TEXT,
             timestamp TEXT NOT NULL,
             model TEXT NOT NULL,
             provider TEXT NOT NULL,
@@ -49,6 +50,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_traces_run_id
             ON traces(run_id);
+        CREATE INDEX IF NOT EXISTS idx_traces_ticket_id
+            ON traces(ticket_id);
         CREATE INDEX IF NOT EXISTS idx_traces_provider
             ON traces(provider);
         CREATE INDEX IF NOT EXISTS idx_traces_prompt_version

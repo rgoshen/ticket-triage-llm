@@ -10,6 +10,7 @@ from ticket_triage_llm.storage.trace_repo import TraceRepository
 EXPECTED_COLUMNS = {
     "request_id",
     "run_id",
+    "ticket_id",
     "timestamp",
     "model",
     "provider",
@@ -69,6 +70,7 @@ class TestInitSchema:
         )
         index_names = {row[0] for row in cursor.fetchall()}
         assert "idx_traces_run_id" in index_names
+        assert "idx_traces_ticket_id" in index_names
         assert "idx_traces_provider" in index_names
         assert "idx_traces_prompt_version" in index_names
         assert "idx_traces_timestamp" in index_names

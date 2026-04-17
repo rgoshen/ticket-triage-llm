@@ -135,6 +135,20 @@ class TestGetRecentTraces:
         assert retrieved.triage_output_json == '{"category": "billing"}'
 
 
+class TestTicketId:
+    def test_save_and_retrieve_ticket_id(self, repo):
+        trace = _make_trace(request_id="req-ticket", ticket_id="n-042")
+        repo.save_trace(trace)
+        retrieved = repo.get_recent_traces(1)[0]
+        assert retrieved.ticket_id == "n-042"
+
+    def test_ticket_id_defaults_to_none(self, repo):
+        trace = _make_trace(request_id="req-no-ticket")
+        repo.save_trace(trace)
+        retrieved = repo.get_recent_traces(1)[0]
+        assert retrieved.ticket_id is None
+
+
 class TestUnimplementedMethods:
     def test_get_traces_by_run_raises(self, repo):
         with pytest.raises(NotImplementedError):

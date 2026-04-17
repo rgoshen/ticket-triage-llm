@@ -15,19 +15,20 @@ class SqliteTraceRepository:
         self._conn.execute(
             """
             INSERT INTO traces (
-                request_id, run_id, timestamp, model, provider,
+                request_id, run_id, ticket_id, timestamp, model, provider,
                 prompt_version, ticket_body, guardrail_result,
                 guardrail_matched_rules, validation_status, retry_count,
                 latency_ms, tokens_input, tokens_output, tokens_total,
                 tokens_per_second, estimated_cost, status,
                 failure_category, raw_model_output, triage_output_json
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             (
                 trace.request_id,
                 trace.run_id,
+                trace.ticket_id,
                 trace.timestamp.isoformat(),
                 trace.model,
                 trace.provider,
