@@ -1,12 +1,9 @@
 import sqlite3
-from datetime import datetime, timezone
-
-import pytest
+from datetime import UTC, datetime
 
 from ticket_triage_llm.schemas.trace import TraceRecord
 from ticket_triage_llm.storage.db import get_connection, init_schema
 from ticket_triage_llm.storage.trace_repo import TraceRepository
-
 
 EXPECTED_COLUMNS = {
     "request_id",
@@ -85,7 +82,8 @@ class TestInitSchema:
         conn = get_connection(db_path)
         init_schema(conn)
         cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            "SELECT name FROM sqlite_master"
+            " WHERE type='table' AND name NOT LIKE 'sqlite_%'"
         )
         tables = [row[0] for row in cursor.fetchall()]
         assert tables == ["traces"]
@@ -125,7 +123,7 @@ class TestTraceRepositoryProtocol:
         repo: TraceRepository = FakeTraceRepository()
         trace = TraceRecord(
             request_id="test-1",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             model="qwen3.5:4b",
             provider="ollama",
             prompt_version="v1",
