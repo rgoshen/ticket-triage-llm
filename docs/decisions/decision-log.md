@@ -8,6 +8,36 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-16 — Phase 0 smoke test complete: 2B / 4B / 9B all pass, all three retained
+
+**Decision:** All three planned local models — Qwen 3.5 2B, 4B, and 9B — are retained for the Phase 3 size comparison. None is dropped.
+
+**Evidence:** `scripts/phase0_smoke_test.py` executed against each model using the locked sampling parameters (temperature=0.2, top_p=0.9) on three normal-set tickets (`n-004` critical outage, `n-007` medium billing, `n-003` low feature-request). Raw outputs in `data/phase0/qwen3.5-{2b,4b,9b}-smoke.jsonl`. Detailed observations captured in `docs/evaluation-checklist.md`, Phase 0 section.
+
+**Results:** All three models produced 100% valid JSON, 100% correct field shape (all 8 required keys, no extras), and 100% correct category+severity against ground truth.
+
+| Model | Valid JSON | All fields | Correct category+severity | Latency range | Quantization | Approx RAM |
+|---|---|---|---|---|---|---|
+| Qwen 3.5 2B | 3/3 | 3/3 | 3/3 | 42–652 s | Q8_0 | 2.7 GB |
+| Qwen 3.5 4B | 3/3 | 3/3 | 3/3 | 36–52 s | Q4_K_M | 3.4 GB |
+| Qwen 3.5 9B | 3/3 | 3/3 | 3/3 | 45–85 s | Q4_K_M | 6.6 GB |
+
+**Per-model go/no-go rationale:**
+
+- **2B — GO, with a known risk to mitigate in Phase 1+.** The 2B passed all correctness gates, but n-007 took 652 s because the model over-ran in reasoning mode (3138 completion tokens for a routine billing question) before emitting the final JSON. The JSON itself was clean — this is a latency tail, not a correctness failure. The validator-first pipeline needs either a `max_tokens` cap, a wall-clock timeout, or a "think: false" Ollama request option to contain it. This is the kind of stress the 2B was kept in the lineup to expose; excluding it here would suppress a useful signal.
+- **4B — GO, unconditionally.** Fastest of the three on two of three tickets, stable token counts (1143–1776 completion tokens), correct on every metric. Strong middle data point.
+- **9B — GO, unconditionally.** Correct on every metric with the highest reported confidence scores (0.95–1.00). First-ticket latency (84.92 s) reflects warm-start overhead after model load; subsequent tickets settled at ~45 s. Fits comfortably on 24 GB unified memory with headroom for IDE, app, and OS.
+
+**Secondary finding — MLX not engaged.** `OLLAMA_MLX=1 ollama run <model> --verbose` returned decode rates of 61.72 / 36.03 / 26.73 tok/s for 2B / 4B / 9B respectively. These rates are consistent with the Metal GGML backend, not MLX kernels, for this architecture on M4 Pro. Ollama 0.20.7 has not yet landed MLX coverage for the `qwen35` architecture. This was flagged in PLAN.md ("treated as a pleasant possibility, not as a planning assumption") and does not change the plan — latency budgets for all subsequent phases assume Metal GGML. If a future Ollama release adds MLX for `qwen35`, the benchmarks should be rerun.
+
+**Operational note — `qwen3.5:9b` tag.** The 9B model was previously pulled locally as `qwen3.5:latest` (6.6 GB, Q4_K_M, 9.7B params — i.e., the 9B). To match the tag the smoke-test runner expects, an alias was created with `ollama cp qwen3.5:latest qwen3.5:9b`. No re-download; no runtime effect; the alias is non-destructive.
+
+**What this unblocks:** Phase 1 can proceed with the default plan of three local providers. The choice of which size to make the demo default (OD-4) is still deferred to post-Phase 3 evaluation data.
+
+**Updated:** `docs/evaluation-checklist.md` (Phase 0 section filled in), this decision log.
+
+---
+
 ## 2026-04-16 — Dataset finalized: 35 normal tickets (with edge cases) + 14 adversarial tickets
 
 **Decision:** Both evaluation datasets are authored and stored in `data/`. Final sizes and composition:
