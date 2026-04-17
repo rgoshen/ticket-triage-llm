@@ -1,6 +1,6 @@
 """POST /api/v1/triage — Phase 2."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from ticket_triage_llm.schemas.trace import TriageResult
 from ticket_triage_llm.schemas.triage_input import TriageInput
@@ -33,7 +33,15 @@ def triage_ticket(payload: TriageInput) -> TriageResult:
             "API dependencies not configured — call configure() at startup"
         )
 
-    provider = _registry.get(payload.model) if payload.model else _registry.default()
+    try:
+        provider = (
+            _registry.get(payload.model) if payload.model else _registry.default()
+        )
+    except KeyError:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown provider: {payload.model!r}",
+        )
 
     result, _trace = run_triage(
         ticket_body=payload.ticket_body,

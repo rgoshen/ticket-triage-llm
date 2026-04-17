@@ -92,3 +92,12 @@ class TestTriageEndpoint:
             json={"ticket_body": "   "},
         )
         assert response.status_code == 422
+
+    def test_unknown_model_returns_422(self):
+        client = TestClient(_build_test_app())
+        response = client.post(
+            "/api/v1/triage",
+            json={"ticket_body": "test", "model": "does-not-exist"},
+        )
+        assert response.status_code == 422
+        assert "Unknown provider" in response.json()["detail"]
