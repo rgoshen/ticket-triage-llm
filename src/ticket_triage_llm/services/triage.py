@@ -109,7 +109,7 @@ def run_triage(
             tokens_input=model_result.tokens_input + repair_mr.tokens_input,
             tokens_output=model_result.tokens_output + repair_mr.tokens_output,
             tokens_total=model_result.tokens_total + repair_mr.tokens_total,
-            tokens_per_second=model_result.tokens_per_second,
+            tokens_per_second=None,
         )
     else:
         combined_result = model_result
