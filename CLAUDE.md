@@ -10,6 +10,49 @@ Phase 0 (smoke-test the three Qwen 3.5 sizes against real hardware) has not run;
 
 Use `docs/evaluation-checklist.md` to log Phase 0 smoke-test results, sampling observations, experiment data, adversarial evaluation findings, and cost analysis inputs as they are produced.
 
+## Workflow
+
+### Planning artifacts
+
+- Create a phased `TODO.md` at the repo root that lays out the build phases:
+  - The **foundation phase** (first phase) implements any shared files, shared types, shared interfaces, or boundary contracts that subsequent phases depend on. Its purpose is to enable parallelization of everything that follows.
+  - Subsequent phases are listed with explicit dependencies. If a phase depends on the output of another phase (not just the foundation), call that dependency out. Phases with no dependencies on each other can run in parallel.
+  - Phase numbering in `TODO.md` is independent of the "Phase 0–7" numbering in `PLAN.md` (which describes the overall project build plan). Reference them distinctly when it matters.
+- Create a single `SUMMARY.md` at the repo root that serves as the historical log across all phases. Do not create per-phase SUMMARY files. Each entry in `SUMMARY.md` captures:
+  - What was done
+  - How it was done
+  - Any issues encountered
+  - How those issues were resolved
+
+### Branch and PR flow
+
+- Each phase is a feature branch off `develop`. The foundation phase branches first; subsequent phases branch from `develop` after the foundation phase is merged, so they share the foundation but don't conflict with each other.
+- Follow **RED/GREEN/REFACTOR TDD for service and business logic** (pipeline services, validation, retry logic, guardrail, repositories, provider implementations, eval harness). UI components, Dockerfiles, config files, and prompt templates do not require strict TDD — exercise judgment and write the tests that actually prove behavior.
+- At the conclusion of each phase:
+  - Append a new entry to `SUMMARY.md`
+  - Update `TODO.md` (mark the phase complete, adjust any downstream phases if reality changed)
+  - If any architecture changes were required, create a new ADR in `docs/adr/` (see existing ADRs for format)
+  - Commit with Conventional Commits (see Repository conventions)
+  - Open a PR using `.github/PULL_REQUEST_TEMPLATE.md`
+
+### Handling uncertainty
+
+- **If you don't know something, ask. No assumptions.** When working interactively, surface the question before proceeding.
+- When working autonomously (no user in the loop), document the assumption in the PR body under an explicit "Assumptions" heading and flag it as a question the user should review on merge. Do not silently proceed with an unverified assumption.
+
+### When to invoke the AI Engineer agent and skill
+
+Invoke the `ai-engineer` agent or skill when a task involves:
+
+- Architectural decisions that would require a new ADR or addendum (model selection, pipeline changes, provider additions, deployment changes)
+- Scoping or framing decisions that would require a decision-log entry (what's in, what's out, what's deferred)
+- Tradeoff evaluation (comparing approaches with pros/cons, naming failure modes, reasoning about reversibility)
+- Designing or modifying the evaluation plan, experiments, or adversarial dataset
+- Reasoning about security, guardrails, or prompt injection defense
+- Writing non-trivial new code beyond routine edits
+
+Do NOT invoke for routine tasks: typo fixes, formatting, running existing tests, simple refactors that preserve behavior, editing existing prose in docs.
+
 ## Stack (fixed by ADR 0001)
 
 - **Language:** Python (≥3.11)
@@ -73,7 +116,7 @@ The system is a **single-process Python app** that ingests a raw support ticket 
 
 All model output is **untrusted until validated**. Every request flows through:
 
-```
+```text
 input_validation → guardrail → prompt_builder → provider → LLM
                                                              ↓
    trace ← TriageResult ← semantic_checks ← schema ← json_parse
@@ -148,21 +191,22 @@ Branches: `main` (prod-ready), `develop` (integration), `feature/*`, `release/*`
 ## Hardware & model constraints
 
 - Target: **MacBook Pro M4 Pro, 24GB unified memory**. Models that exceed that envelope (Qwen 3.5 27B, 35B-A3B, anything requiring 32GB+) are excluded by design — this is a feature, not a workaround. See `docs/tradeoffs.md` ("Model quality vs hardware constraint").
-- Model family is **Qwen 3.5** specifically (not 3.0 — see OD-1 in the decision log, and not other families — see ADR 0001).
+- Model family for *this iteration* is **Qwen 3.5** specifically (not 3.0 — see OD-1 in the decision log, and not other families — see ADR 0001). Sizes tested: 2B, 4B, 9B (subject to Phase 0 smoke test).
+- **The application code is model-agnostic.** Model names are runtime configuration, not code. The pipeline does not branch on model name, does not hardcode lists of supported models, and does not contain model-specific logic. Model name flows from config → provider instance (via the `OllamaQwenProvider` model parameter) → trace record. Swapping to a different model or family is a configuration change; swapping to a different provider is a new class implementing `LlmProvider` (ADR 0004). Experimentation tracks which model was used per request via the `TraceRecord.model` field — see ADR 0005.
 - Sampling defaults are **conservative for structured JSON output**: temperature 0.1–0.3, top-p 0.85–0.9, top-k 40, repetition penalty disabled (1.0). These are starting values; changing them needs a decision-log entry.
 
 ## Where to look first when you're asked to...
 
-| Task | Start here |
-|---|---|
-| Add a new architectural decision | `docs/adr/README.md` (index), then `adr new "title"` |
-| Understand a pipeline behavior | `docs/architecture.md` → relevant ADR → `docs/threat-model.md` if it's injection-related |
-| Add a failure category | ADR 0003 (error contract) — updating `Literal` requires updating every exhaustive match |
-| Touch the provider layer | ADR 0004 — do not reintroduce branching on provider name |
-| Store new per-request data | ADR 0005 — extend `TraceRecord` and the `traces` table, never add a second table for "summaries" |
-| Change the UI layout | ADR 0006 (+ its FastAPI addendum) |
-| Change the guardrail | ADR 0008 — measure before and after against the adversarial set |
-| Add a dashboard chart | ADR 0009 — decide whether it's Benchmark Results or Live Metrics before picking a component |
-| Change deployment story | ADR 0007 — the Ollama-on-host split is load-bearing for GPU acceleration |
-| Log experiment results or smoke-test data | `docs/evaluation-checklist.md` — fill in tables as each phase produces data |
-| Defer a feature | Append to `docs/future-improvements.md` with effort estimate + rationale |
+| Task                                      | Start here                                                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Add a new architectural decision          | `docs/adr/README.md` (index), then `adr new "title"`                                             |
+| Understand a pipeline behavior            | `docs/architecture.md` → relevant ADR → `docs/threat-model.md` if it's injection-related         |
+| Add a failure category                    | ADR 0003 (error contract) — updating `Literal` requires updating every exhaustive match          |
+| Touch the provider layer                  | ADR 0004 — do not reintroduce branching on provider name                                         |
+| Store new per-request data                | ADR 0005 — extend `TraceRecord` and the `traces` table, never add a second table for "summaries" |
+| Change the UI layout                      | ADR 0006 (+ its FastAPI addendum)                                                                |
+| Change the guardrail                      | ADR 0008 — measure before and after against the adversarial set                                  |
+| Add a dashboard chart                     | ADR 0009 — decide whether it's Benchmark Results or Live Metrics before picking a component      |
+| Change deployment story                   | ADR 0007 — the Ollama-on-host split is load-bearing for GPU acceleration                         |
+| Log experiment results or smoke-test data | `docs/evaluation-checklist.md` — fill in tables as each phase produces data                      |
+| Defer a feature                           | Append to `docs/future-improvements.md` with effort estimate + rationale                         |

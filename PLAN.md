@@ -134,11 +134,11 @@ Models that fail step 2 are excluded from the main comparison with a documented 
 
 For the **MacBook Pro M4 Pro, 24GB unified memory**:
 
-| Model | Quant | Approx RAM | Expected Role |
-|---|---:|---:|---|
-| Qwen 3.5 2B | Q4_K_M | ~2.7GB | Fast baseline / validator-pipeline stress test |
-| Qwen 3.5 4B | Q4_K_M | ~3.3GB | Middle data point |
-| Qwen 3.5 9B | Q4_K_M | ~6.6GB | Likely best-balance candidate |
+| Model       |  Quant | Approx RAM | Expected Role                                  |
+| ----------- | -----: | ---------: | ---------------------------------------------- |
+| Qwen 3.5 2B | Q4_K_M |     ~2.7GB | Fast baseline / validator-pipeline stress test |
+| Qwen 3.5 4B | Q4_K_M |     ~3.3GB | Middle data point                              |
+| Qwen 3.5 9B | Q4_K_M |     ~6.6GB | Likely best-balance candidate                  |
 
 The 9B leaves comfortable headroom on a 24GB machine for the OS, the dev environment, Gradio, and the Ollama runtime to run concurrently, including during demo conditions.
 
@@ -172,17 +172,17 @@ Each key architectural decision is captured in its own ADR with full context, op
 
 Summary of the decisions and where to find them:
 
-| Decision | ADR |
-|---|---|
-| Python + Gradio + uv/pytest/ruff stack | [ADR 0001](adr/0001-language-and-stack.md) |
-| Validator-first pipeline with bounded retry, pydantic for schema validation | [ADR 0002](adr/0002-validator-first-pipeline-with-bounded-retry.md) |
-| Typed two-state error contract (TriageSuccess / TriageFailure) | [ADR 0003](adr/0003-pipeline-failure-handling-and-error-contract.md) |
-| Provider abstraction via Python Protocol | [ADR 0004](adr/0004-provider-abstraction-via-python-protocol.md) |
-| SQLite for trace storage, single table, repository pattern | [ADR 0005](adr/0005-sqlite-trace-storage-with-repository-pattern.md) |
-| Single-app Gradio architecture with tabbed layout | [ADR 0006](adr/0006-single-app-gradio-architecture.md) |
-| Local-only deployment with Docker for app, Ollama on host | [ADR 0007](adr/0007-local-deployment-with-docker.md) |
-| Heuristic-only guardrail as baseline | [ADR 0008](adr/0008-heuristic-only-guardrail-baseline.md) |
-| Monitoring distinct from benchmarking, with drift detection and alerting | [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md) |
+| Decision                                                                    | ADR                                                                  |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Python + Gradio + uv/pytest/ruff stack                                      | [ADR 0001](adr/0001-language-and-stack.md)                           |
+| Validator-first pipeline with bounded retry, pydantic for schema validation | [ADR 0002](adr/0002-validator-first-pipeline-with-bounded-retry.md)  |
+| Typed two-state error contract (TriageSuccess / TriageFailure)              | [ADR 0003](adr/0003-pipeline-failure-handling-and-error-contract.md) |
+| Provider abstraction via Python Protocol                                    | [ADR 0004](adr/0004-provider-abstraction-via-python-protocol.md)     |
+| SQLite for trace storage, single table, repository pattern                  | [ADR 0005](adr/0005-sqlite-trace-storage-with-repository-pattern.md) |
+| Single-app Gradio architecture with tabbed layout                           | [ADR 0006](adr/0006-single-app-gradio-architecture.md)               |
+| Local-only deployment with Docker for app, Ollama on host                   | [ADR 0007](adr/0007-local-deployment-with-docker.md)                 |
+| Heuristic-only guardrail as baseline                                        | [ADR 0008](adr/0008-heuristic-only-guardrail-baseline.md)            |
+| Monitoring distinct from benchmarking, with drift detection and alerting    | [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md)        |
 
 The prompt injection defense strategy — three defensive layers, what each catches and misses, and the residual risk — is documented in [threat-model.md](threat-model.md).
 
@@ -256,6 +256,9 @@ The project uses a single-app Python layout. There is no separate client and ser
 
 ```text
 ticket-triage-llm/
+├── .github/
+├── .remember/
+├── .adr-dir                          # adr tools config
 ├── README.md
 ├── DEPLOYMENT.md                   # forthcoming — native and Docker quick-start
 ├── Dockerfile                      # forthcoming — Phase 1
@@ -266,7 +269,9 @@ ticket-triage-llm/
 ├── .env.example
 ├── .gitignore
 ├── ruff.toml
-│
+├── data
+│   ├── adversarial_set.jsonl
+│   └── normal_set.jsonl
 ├── docs/
 │   ├── PLAN.md                     # this document
 │   ├── cost-analysis.md            # three-component cost analysis
@@ -541,11 +546,11 @@ Cost analysis methodology is in [cost-analysis.md](cost-analysis.md).
 
 > Numbers are **placeholders** until Phase 3 produces real data. The shape of the table is what matters at the planning stage.
 
-| Model | Accuracy | JSON Valid | Latency | Tokens/s | Tokens/req | Retries | Cost/req |
-|-------|----------|------------|---------|----------|------------|---------|----------|
-| Qwen 3.5 2B | TBD | TBD | TBD | TBD | TBD | TBD | $0 |
-| Qwen 3.5 4B | TBD | TBD | TBD | TBD | TBD | TBD | $0 |
-| Qwen 3.5 9B | TBD | TBD | TBD | TBD | TBD | TBD | $0 |
+| Model       | Accuracy | JSON Valid | Latency | Tokens/s | Tokens/req | Retries | Cost/req |
+| ----------- | -------- | ---------- | ------- | -------- | ---------- | ------- | -------- |
+| Qwen 3.5 2B | TBD      | TBD        | TBD     | TBD      | TBD        | TBD     | $0       |
+| Qwen 3.5 4B | TBD      | TBD        | TBD     | TBD      | TBD        | TBD     | $0       |
+| Qwen 3.5 9B | TBD      | TBD        | TBD     | TBD      | TBD        | TBD     | $0       |
 
 ---
 

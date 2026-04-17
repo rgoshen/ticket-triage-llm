@@ -43,20 +43,114 @@ ticket-triage-llm/
 ├── .github/
 ├── .remember/
 ├── .adr-dir                          # adr tools config
+├── README.md
+├── DEPLOYMENT.md                   # forthcoming — native and Docker quick-start
+├── Dockerfile                      # forthcoming — Phase 1
+├── .dockerignore                   # forthcoming — Phase 1
+├── pyproject.toml                  # uv-managed, source of truth for deps
+├── uv.lock
+├── .env
+├── .env.example
 ├── .gitignore
-├── README.md                         # this file
+├── ruff.toml
+├── data
+│   ├── adversarial_set.jsonl
+│   └── normal_set.jsonl
 ├── docs/
-│   ├── adr/                          # Architecture Decision Records (ADRs)
-│   │   ├── README.md                 # ADR index / register
+│   ├── PLAN.md                     # this document
+│   ├── cost-analysis.md            # three-component cost analysis
+│   ├── adr/                        # ADRs (adr-tools format)
+│   │   ├── README.md
 │   │   └── 0001-language-and-stack.md
-│   ├── archive/
-│   │   ├── Final Project Rubric.docx
-│   │   └── llm-ticket-triage-plan.md # original plan
-│   ├── decisions/                    # non-architecture decisions
-│   │   └── decision-log.md           # chronological log of scope and framing decisions
-│   └── PLAN.md                       # full project plan
-├── src/                              # application code (forthcoming)
-└── tests/                            # test suite (forthcoming)
+│   ├── decisions/                  # scope/framing decisions (non-architectural)
+│   │   └── decision-log.md         # chronological decision log
+│   ├── archive/                    # original plan and rubric (reference)
+│   ├── architecture.md             # forthcoming
+│   ├── evaluation-plan.md          # forthcoming
+│   ├── tradeoffs.md                # forthcoming
+│   ├── prompt-versions.md          # forthcoming
+│   ├── threat-model.md             # forthcoming — prompt injection threat model
+│   ├── demo-script.md              # forthcoming
+│   └── presentation-notes.md       # forthcoming
+│
+├── src/
+│   └── ticket_triage_llm/
+│       ├── __init__.py
+│       ├── app.py                  # FastAPI + Gradio entry point
+│       ├── config.py               # env loading, settings
+│       │
+│       ├── api/                    # FastAPI route(s)
+│       │   ├── __init__.py
+│       │   └── triage_route.py     # POST /api/v1/triage
+│       │
+│       ├── ui/                     # Gradio tab definitions
+│       │   ├── __init__.py
+│       │   ├── triage_tab.py       # ticket input + result display
+│       │   ├── metrics_tab.py      # benchmark dashboard
+│       │   ├── traces_tab.py       # trace explorer
+│       │   └── experiments_tab.py  # experiment comparison
+│       │
+│       ├── services/               # business logic
+│       │   ├── __init__.py
+│       │   ├── triage.py           # orchestrates the full pipeline
+│       │   ├── prompt.py           # prompt building / versioning
+│       │   ├── guardrail.py        # pre-LLM input screening
+│       │   ├── validation.py       # parse + schema + semantic checks
+│       │   ├── retry.py            # bounded retry policy
+│       │   ├── trace.py            # trace recording
+│       │   ├── metrics.py          # metrics aggregation
+│       │   └── provider_router.py  # selects active provider
+│       │
+│       ├── providers/              # LLM provider implementations
+│       │   ├── __init__.py
+│       │   ├── base.py             # LlmProvider Protocol
+│       │   ├── ollama_qwen.py      # local Ollama provider
+│       │   └── cloud_qwen.py       # cloud Qwen provider (provider TBD)
+│       │
+│       ├── prompts/                # prompt templates by version
+│       │   ├── __init__.py
+│       │   ├── triage_v1.py
+│       │   ├── triage_v2.py
+│       │   └── repair_json_v1.py
+│       │
+│       ├── schemas/                # pydantic models
+│       │   ├── __init__.py
+│       │   ├── triage_input.py
+│       │   ├── triage_output.py
+│       │   └── trace.py
+│       │
+│       ├── storage/                # SQLite + repository pattern
+│       │   ├── __init__.py
+│       │   ├── db.py               # connection / schema setup
+│       │   └── trace_repo.py       # single repository — traces are the source of truth
+│       │
+│       └── eval/                   # evaluation harness
+│           ├── __init__.py
+│           ├── datasets/
+│           │   ├── gold_tickets.json
+│           │   └── adversarial_tickets.json
+│           ├── runners/
+│           │   ├── __init__.py
+│           │   ├── run_local_comparison.py
+│           │   ├── run_local_vs_cloud.py
+│           │   ├── run_validation_impact.py
+│           │   ├── run_prompt_comparison.py
+│           │   └── summarize_results.py
+│           └── reports/
+│               └── (generated benchmark output)
+│
+└── tests/
+    ├── __init__.py
+    ├── unit/
+    │   ├── test_validation.py
+    │   ├── test_guardrail.py
+    │   ├── test_retry.py
+    │   └── test_prompts.py
+    ├── integration/
+    │   ├── test_triage_pipeline.py
+    │   └── test_providers.py
+    └── eval/
+        └── test_eval_runners.py
 ```
 
 ## Running the project
