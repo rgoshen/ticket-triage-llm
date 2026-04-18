@@ -61,15 +61,25 @@ def build_triage_tab(
             return result_text, trace_text
 
         if isinstance(result, TriageFailure):
-            result_text = (
-                f"**Triage Failed**\n\n"
-                f"**Failure:** {result.category}\n"
-                f"**Detected By:** {result.detected_by}\n"
-                f"**Message:** {result.message}"
-            )
-            if result.raw_model_output:
-                result_text += (
-                    f"\n\n**Raw Output:**\n```\n{result.raw_model_output[:500]}\n```"
+            if result.category == "guardrail_blocked":
+                result_text = (
+                    "**Ticket Blocked**\n\n"
+                    "This ticket was flagged by the safety guardrail "
+                    "and was not sent to the model."
+                )
+            elif result.category == "parse_failure":
+                result_text = (
+                    "**Triage Unavailable**\n\n"
+                    "The model could not produce a structured response "
+                    "for this ticket. Try again or select a different "
+                    "model from the dropdown."
+                )
+            else:
+                result_text = (
+                    "**Triage Failed**\n\n"
+                    f"The model response did not pass validation "
+                    f"({result.category}). Try again or select a "
+                    f"different model."
                 )
             return result_text, trace_text
 
@@ -99,11 +109,12 @@ def build_triage_tab(
 
             with gr.Column(scale=1):
                 result_output = gr.Markdown(label="Triage Result")
-                trace_output = gr.Textbox(
-                    label="Trace Summary",
-                    lines=8,
-                    interactive=False,
-                )
+                with gr.Accordion("Trace Details", open=False):
+                    trace_output = gr.Textbox(
+                        label="Trace Summary",
+                        lines=8,
+                        interactive=False,
+                    )
 
         submit_btn.click(
             fn=handle_triage,
