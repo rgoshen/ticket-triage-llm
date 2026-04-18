@@ -117,4 +117,7 @@ if __name__ == "__main__":
     out_path = out_dir / "e3-validation-impact.json"
     out_path.write_text(json.dumps(summary.to_dict(), indent=2))
     logger.info("E3 results written to %s", out_path)
-    logger.info("E2 9B no-validation run_id: %s (use with summarize_results)", e2_run_id)
+    logger.info(
+        "E2 9B no-validation run_id: %s (use with summarize_results)",
+        e2_run_id,
+    )

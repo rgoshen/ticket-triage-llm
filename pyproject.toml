@@ -41,4 +41,7 @@ omit = [
     "src/ticket_triage_llm/app.py",
     "src/ticket_triage_llm/ui/*",
     "src/ticket_triage_llm/logging_config.py",
+    "src/ticket_triage_llm/eval/runners/run_local_comparison.py",
+    "src/ticket_triage_llm/eval/runners/run_validation_impact.py",
+    "src/ticket_triage_llm/eval/runners/run_prompt_comparison.py",
 ]

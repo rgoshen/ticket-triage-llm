@@ -80,7 +80,8 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-path", default="data/normal_set.jsonl")
     parser.add_argument("--output-dir", default="data/phase3")
     parser.add_argument(
-        "--prompt-versions", default="v1",
+        "--prompt-versions",
+        default="v1",
         help="Comma-separated prompt versions (e.g., 'v1,v2')",
     )
     args = parser.parse_args()

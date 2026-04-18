@@ -51,6 +51,10 @@ def run_experiment_pass(
         traces.append(trace)
         logger.info(
             "[%d/%d] ticket %s — %s — %.0fms",
-            i, total, ticket.id, trace.status, trace.latency_ms,
+            i,
+            total,
+            ticket.id,
+            trace.status,
+            trace.latency_ms,
         )
     return traces

@@ -3,24 +3,26 @@ from pathlib import Path
 
 import pytest
 
-from ticket_triage_llm.eval.datasets import GroundTruth, TicketRecord, load_dataset
+from ticket_triage_llm.eval.datasets import load_dataset
 
 
 class TestLoadDataset:
     def test_loads_valid_jsonl(self, tmp_path):
         jsonl = tmp_path / "test.jsonl"
         jsonl.write_text(
-            json.dumps({
-                "id": "n-001",
-                "subject": "Billing issue",
-                "body": "I have a billing question",
-                "ground_truth": {
-                    "category": "billing",
-                    "severity": "medium",
-                    "routing_team": "billing",
-                    "escalation": False,
-                },
-            })
+            json.dumps(
+                {
+                    "id": "n-001",
+                    "subject": "Billing issue",
+                    "body": "I have a billing question",
+                    "ground_truth": {
+                        "category": "billing",
+                        "severity": "medium",
+                        "routing_team": "billing",
+                        "escalation": False,
+                    },
+                }
+            )
             + "\n"
         )
         tickets = load_dataset(jsonl)
@@ -38,17 +40,19 @@ class TestLoadDataset:
         lines = []
         for i in range(3):
             lines.append(
-                json.dumps({
-                    "id": f"n-{i:03d}",
-                    "subject": f"Subject {i}",
-                    "body": f"Body {i}",
-                    "ground_truth": {
-                        "category": "billing",
-                        "severity": "low",
-                        "routing_team": "support",
-                        "escalation": False,
-                    },
-                })
+                json.dumps(
+                    {
+                        "id": f"n-{i:03d}",
+                        "subject": f"Subject {i}",
+                        "body": f"Body {i}",
+                        "ground_truth": {
+                            "category": "billing",
+                            "severity": "low",
+                            "routing_team": "support",
+                            "escalation": False,
+                        },
+                    }
+                )
             )
         jsonl.write_text("\n".join(lines) + "\n")
         tickets = load_dataset(jsonl)
@@ -57,17 +61,19 @@ class TestLoadDataset:
 
     def test_skips_blank_lines(self, tmp_path):
         jsonl = tmp_path / "blanks.jsonl"
-        line = json.dumps({
-            "id": "n-001",
-            "subject": "S",
-            "body": "B",
-            "ground_truth": {
-                "category": "billing",
-                "severity": "low",
-                "routing_team": "support",
-                "escalation": False,
-            },
-        })
+        line = json.dumps(
+            {
+                "id": "n-001",
+                "subject": "S",
+                "body": "B",
+                "ground_truth": {
+                    "category": "billing",
+                    "severity": "low",
+                    "routing_team": "support",
+                    "escalation": False,
+                },
+            }
+        )
         jsonl.write_text(line + "\n\n\n")
         tickets = load_dataset(jsonl)
         assert len(tickets) == 1

@@ -70,8 +70,7 @@ if __name__ == "__main__":
         models = [settings.ollama_model]
 
     providers = [
-        OllamaQwenProvider(model=m, base_url=settings.ollama_base_url)
-        for m in models
+        OllamaQwenProvider(model=m, base_url=settings.ollama_base_url) for m in models
     ]
 
     conn = get_connection(args.db_path)

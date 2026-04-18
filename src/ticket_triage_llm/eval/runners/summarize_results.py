@@ -119,9 +119,7 @@ def summarize_run(
         avg_latency_ms=statistics.mean(latencies) if latencies else 0.0,
         p50_latency_ms=_percentile(latencies, 50),
         p95_latency_ms=_percentile(latencies, 95),
-        avg_tokens_per_second=(
-            statistics.mean(tps_values) if tps_values else None
-        ),
+        avg_tokens_per_second=(statistics.mean(tps_values) if tps_values else None),
         avg_tokens_input=statistics.mean(tokens_in) if tokens_in else 0.0,
         avg_tokens_output=statistics.mean(tokens_out) if tokens_out else 0.0,
         avg_tokens_total=statistics.mean(tokens_tot) if tokens_tot else 0.0,
