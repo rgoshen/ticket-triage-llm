@@ -10,6 +10,7 @@ from ticket_triage_llm.storage.trace_repo import TraceRepository
 EXPECTED_COLUMNS = {
     "request_id",
     "run_id",
+    "ticket_id",
     "timestamp",
     "model",
     "provider",
@@ -69,6 +70,7 @@ class TestInitSchema:
         )
         index_names = {row[0] for row in cursor.fetchall()}
         assert "idx_traces_run_id" in index_names
+        assert "idx_traces_ticket_id" in index_names
         assert "idx_traces_provider" in index_names
         assert "idx_traces_prompt_version" in index_names
         assert "idx_traces_timestamp" in index_names
@@ -89,6 +91,78 @@ class TestInitSchema:
         )
         tables = [row[0] for row in cursor.fetchall()]
         assert tables == ["traces"]
+
+
+class TestMigrations:
+    def _create_pre_phase3_schema(self, conn):
+        conn.executescript("""
+            CREATE TABLE traces (
+                request_id TEXT PRIMARY KEY,
+                run_id TEXT,
+                timestamp TEXT NOT NULL,
+                model TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                prompt_version TEXT NOT NULL,
+                ticket_body TEXT NOT NULL,
+                guardrail_result TEXT NOT NULL
+                    CHECK (guardrail_result IN ('pass', 'warn', 'block')),
+                guardrail_matched_rules TEXT NOT NULL DEFAULT '[]',
+                validation_status TEXT NOT NULL
+                    CHECK (validation_status IN (
+                        'valid', 'valid_after_retry', 'invalid', 'skipped'
+                    )),
+                retry_count INTEGER NOT NULL DEFAULT 0,
+                latency_ms REAL NOT NULL,
+                tokens_input INTEGER NOT NULL DEFAULT 0,
+                tokens_output INTEGER NOT NULL DEFAULT 0,
+                tokens_total INTEGER NOT NULL DEFAULT 0,
+                tokens_per_second REAL,
+                estimated_cost REAL NOT NULL DEFAULT 0.0,
+                status TEXT NOT NULL
+                    CHECK (status IN ('success', 'failure')),
+                failure_category TEXT
+                    CHECK (failure_category IS NULL OR failure_category IN (
+                        'guardrail_blocked', 'model_unreachable',
+                        'parse_failure', 'schema_failure', 'semantic_failure'
+                    )),
+                raw_model_output TEXT,
+                triage_output_json TEXT,
+                CHECK (
+                    (status = 'success' AND failure_category IS NULL)
+                    OR (status = 'failure' AND failure_category IS NOT NULL)
+                )
+            );
+        """)
+
+    def test_migrates_existing_db_without_ticket_id(self, tmp_path):
+        db_path = str(tmp_path / "old.db")
+        conn = get_connection(db_path)
+        self._create_pre_phase3_schema(conn)
+        conn.execute(
+            "INSERT INTO traces (request_id, timestamp, model, provider,"
+            " prompt_version, ticket_body, guardrail_result,"
+            " validation_status, latency_ms, status)"
+            " VALUES ('old-1', '2026-04-17T00:00:00Z', 'qwen3.5:4b',"
+            " 'ollama', 'v1', 'test', 'pass', 'valid', 100.0, 'success')"
+        )
+        init_schema(conn)
+        cursor = conn.execute("PRAGMA table_info(traces)")
+        columns = {row[1] for row in cursor.fetchall()}
+        assert "ticket_id" in columns
+        row = conn.execute(
+            "SELECT ticket_id FROM traces WHERE request_id = 'old-1'"
+        ).fetchone()
+        assert row[0] is None
+
+    def test_migration_is_idempotent(self, tmp_path):
+        db_path = str(tmp_path / "idem.db")
+        conn = get_connection(db_path)
+        self._create_pre_phase3_schema(conn)
+        init_schema(conn)
+        init_schema(conn)
+        cursor = conn.execute("PRAGMA table_info(traces)")
+        columns = [row[1] for row in cursor.fetchall()]
+        assert columns.count("ticket_id") == 1
 
 
 class TestCheckConstraints:

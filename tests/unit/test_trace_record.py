@@ -96,3 +96,13 @@ class TestTraceRecord:
         data = tr.model_dump()
         restored = TraceRecord.model_validate(data)
         assert restored == tr
+
+
+class TestTraceRecordTicketId:
+    def test_ticket_id_defaults_to_none(self):
+        tr = TraceRecord(**VALID_TRACE)
+        assert tr.ticket_id is None
+
+    def test_ticket_id_can_be_set(self):
+        tr = TraceRecord(**{**VALID_TRACE, "ticket_id": "n-001"})
+        assert tr.ticket_id == "n-001"

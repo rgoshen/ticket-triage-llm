@@ -135,11 +135,57 @@ class TestGetRecentTraces:
         assert retrieved.triage_output_json == '{"category": "billing"}'
 
 
-class TestUnimplementedMethods:
-    def test_get_traces_by_run_raises(self, repo):
-        with pytest.raises(NotImplementedError):
-            repo.get_traces_by_run("run-1")
+class TestTicketId:
+    def test_save_and_retrieve_ticket_id(self, repo):
+        trace = _make_trace(request_id="req-ticket", ticket_id="n-042")
+        repo.save_trace(trace)
+        retrieved = repo.get_recent_traces(1)[0]
+        assert retrieved.ticket_id == "n-042"
 
+    def test_ticket_id_defaults_to_none(self, repo):
+        trace = _make_trace(request_id="req-no-ticket")
+        repo.save_trace(trace)
+        retrieved = repo.get_recent_traces(1)[0]
+        assert retrieved.ticket_id is None
+
+
+class TestGetTracesByRun:
+    def test_filters_by_run_id(self, repo):
+        repo.save_trace(
+            _make_trace(request_id="req-1", run_id="run-A", model="qwen3.5:2b")
+        )
+        repo.save_trace(
+            _make_trace(request_id="req-2", run_id="run-A", model="qwen3.5:4b")
+        )
+        repo.save_trace(
+            _make_trace(request_id="req-3", run_id="run-B", model="qwen3.5:9b")
+        )
+        traces = repo.get_traces_by_run("run-A")
+        assert len(traces) == 2
+        assert all(t.run_id == "run-A" for t in traces)
+        assert {t.request_id for t in traces} == {"req-1", "req-2"}
+
+    def test_returns_empty_for_unknown_run_id(self, repo):
+        repo.save_trace(_make_trace(request_id="req-1", run_id="run-X"))
+        traces = repo.get_traces_by_run("run-Y")
+        assert traces == []
+
+
+class TestGetAllTraces:
+    def test_returns_all_traces(self, repo):
+        repo.save_trace(_make_trace(request_id="req-1"))
+        repo.save_trace(_make_trace(request_id="req-2"))
+        repo.save_trace(_make_trace(request_id="req-3"))
+        traces = repo.get_all_traces()
+        assert len(traces) == 3
+        assert {t.request_id for t in traces} == {"req-1", "req-2", "req-3"}
+
+    def test_returns_empty_when_no_traces(self, repo):
+        traces = repo.get_all_traces()
+        assert traces == []
+
+
+class TestUnimplementedMethods:
     def test_get_traces_by_provider_raises(self, repo):
         with pytest.raises(NotImplementedError):
             repo.get_traces_by_provider("ollama")
@@ -147,7 +193,3 @@ class TestUnimplementedMethods:
     def test_get_traces_since_raises(self, repo):
         with pytest.raises(NotImplementedError):
             repo.get_traces_since(datetime.now(UTC))
-
-    def test_get_all_traces_raises(self, repo):
-        with pytest.raises(NotImplementedError):
-            repo.get_all_traces()
