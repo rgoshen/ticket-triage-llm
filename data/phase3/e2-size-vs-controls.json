@@ -1,0 +1,51 @@
+{
+  "experiment_id": "E2",
+  "experiment_name": "Model size vs engineering controls",
+  "date": "2026-04-18",
+  "dataset_size": 35,
+  "prompt_version": "v1",
+  "model_metrics": [
+    {
+      "model": "qwen3.5:2b",
+      "run_id": "e1-2b-20260418T0103",
+      "category_accuracy": 0.02857142857142857,
+      "severity_accuracy": 0.0,
+      "routing_accuracy": 0.02857142857142857,
+      "escalation_accuracy": 0.02857142857142857,
+      "json_valid_rate": 0.02857142857142857,
+      "schema_pass_rate": 0.02857142857142857,
+      "retry_rate": 0.9714285714285714,
+      "retry_success_rate": 0.0,
+      "avg_latency_ms": 69077.24830711434,
+      "p50_latency_ms": 70190.38691700007,
+      "p95_latency_ms": 72004.93668299986,
+      "avg_tokens_per_second": 58.38572747473481,
+      "avg_tokens_input": 919.9428571428572,
+      "avg_tokens_output": 4031.4,
+      "avg_tokens_total": 4951.342857142857,
+      "total_tickets": 35,
+      "successful_tickets": 1
+    },
+    {
+      "model": "qwen3.5:9b",
+      "run_id": "e2-9b-noval-20260418T0332",
+      "category_accuracy": 0.4857142857142857,
+      "severity_accuracy": 0.4,
+      "routing_accuracy": 0.4857142857142857,
+      "escalation_accuracy": 0.4857142857142857,
+      "json_valid_rate": 0.4857142857142857,
+      "schema_pass_rate": 0.0,
+      "retry_rate": 0.0,
+      "retry_success_rate": 0.0,
+      "avg_latency_ms": 70252.30357628576,
+      "p50_latency_ms": 79457.08466700307,
+      "p95_latency_ms": 82150.546041899,
+      "avg_tokens_per_second": 25.21578586600553,
+      "avg_tokens_input": 575.4285714285714,
+      "avg_tokens_output": 1770.6571428571428,
+      "avg_tokens_total": 2346.0857142857144,
+      "total_tickets": 35,
+      "successful_tickets": 17
+    }
+  ]
+}

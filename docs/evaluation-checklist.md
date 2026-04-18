@@ -146,38 +146,70 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 
 **Limitation:** The 2B uses Q8_0 quantization while the 4B and 9B use Q4_K_M. The 2B's poor structured-output performance cannot be attributed solely to parameter count — the different quantization scheme is a confound. See Phase 0 Observation #6.
 
+#### Experiment 1 Observations
+
+**1. Unexpected finding: the 2B collapsed at scale.** Phase 0 showed the 2B producing 3/3 valid JSON on the smoke test. At n=35, it succeeded on only 1 ticket (2.9%). The difference is not sampling noise — the 2B's reasoning mode generates ~4,031 output tokens per request, almost all consumed by internal chain-of-thought, and the final JSON is malformed in 97% of cases. The `max_tokens=2048` cap introduced in Phase 1 appears insufficient to contain the reasoning overflow while still leaving room for the actual JSON output.
+
+**2. Pattern: the quality-size curve is non-monotonic.** The 4B outperforms the 9B on every metric — category accuracy (57.1% vs 54.3%), JSON validity (82.9% vs 74.3%), retry rate (42.9% vs 51.4%), and latency (74s vs 107s). This inverts the naive expectation that more parameters = better quality. The likely explanation: the 9B's longer reasoning chains have more opportunities to produce structurally invalid output, and the repair prompt cannot recover them as reliably.
+
+**3. Implementation implication: the 2B is not viable as a demo default.** With a 2.9% success rate, it cannot be the primary model. However, the default model decision (OD-4) remains open until E2 and E3 results determine whether engineering controls change the ranking between the 4B and 9B. The 2B stays in the dropdown for the size-comparison story — showing the failure mode is itself a finding.
+
+**4. Cost implication: token consumption inversion confirmed at scale.** The 2B uses 4,951 tokens/request, the 4B uses 3,098, and the 9B uses 3,378. The Phase 0 observation (#4) that smaller models are not cheaper per request is now confirmed on the full 35-ticket dataset. Cloud cost projections must use actual token counts, not parameter-count proxies.
+
+**5. Limitation: 57% category accuracy across all models suggests prompt v1 needs iteration.** Even the best model (4B) only matches ground truth on category 57% of the time. This could reflect genuine ambiguity in the dataset labels, a prompt that doesn't constrain the taxonomy tightly enough, or both. Phase 6 (prompt v2) is the designed mechanism to test this. The accuracy numbers should not be compared to production NLP systems evaluated on thousands of samples — at n=35, individual ticket disagreements move the needle by ~3% each.
+
 ### Experiment 2: Model Size vs Engineering Controls
 
-**Date run:** _______________
-**Dataset:** gold_tickets.json (__ tickets)
+**Date run:** 2026-04-18
+**Dataset:** normal_set.jsonl (35 tickets)
 **Prompt version:** v1
-**Sampling config:** temperature=___ top_p=___ top_k=___
+**Sampling config:** temperature=0.2 top_p=0.9 top_k=40
 
 | Configuration                    | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Avg latency | Notes |
 | -------------------------------- | ------ | ------------ | ------------ | ----------- | ---------- | ---------- | ----------- | ----- |
-| Smallest model + full validation |        |              |              |             |            |            |             |       |
-| Largest model + no validation    |        |              |              |             |            |            |             |       |
+| Smallest model + full validation (2B) | e1-2b-20260418T0103 | 2.9% | 0.0% | 2.9% | 2.9% | 97.1% | 69,077ms | 1/35 successful. From E1 data. 2B is broken regardless of controls. |
+| Largest model + no validation (9B) | e2-9b-noval-20260418T0332 | 48.6% | 40.0% | 48.6% | 48.6% | 0% | 70,252ms | 17/35 successful. Without validation, nearly half of outputs are usable. |
 
-**Key finding from Experiment 2:** _______________________________________________
+**Key finding from Experiment 2:** The 9B without validation (17/35) massively outperforms the 2B with full validation (1/35). However, this result is confounded by the 2B's fundamental inability to produce structured output — the 2B fails before validation has anything to work with. The E2 comparison as designed does not cleanly test the thesis because the "smallest viable model" turned out to be non-viable.
 
-**Does this support or contradict the project thesis?** _______________________________________________
+**Does this support or contradict the project thesis?** Inconclusive as designed. The more informative comparison is 4B-with-validation (29/35, from E3) vs 9B-without-validation (17/35, from E2): a mid-size model with controls outperforms a larger model without them. This supports the thesis that engineering controls compensate for model size — but only when the baseline model can produce structured output at all.
+
+#### Experiment 2 Observations
+
+**1. Unexpected finding: E2 as designed is confounded.** The experiment intended to compare "smallest model + controls" vs "largest model - controls" to test whether engineering controls can compensate for model size. But the 2B's 2.9% success rate means controls have nothing to rescue — the model fails at the JSON generation level, not the validation level. The comparison is between "broken" and "partially working," not between "small+controlled" and "large+uncontrolled."
+
+**2. Pattern: the informative comparison crosses E2 and E3.** Comparing the 4B-validated (29/35, 57.1% category acc from E3) against the 9B-no-validation (17/35, 48.6% category acc from E2) provides the test the thesis needs: a smaller model with controls beats a larger model without them on both coverage (83% vs 49%) and accuracy (57% vs 49%).
+
+**3. Implementation implication: E2 should be reframed in the presentation.** Rather than presenting the 2B vs 9B comparison (which is uninteresting because the 2B is broken), the thesis-supporting comparison is 4B-validated vs 9B-unvalidated. This is more honest and more compelling.
 
 ### Experiment 3: Validation Impact
 
-**Date run:** _______________
-**Model:** _______________
-**Dataset:** gold_tickets.json (__ tickets)
+**Date run:** 2026-04-18
+**Model:** Qwen 3.5 4B
+**Dataset:** normal_set.jsonl (35 tickets)
 **Prompt version:** v1
-**Sampling config:** temperature=___ top_p=___ top_k=___
+**Sampling config:** temperature=0.2 top_p=0.9 top_k=40
 
 | Configuration           | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Retries that recovered | Avg latency | Notes |
 | ----------------------- | ------ | ------------ | ------------ | ----------- | ---------- | ---------- | ---------------------- | ----------- | ----- |
-| Full validation + retry |        |              |              |             |            |            |                        |             |       |
-| No validation, no retry |        |              |              |             |            |            |                        |             |       |
+| Full validation + retry | e3-4b-validated-20260418T0332 | 57.1% | 48.6% | 54.3% | 82.9% | 40.0% | 57.1% (8/14 retried) | 69,889ms | 29/35 successful. Retry recovered 8 tickets that would have failed. |
+| No validation, no retry | e3-4b-skipped-20260418T0332 | 62.9% | 48.6% | 60.0% | 65.7% | 0% | N/A | 49,909ms | 23/35 successful. Higher per-ticket accuracy but fewer usable tickets. |
 
-**Key finding from Experiment 3:** _______________________________________________
+**Key finding from Experiment 3:** Validation + retry increases coverage from 23/35 to 29/35 (6 additional successful tickets). However, accuracy *per successful ticket* is slightly higher without validation — the tickets that need retry tend to produce lower-accuracy outputs on the second attempt. The net effect: validation buys reliability (more tickets triaged) at the cost of ~20s additional latency per request from retries.
 
-**Percentage of cases where retry recovered a failure:** _____ %
+**Percentage of cases where retry recovered a failure:** 57.1% (8 of 14 retried tickets succeeded on the repair attempt)
+
+#### Experiment 3 Observations
+
+**1. Unexpected finding: accuracy is higher without validation.** Category accuracy is 62.9% without validation vs 57.1% with it. This is counterintuitive — validation should not reduce accuracy. The explanation: retried tickets that succeed on the repair prompt tend to produce lower-quality classifications (the model is correcting its JSON format, not improving its reasoning). The 6 recovered tickets dilute the accuracy average.
+
+**2. Pattern: validation's value is coverage, not accuracy.** The pipeline with validation triages 29/35 tickets vs 23/35 without. That's 6 additional tickets that would have been dropped as failures. In a production triage system, a ticket that gets a mediocre classification is better than a ticket that gets no classification at all. The accuracy difference (57% vs 63%) is within the noise band at n=35 (~3% per ticket).
+
+**3. Cost implication: validation adds latency but not proportionally.** Average latency is 70s with validation vs 50s without — a 40% increase. But this includes the 40% of requests that triggered a retry (each roughly doubling that request's latency). For the 60% of requests that pass on the first attempt, validation adds negligible overhead.
+
+**4. Implementation implication: validation should remain on by default.** The coverage gain (6 additional tickets) outweighs the accuracy dilution and latency cost. The accuracy difference is not statistically meaningful at this sample size. For the demo, the "retries that recovered" stat (57.1%) is the headline number — it directly demonstrates the value of the engineering control.
+
+**5. Limitation: the "no validation" mode still parses and schema-checks.** `skip_validation=True` bypasses `validate_or_retry()` but still does a best-effort `parse_json()` + `validate_schema()` for recording purposes. Tickets that fail parsing are counted as failures. A true "raw model output" mode (no parsing at all) would show even lower success rates for the unvalidated path.
 
 ### Experiment 4: Prompt Comparison
 

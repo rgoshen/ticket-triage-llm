@@ -19,6 +19,33 @@ Related artifacts:
 
 ---
 
+## [2026-04-18] Phase C — Cleanup (deferred PR review polish)
+
+**What was done:**
+
+- Removed verbose docstrings from `validation.py` that restated type signatures.
+- Extracted shared test fakes (`FakeProvider`, `FakeTraceRepo`, `AlwaysBadJsonProvider`, `AlwaysBadSchemaProvider`, `RetrySuccessProvider`, `ErrorProvider`, `VALID_JSON_OUTPUT`) into `tests/fakes.py`. Updated 3 test files to import from the shared module.
+- Hardened repair prompt delimiter: replaced triple-backtick wrapping with XML `<failed_output>` tags in `prompts/repair_json_v1.py` to avoid structural ambiguity when model output contains backticks.
+- Extracted `_failure_result()` helper in `retry.py`, reducing ~30 lines of near-identical `RetryResult(TriageFailure(...))` construction to single-line calls.
+- Fixed `.gitignore`: `*/memory/` → `**/memory/` for correct nested directory matching.
+- Renamed unused `_trace` to `_` in API route.
+- Deferred 3 items to Phase 7: API route globals refactor, design spec staleness notes, pre-repair error detail in TriageFailure.
+
+**How it was done:**
+
+- One atomic commit per item on `feature/phase-cleanup`. 220 tests pass, ruff clean after each commit.
+- No behavioral changes — pure polish.
+
+**Issues encountered:**
+
+None — all items were straightforward cleanup.
+
+**Exit state:**
+
+- 220 tests pass, ruff clean. 7 of 11 Phase C items resolved; 3 deferred to Phase 7; 1 was already correct.
+
+---
+
 ## [2026-04-17] Phase 3 — Evaluation harness + benchmark run
 
 **What was done:**
