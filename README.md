@@ -2,7 +2,7 @@
 
 A production-style support ticket triage system built on local LLMs, with a focus on prompt injection defense and structured-output reliability under realistic adversarial conditions.
 
-> **Status:** Phase 1 complete — first end-to-end triage slice working. Phase 2 (provider router, retry, guardrail) is next.
+> **Status:** Phase 3 complete — eval harness built with four experiment runners and summarizer. Phase 4 (adversarial evaluation) is next.
 
 ## What this project is
 
@@ -173,12 +173,20 @@ ticket-triage-llm/
 │   ├── api/                           # FastAPI routes
 │   │   └── triage_route.py            # POST /api/v1/triage
 │   ├── prompts/                       # Prompt templates
-│   └── eval/runners/                  # Evaluation harness (stubs)
+│   └── eval/                          # Evaluation harness
+│       ├── datasets.py                # Dataset loader (GroundTruth, TicketRecord)
+│       ├── results.py                 # ModelMetrics, ExperimentSummary
+│       └── runners/                   # Experiment runners + summarizer
+│           ├── common.py              # run_experiment_pass() shared loop
+│           ├── run_local_comparison.py # E1: model size comparison
+│           ├── run_validation_impact.py# E3: validation on/off + E2 data
+│           ├── run_prompt_comparison.py# E4: prompt v1 vs v2
+│           └── summarize_results.py   # summarize_run(), compose_e2(), CLI
 ├── Dockerfile                         # Multi-stage app container build
 ├── tests/
-│   ├── unit/                          # 129 unit tests
+│   ├── unit/                          # 210+ unit tests
 │   ├── integration/                   # API route smoke tests
-│   └── eval/                          # (stub — Phase 3)
+│   └── eval/                          # Eval harness tests
 ├── data/
 │   ├── normal_set.jsonl               # 35 normal tickets
 │   └── adversarial_set.jsonl          # Adversarial test set
