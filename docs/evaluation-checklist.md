@@ -152,7 +152,7 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 
 **2. Pattern: the quality-size curve is non-monotonic.** The 4B outperforms the 9B on every metric — category accuracy (57.1% vs 54.3%), JSON validity (82.9% vs 74.3%), retry rate (42.9% vs 51.4%), and latency (74s vs 107s). This inverts the naive expectation that more parameters = better quality. The likely explanation: the 9B's longer reasoning chains have more opportunities to produce structurally invalid output, and the repair prompt cannot recover them as reliably.
 
-**3. Implementation implication: the 2B should be excluded from the demo default.** It remains in the dropdown for the size-comparison story (showing the failure mode is itself a finding), but the default model for the Triage tab should be the 4B. This resolves OD-4 from PLAN.md.
+**3. Implementation implication: the 2B is not viable as a demo default.** With a 2.9% success rate, it cannot be the primary model. However, the default model decision (OD-4) remains open until E2 and E3 results determine whether engineering controls change the ranking between the 4B and 9B. The 2B stays in the dropdown for the size-comparison story — showing the failure mode is itself a finding.
 
 **4. Cost implication: token consumption inversion confirmed at scale.** The 2B uses 4,951 tokens/request, the 4B uses 3,098, and the 9B uses 3,378. The Phase 0 observation (#4) that smaller models are not cheaper per request is now confirmed on the full 35-ticket dataset. Cloud cost projections must use actual token counts, not parameter-count proxies.
 
