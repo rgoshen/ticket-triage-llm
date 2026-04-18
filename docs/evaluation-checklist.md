@@ -87,6 +87,8 @@ Analytical findings from the smoke test data. These inform Phase 1+ implementati
 
 **5. Quality differentiation is subtle at this sample size.** All three models achieved 100% accuracy on category, severity, routing, and escalation across 3 tickets. Quality differences — summary precision, draft reply professionalism, confidence calibration — are visible but not measurable at n=3. The Phase 3 evaluation on 35 tickets will provide enough data to characterize quality differences meaningfully.
 
+**6. Quantization levels differ across model sizes.** The 2B uses Q8_0 (8-bit) quantization while the 4B and 9B use Q4_K_M (4-bit). This is a confound in the size comparison: the 2B carries more precision per parameter than the larger models. Differences in structured-output reliability between the 2B and the others cannot be attributed purely to parameter count — the quantization scheme is also a variable. Ollama does not offer a Q4_K_M variant for the 2B or a Q8_0 variant for the larger sizes, so this confound cannot be controlled within the current toolchain.
+
 ---
 
 ## Sampling Configuration Log
@@ -129,18 +131,20 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 
 ### Experiment 1: Model Size Comparison
 
-**Date run:** _______________
-**Dataset:** gold_tickets.json (__ tickets)
+**Date run:** 2026-04-18
+**Dataset:** normal_set.jsonl (35 tickets)
 **Prompt version:** v1
-**Sampling config:** temperature=___ top_p=___ top_k=___
+**Sampling config:** temperature=0.2 top_p=0.9 top_k=40
 
 | Model       | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Avg latency | p95 latency | Tokens/s | Notes |
 | ----------- | ------ | ------------ | ------------ | ----------- | ---------- | ---------- | ----------- | ----------- | -------- | ----- |
-| Qwen 3.5 2B |        |              |              |             |            |            |             |             |          |       |
-| Qwen 3.5 4B |        |              |              |             |            |            |             |             |          |       |
-| Qwen 3.5 9B |        |              |              |             |            |            |             |             |          |       |
+| Qwen 3.5 2B | e1-2b-20260418T0103 | 2.9% | 0.0% | 2.9% | 2.9% | 97.1% | 69,077ms | 72,005ms | 58.4 | 1/35 successful. Q8_0 quant. Reasoning mode produces ~4,031 output tokens/req but almost never valid JSON. |
+| Qwen 3.5 4B | e1-4b-20260418T0103 | 57.1% | 51.4% | 57.1% | 82.9% | 42.9% | 73,886ms | 129,101ms | 32.0 | 29/35 successful. Q4_K_M quant. Best accuracy and reliability of the three. |
+| Qwen 3.5 9B | e1-9b-20260418T0103 | 54.3% | 48.6% | 54.3% | 74.3% | 51.4% | 107,012ms | 168,789ms | 24.3 | 26/35 successful. Q4_K_M quant. Slower and less reliable than 4B despite more parameters. |
 
-**Key finding from Experiment 1:** _______________________________________________
+**Key finding from Experiment 1:** The 4B is the best performer across all metrics — higher accuracy, better JSON validity, faster, and more successful retries than the 9B. The 2B is essentially unusable for structured output (1/35 success rate). Bigger is not better in this setup: the 9B's longer reasoning chains produce more malformed output than the 4B's.
+
+**Limitation:** The 2B uses Q8_0 quantization while the 4B and 9B use Q4_K_M. The 2B's poor structured-output performance cannot be attributed solely to parameter count — the different quantization scheme is a confound. See Phase 0 Observation #6.
 
 ### Experiment 2: Model Size vs Engineering Controls
 
