@@ -158,6 +158,10 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 
 **5. Limitation: 57% category accuracy across all models suggests prompt v1 needs iteration.** Even the best model (4B) only matches ground truth on category 57% of the time. This could reflect genuine ambiguity in the dataset labels, a prompt that doesn't constrain the taxonomy tightly enough, or both. Phase 6 (prompt v2) is the designed mechanism to test this. The accuracy numbers should not be compared to production NLP systems evaluated on thousands of samples — at n=35, individual ticket disagreements move the needle by ~3% each.
 
+**6. Telemetry artifact**: `schema_pass_rate=0%` in unvalidated runs is not a real finding. In E2 (9B unvalidated) and E3 (4B skipped), the `schema_pass_rate` reports 0.0% while json_valid_rate reports 48.6% and 65.7% respectively. This does not mean the outputs failed schema validation — it means the schema check was not executed when validation was skipped, and the metric was recorded as 0 by convention. For honest comparison across runs, only `json_valid_rate` should be used as the structured-output reliability metric. The `schema_pass_rate` column in unvalidated rows should be read as "not measured," not "0% passed."
+
+**7. Escalation accuracy outperforms category accuracy across all three models.** 4B validated: 74.3% escalation vs 57.1% category. 9B validated: 65.7% vs 54.3%. 2B: 2.9% on both (broken). Escalation is a binary decision, so higher accuracy is mechanically expected — but 74% on escalation is the most operationally significant number in this experiment. In a real triage system, misrouted category is recoverable by the receiving team; missed escalation is not. This deserves headline placement in the presentation.
+
 ### Experiment 2: Model Size vs Engineering Controls
 
 **Date run:** 2026-04-18
@@ -210,6 +214,23 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 **4. Implementation implication: validation should remain on by default.** The coverage gain (6 additional tickets) outweighs the accuracy dilution and latency cost. The accuracy difference is not statistically meaningful at this sample size. For the demo, the "retries that recovered" stat (57.1%) is the headline number — it directly demonstrates the value of the engineering control.
 
 **5. Limitation: the "no validation" mode still parses and schema-checks.** `skip_validation=True` bypasses `validate_or_retry()` but still does a best-effort `parse_json()` + `validate_schema()` for recording purposes. Tickets that fail parsing are counted as failures. A true "raw model output" mode (no parsing at all) would show even lower success rates for the unvalidated path.
+
+**6. Validation adds input token cost, not just latency.** Validated runs averaged 717 input tokens per ticket; unvalidated runs averaged exactly 575 (the baseline v1 prompt size). The ~140-token gap is the repair prompt overhead — the failed output plus the specific error message sent back to the model on retry. Averaged across retried and non-retried tickets, validation adds ~25% to input token consumption. For cloud cost projections this matters: input tokens are roughly 6x cheaper than output tokens on Qwen API pricing, but at scale the repair-prompt input cost is not negligible. Capture this explicitly in `docs/cost-analysis.md`.
+
+**7. Retry success rate is sample-size sensitive.** E1 measured retry success at 60.0% for the 4B; E3 measured 57.1% on the same configuration. That's a single-ticket swing (14 retried tickets in E3, one more success would shift the rate to 64%). The checklist reports 57.1% as the headline retry success number, but the honest framing is "between 57% and 60% across two runs at n=35." Any claims about retry effectiveness should be stated with this uncertainty band.
+
+### Cross-Experiment Observations
+
+**1. The 2B failure mode is `retry_success_rate=0.0%`.** Every one of the 34 retried tickets also failed on the repair prompt. This is not a "reasoning ran too long" problem in the simple sense — the 2B also cannot recover when given a failed output and an explicit error message. Two hypotheses worth eyeballing the raw traces to distinguish:
+
+    - Reasoning overflow consumes the entire output budget before JSON is reached — in which case raising `max_tokens` might unblock it
+    - The 2B at Q8_0 genuinely cannot produce structurally valid JSON in this prompt format — in which case no token budget change will help
+
+Sample 3–5 raw 2B outputs from the traces table before committing to an explanation.
+
+**2. The thesis-supporting comparison is 4B-validated vs 9B-unvalidated — but note the token cost.** 4B-validated produces 3,020 total tokens per ticket with 83% JSON validity and 57% category accuracy. 9B-unvalidated produces 2,346 total tokens with 49% JSON validity and 49% category accuracy. The smaller-with-controls wins on both quality metrics AND uses only ~30% more total tokens. This is the strongest single finding in the project — a 4B with the validator-first pipeline beats a 9B without it on quality and is within the same order of magnitude on cost.
+
+**3. Open decision OD-4 (default demo model) should be closed.** Based on E1 + E3 data, the 4B is the clear winner: highest JSON validity (83%), highest category accuracy (57%), highest escalation accuracy (74%), lowest average latency (70s), and the retry pipeline actively helps recover 57% of failed attempts. The 9B is slower, less reliable, and more expensive per ticket. The 2B is not viable. Write the decision log entry and an ADR for model selection to formally close OD-4.
 
 ### Experiment 4: Prompt Comparison
 
