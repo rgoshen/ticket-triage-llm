@@ -175,6 +175,20 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 - [x] Extract `RetryResult(TriageFailure(...))` helper in `retry.py`
 - [x] Fix `.gitignore` oddities: `*/memory/` → `**/memory/` (Icon[] is correct macOS syntax)
 
+Phase 4 PR review deferred items:
+- [ ] I1: `TriageFailure` reconstruction in runner hardcodes `detected_by="parser"` even for `guardrail_blocked`/`schema_failure`
+- [ ] I2: Corrupt trace in `model_validate_json` crashes entire multi-model run — add try/except, flush summaries per provider
+- [ ] I3: Output filename collision on short tags — `split(":")[-1]` on different providers could collide
+- [ ] I4: `adversarial_to_ticket_record` fabricates ground truth silently — add sentinel or docstring warning
+- [ ] I5: `COMPLIANCE_INDICATORS` hardcoded for exactly 14 IDs — `KeyError` on a-015 with no graceful path
+- [ ] I6: Non-atomic JSON writes, no I/O error handling in runner
+- [ ] I7: `_compute_per_rule_stats` silently buckets unknown ticket_id into `"unknown"` category
+- [ ] I8: Missing compliance dispatch tests for a-003, a-004, a-009, a-011
+- [ ] S9: `_make_compliance` in test file duck-types instead of importing real `ComplianceCheck`
+- [ ] N1: `results.py` module docstring still says "Phase 3"
+- [ ] N2: Inconsistent `attack_category` naming between dataset and compliance tests
+- [ ] N3: `datasets.py` module docstring says "Phase 3" but contains Phase 4 additions
+
 **Dependencies:** none — can run anytime after Phase 1.
 **PLAN.md mapping:** none — these are PR review polish items, not plan phases.
 **Branch:** `feature/phase-cleanup`.
