@@ -8,6 +8,13 @@ def get_connection(db_path: str) -> sqlite3.Connection:
     return conn
 
 
+def _migrate_add_ticket_id(conn: sqlite3.Connection) -> None:
+    cursor = conn.execute("PRAGMA table_info(traces)")
+    columns = {row[1] for row in cursor.fetchall()}
+    if "ticket_id" not in columns:
+        conn.execute("ALTER TABLE traces ADD COLUMN ticket_id TEXT")
+
+
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS traces (
@@ -47,7 +54,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
                 OR (status = 'failure' AND failure_category IS NOT NULL)
             )
         );
+    """)
 
+    _migrate_add_ticket_id(conn)
+
+    conn.executescript("""
         CREATE INDEX IF NOT EXISTS idx_traces_run_id
             ON traces(run_id);
         CREATE INDEX IF NOT EXISTS idx_traces_ticket_id
