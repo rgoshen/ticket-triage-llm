@@ -263,4 +263,4 @@ data/*.db-journal
 data/*.db-wal
 
 # Local claude memory files
-*/memory/
+**/memory/
