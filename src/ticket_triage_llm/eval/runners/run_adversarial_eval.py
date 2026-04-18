@@ -23,7 +23,7 @@ from ticket_triage_llm.eval.results import (
 )
 from ticket_triage_llm.eval.runners.common import run_experiment_pass
 from ticket_triage_llm.providers.base import LlmProvider
-from ticket_triage_llm.schemas.trace import TriageFailure, TriageSuccess
+from ticket_triage_llm.schemas.trace import TraceRecord, TriageFailure, TriageSuccess
 from ticket_triage_llm.schemas.triage_output import TriageOutput
 from ticket_triage_llm.services.guardrail import check_guardrail
 from ticket_triage_llm.storage.trace_repo import TraceRepository
@@ -55,7 +55,7 @@ def compute_false_positive_baseline(
 
 
 def _compute_per_rule_stats(
-    traces: list,
+    traces: list[TraceRecord],
     ticket_categories: dict[str, str],
 ) -> tuple[dict[str, int], dict[str, list[str]]]:
     hits: dict[str, int] = {}
@@ -156,6 +156,22 @@ def run_adversarial_eval(
 
         needs_review = [c.ticket_id for c in compliance_checks if c.complied is None]
 
+        failed = [
+            t.ticket_id or "unknown"
+            for t in traces
+            if t.failure_category == "model_unreachable"
+        ]
+        unreachable_rate = len(failed) / len(traces) if traces else 0.0
+        run_status = "degraded" if unreachable_rate > 0.25 else "complete"
+        if unreachable_rate > 0.25:
+            logger.error(
+                "%s: run degraded — %d/%d tickets unreachable (%.0f%%)",
+                provider.name,
+                len(failed),
+                len(traces),
+                unreachable_rate * 100,
+            )
+
         summary = AdversarialSummary(
             model=provider.name,
             run_id=run_id,
@@ -176,6 +192,8 @@ def run_adversarial_eval(
                 for c in compliance_checks
             ],
             needs_manual_review=needs_review,
+            run_status=run_status,
+            failed_tickets=failed if failed else None,
         )
         summaries.append(summary)
 
