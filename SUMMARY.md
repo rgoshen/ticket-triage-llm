@@ -19,6 +19,58 @@ Related artifacts:
 
 ---
 
+## [2026-04-18] Phase 4B — Documentation corrections (post-review cleanup)
+
+**What was done:**
+
+Five categories of documentation correction across `docs/evaluation-checklist.md`, `docs/threat-model.md`, `docs/evaluation-plan.md`, `docs/decisions/decision-log.md`, and `CLAUDE.md`:
+
+1. **a-008 reframed from integrity compromise to non-reproducing observation.** Two replication attempts on the 4B both produced parse failures instead of the original partial field match. The finding was reclassified: the 4B's dominant behavior on a-008 is availability failure (2/3 runs = parse failure), not partial compliance (1/3 runs). The "empirically weakest seam" section in `threat-model.md` was renamed to "availability impact from adversarial content." All residual risk statements, combined risk statements, and cross-references updated to reflect non-reproducibility.
+
+2. **Timeout terminology corrected to token-budget exhaustion.** The 118-120s (4B) and 162-164s (9B) failures are caused by `max_tokens=2048` exhaustion on reasoning tokens, not a client or provider timeout. The OpenAI client has no explicit timeout set. All references in the reasoning-mode exhaustion section, availability risk, combined risk statement, future work, and measurement table corrected. Future mitigations reframed from "shorter timeouts" to "separate reasoning-token budgets" and "lower max_tokens."
+
+3. **Thinking-mode disabled for demo/production configuration.** Decision log entry added documenting `think=false` as a post-Phase 4 configuration change. CLAUDE.md sampling parameters updated. Scope explicitly noted: Phase 0–4 evaluation data was collected with `think=true` (default); demo config differs from evaluation config, documented honestly rather than retroactively.
+
+4. **Evaluation Methodology Limitations section added to evaluation-plan.md.** Five subsections: aggregate findings defensibility at n=35, small-difference noise caveat, per-ticket point-observation caveat, replication gap documentation, and evaluation-vs-production configuration divergence.
+
+5. **Phase 3 observations softened where accuracy claims exceeded n=35 noise floor.** E1 key finding reframed from "best performer across all metrics" to "best JSON validity and reliability." Accuracy differences between 4B and 9B (57.1% vs 54.3% category, 51.4% vs 48.6% severity) flagged as within the ~3%-per-ticket noise band. Cross-experiment observations updated similarly. Closing notes added to each experiment's observation section referencing the methodology limitations.
+
+**What was NOT changed:**
+
+- Integrity/availability framework and two-objective structure
+- Reasoning-mode exhaustion section structure (only terminology within it)
+- 2B unmeasurability caveats
+- Per-layer analysis structure in threat-model.md
+- Any ADRs
+- Phase 3 headline findings based on large-magnitude differences (2B collapse at 2.9%, 4B-validated 29/35 vs 9B-unvalidated 17/35, 4B JSON validity 82.9% vs 9B 74.3%)
+- Phase 4 per-ticket intersection table (only a-008 row annotated with replication data)
+
+**How it was done:**
+
+- All changes on `feature/phase-4b-cleanup` branch. Documentation-only edits — no code changes.
+- Each correction category applied systematically across all files that referenced the affected claims, with grep verification after each batch to catch stale cross-references.
+- a-008 replication was performed in a prior session; this session documents the findings.
+
+**Issues encountered:**
+
+1. **Stale cross-references across files.** The a-008 finding was referenced in threat-model.md (5 sections), evaluation-checklist.md (6 sections), and indirectly in the decision log. Each reference used slightly different phrasing ("ambiguous partial match," "most interesting finding," "weakest seam"), requiring individual edits rather than a find-and-replace.
+
+2. **Timeout terminology was load-bearing in future-work items.** The future mitigations section recommended "shorter per-request timeouts" — but the correct mitigation for token-budget exhaustion is a different token budget, not a shorter timeout. Had to rewrite the mitigation recommendations, not just the terminology.
+
+**How those issues were resolved:**
+
+1. Grepped for each key phrase after editing to verify no stale references remained. Final verification pass confirmed all "weakest seam," "ambiguous partial match," "provider timeout," and "outperforms on every metric" references updated or removed.
+
+2. Rewrote future-work items 5 and 6 to reflect the correct mechanism: separate reasoning-token budgets and lower `max_tokens` values, rather than shorter timeouts.
+
+**Exit state:**
+
+- All five documentation files updated and internally consistent.
+- No code changes, no test changes, no ADR changes.
+- Phase 4 documentation now reflects honest, replication-informed findings rather than single-run observations presented as conclusions.
+
+---
+
 ## [2026-04-18] Hotfix: Demo reliability + UI improvements
 
 **What was done:**

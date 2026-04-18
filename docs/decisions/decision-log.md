@@ -8,6 +8,33 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-18 — Thinking mode disabled for demo/production configuration
+
+**Decision:** Qwen 3.5 thinking mode is disabled via `think=false` in the Ollama request options for the demo and production pipeline configuration. The evaluation configuration (Phase 0 through Phase 4) used the default `think=true`.
+
+**What changed:** The `think` parameter is set to `false` in the provider's request options, passed via `extra_body` to the OpenAI-compatible Ollama endpoint. This is a configuration change only — no code logic changes.
+
+**Why:** Two phases of evidence converged on this decision:
+
+1. **Phase 0** identified disproportionate token consumption from reasoning mode. The 2B used ~2,703 completion tokens per request (vs ~150 tokens of visible JSON output), with the remainder consumed by internal chain-of-thought. The 2B's 652s outlier on ticket n-007 was caused by reasoning runaway — 3,138 completion tokens of reasoning before emitting JSON.
+
+2. **Phase 4** quantified the availability impact. All parse failures on the 4B clustered at 118-120s (the wall-clock time to exhaust `max_tokens=2048` on reasoning tokens). 7/14 adversarial tickets (50%) caused token-budget exhaustion on the 4B; 3/14 (21%) on the 9B. The reasoning chain consumed the entire output budget before the model could emit JSON. This is a deterministic failure mode — not stochastic — and constitutes an availability attack vector where adversarial content triggers extended reasoning.
+
+**Scope:** This is a demo/production configuration change. It does not retroactively apply to the evaluation data:
+
+- Phase 3 experiment results (E1 through E4) were measured with `think=true` (default). The accuracy, latency, retry, and reliability numbers in `docs/evaluation-checklist.md` reflect thinking-enabled behavior.
+- Phase 4 adversarial results were measured with `think=true`. The availability failure rates (50% 4B, 21% 9B) and integrity findings reflect thinking-enabled behavior.
+- The demo configuration differs from the evaluation configuration. This is documented honestly rather than presented as a retroactive change. If accuracy or reliability comparisons are needed between the evaluation baseline and the production config, a separate evaluation run with `think=false` would be required.
+
+**Tradeoff:** We have not formally re-evaluated accuracy with thinking disabled. For ticket triage — a pattern-recognition classification task where the model maps ticket text to a fixed taxonomy of categories, severities, and routing teams — extended chain-of-thought reasoning is expected to provide minimal quality benefit. The task does not require multi-step logical deduction, mathematical reasoning, or complex planning. However, this expectation is untested. If accuracy degrades meaningfully with `think=false`, the decision should be revisited with a formal A/B comparison.
+
+**What this affects:**
+- Sampling configuration in `CLAUDE.md` updated to reflect `think=false` as the production default.
+- The `docs/evaluation-checklist.md` Sampling Observations table should note this change if a post-change evaluation is run.
+- `docs/threat-model.md` reasoning-mode exhaustion section describes the attack vector as measured with thinking enabled; the mitigation (disabling thinking) is a configuration response to that finding.
+
+---
+
 ## 2026-04-18 — OD-4 resolved: Qwen 3.5 4B is the default demo model
 
 **Decision:** The default model loaded when the Triage tab opens is **Qwen 3.5 4B**. OD-4 is now closed.
