@@ -108,6 +108,7 @@ def build_triage_tab(
                 submit_btn = gr.Button("Triage", variant="primary")
 
             with gr.Column(scale=1):
+                status_output = gr.Markdown(value="", label="Status")
                 result_output = gr.Markdown(label="Triage Result")
                 with gr.Accordion("Trace Details", open=False):
                     trace_output = gr.Textbox(
@@ -116,10 +117,21 @@ def build_triage_tab(
                         interactive=False,
                     )
 
+        def show_processing(provider_name, ticket_subject, ticket_body):
+            yield (
+                "*Processing ticket... this may take 30-90 seconds.*",
+                "",
+                "",
+            )
+            result_text, trace_text = handle_triage(
+                provider_name, ticket_subject, ticket_body
+            )
+            yield "", result_text, trace_text
+
         submit_btn.click(
-            fn=handle_triage,
+            fn=show_processing,
             inputs=[provider_dropdown, subject_input, body_input],
-            outputs=[result_output, trace_output],
+            outputs=[status_output, result_output, trace_output],
         )
 
     return demo
