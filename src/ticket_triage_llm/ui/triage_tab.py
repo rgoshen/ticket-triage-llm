@@ -126,19 +126,20 @@ def build_triage_tab(
                         interactive=False,
                     )
 
-        def show_processing(provider_name, ticket_subject, ticket_body):
-            yield (
-                "*Processing ticket...*",
-                "",
-                "",
-            )
+        def run_triage_with_status(
+            provider_name, ticket_subject, ticket_body
+        ):
             result_text, trace_text = handle_triage(
                 provider_name, ticket_subject, ticket_body
             )
-            yield "", result_text, trace_text
+            return "", result_text, trace_text
 
         triage_event = submit_btn.click(
-            fn=show_processing,
+            fn=lambda: ("*Processing ticket...*", "", ""),
+            inputs=None,
+            outputs=[status_output, result_output, trace_output],
+        ).then(
+            fn=run_triage_with_status,
             inputs=[provider_dropdown, subject_input, body_input],
             outputs=[status_output, result_output, trace_output],
         )
