@@ -44,4 +44,5 @@ omit = [
     "src/ticket_triage_llm/eval/runners/run_local_comparison.py",
     "src/ticket_triage_llm/eval/runners/run_validation_impact.py",
     "src/ticket_triage_llm/eval/runners/run_prompt_comparison.py",
+    "src/ticket_triage_llm/eval/runners/run_adversarial_eval.py",
 ]
