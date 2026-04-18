@@ -1,14 +1,17 @@
 """Aggregate and summarize experiment results — Phase 3."""
 
 import json
+import logging
 import re
 import statistics
-from datetime import datetime
+from datetime import UTC, datetime
 
 from ticket_triage_llm.eval.datasets import TicketRecord
 from ticket_triage_llm.eval.results import ExperimentSummary, ModelMetrics
 from ticket_triage_llm.services.validation import parse_json
 from ticket_triage_llm.storage.trace_repo import TraceRepository
+
+logger = logging.getLogger(__name__)
 
 
 def _percentile(values: list[float], pct: float) -> float:
@@ -93,6 +96,11 @@ def summarize_run(
         successful += 1
         gt = gt_by_id.get(trace.ticket_id) if trace.ticket_id else None
         if gt is None:
+            logger.warning(
+                "Trace %s has ticket_id=%r with no matching ground truth",
+                trace.request_id,
+                trace.ticket_id,
+            )
             continue
 
         output = json.loads(trace.triage_output_json)
@@ -144,7 +152,12 @@ def compose_e2(
 
     def _extract_size(model_name: str) -> float:
         match = re.search(r"(\d+(?:\.\d+)?)b", model_name.lower())
-        return float(match.group(1)) if match else float("inf")
+        if not match:
+            raise ValueError(
+                f"Cannot parse model size from {model_name!r}"
+                " — expected a name containing a size like '2b' or '9b'"
+            )
+        return float(match.group(1))
 
     smallest_metrics = min(
         e1_summary.model_metrics, key=lambda m: _extract_size(m.model)
@@ -155,7 +168,7 @@ def compose_e2(
     return ExperimentSummary(
         experiment_id="E2",
         experiment_name="Model size vs engineering controls",
-        date=datetime.now().strftime("%Y-%m-%d"),
+        date=datetime.now(UTC).strftime("%Y-%m-%d"),
         dataset_size=len(tickets),
         prompt_version="v1",
         model_metrics=[smallest_metrics, largest_noval_metrics],

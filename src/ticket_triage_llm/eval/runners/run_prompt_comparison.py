@@ -5,7 +5,7 @@ Phase 3 runs v1 only. Re-run after Phase 6 adds triage_v2.py.
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ticket_triage_llm.eval.datasets import TicketRecord, load_dataset
@@ -41,7 +41,7 @@ def run_prompt_comparison(
     if prompt_versions is None:
         prompt_versions = ["v1"]
 
-    timestamp = datetime.now().strftime("%Y%m%dT%H%M")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M")
     metrics = []
 
     for version in prompt_versions:
@@ -60,7 +60,7 @@ def run_prompt_comparison(
     return ExperimentSummary(
         experiment_id="E4",
         experiment_name="Prompt comparison",
-        date=datetime.now().strftime("%Y-%m-%d"),
+        date=datetime.now(UTC).strftime("%Y-%m-%d"),
         dataset_size=len(tickets),
         prompt_version=",".join(prompt_versions),
         model_metrics=metrics,

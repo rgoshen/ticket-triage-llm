@@ -2,11 +2,11 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ticket_triage_llm.eval.datasets import TicketRecord, load_dataset
-from ticket_triage_llm.eval.results import ExperimentSummary
+from ticket_triage_llm.eval.results import ExperimentSummary, ModelMetrics
 from ticket_triage_llm.eval.runners.common import run_experiment_pass
 from ticket_triage_llm.eval.runners.summarize_results import compose_e2, summarize_run
 from ticket_triage_llm.providers.base import LlmProvider
@@ -32,7 +32,7 @@ def run_validation_impact(
     Returns:
         Tuple of (E3 ExperimentSummary, E2 9B no-validation run_id)
     """
-    timestamp = datetime.now().strftime("%Y%m%dT%H%M")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M")
 
     run_id_validated = f"e3-4b-validated-{timestamp}"
     logger.info("E3: 4B validated — run_id=%s", run_id_validated)
@@ -73,12 +73,49 @@ def run_validation_impact(
     summary = ExperimentSummary(
         experiment_id="E3",
         experiment_name="Validation impact",
-        date=datetime.now().strftime("%Y-%m-%d"),
+        date=datetime.now(UTC).strftime("%Y-%m-%d"),
         dataset_size=len(tickets),
         prompt_version="v1",
         model_metrics=[validated_metrics, skipped_metrics],
     )
     return summary, e2_run_id
+
+
+def load_e1_summary(e1_path: Path) -> ExperimentSummary | None:
+    if not e1_path.exists():
+        return None
+    e1_data = json.loads(e1_path.read_text())
+    return ExperimentSummary(
+        experiment_id=e1_data["experiment_id"],
+        experiment_name=e1_data["experiment_name"],
+        date=e1_data["date"],
+        dataset_size=e1_data["dataset_size"],
+        prompt_version=e1_data["prompt_version"],
+        model_metrics=[ModelMetrics(**m) for m in e1_data["model_metrics"]],
+    )
+
+
+def compose_and_write_e2(
+    e1_path: Path,
+    e2_run_id: str,
+    tickets: list[TicketRecord],
+    trace_repo: TraceRepository,
+    output_dir: Path,
+) -> ExperimentSummary | None:
+    e1_summary = load_e1_summary(e1_path)
+    if e1_summary is None:
+        logger.info(
+            "E1 results not found at %s — run E1 first, then re-run E3"
+            " to generate E2, or use summarize_results --run-id %s",
+            e1_path,
+            e2_run_id,
+        )
+        return None
+    e2_summary = compose_e2(e1_summary, e2_run_id, tickets, trace_repo)
+    e2_path = output_dir / "e2-size-vs-controls.json"
+    e2_path.write_text(json.dumps(e2_summary.to_dict(), indent=2))
+    logger.info("E2 results written to %s", e2_path)
+    return e2_summary
 
 
 if __name__ == "__main__":
@@ -118,27 +155,10 @@ if __name__ == "__main__":
     out_path.write_text(json.dumps(summary.to_dict(), indent=2))
     logger.info("E3 results written to %s", out_path)
 
-    e1_path = out_dir / "e1-local-comparison.json"
-    if e1_path.exists():
-        from ticket_triage_llm.eval.results import ExperimentSummary, ModelMetrics
-
-        e1_data = json.loads(e1_path.read_text())
-        e1_summary = ExperimentSummary(
-            experiment_id=e1_data["experiment_id"],
-            experiment_name=e1_data["experiment_name"],
-            date=e1_data["date"],
-            dataset_size=e1_data["dataset_size"],
-            prompt_version=e1_data["prompt_version"],
-            model_metrics=[ModelMetrics(**m) for m in e1_data["model_metrics"]],
-        )
-        e2_summary = compose_e2(e1_summary, e2_run_id, tickets, repo)
-        e2_path = out_dir / "e2-size-vs-controls.json"
-        e2_path.write_text(json.dumps(e2_summary.to_dict(), indent=2))
-        logger.info("E2 results written to %s", e2_path)
-    else:
-        logger.info(
-            "E1 results not found at %s — run E1 first, then re-run E3"
-            " to generate E2, or use summarize_results --run-id %s",
-            e1_path,
-            e2_run_id,
-        )
+    compose_and_write_e2(
+        e1_path=out_dir / "e1-local-comparison.json",
+        e2_run_id=e2_run_id,
+        tickets=tickets,
+        trace_repo=repo,
+        output_dir=out_dir,
+    )

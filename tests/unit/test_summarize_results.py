@@ -5,6 +5,10 @@ import pytest
 
 from ticket_triage_llm.eval.datasets import GroundTruth, TicketRecord
 from ticket_triage_llm.eval.results import ExperimentSummary, ModelMetrics
+from ticket_triage_llm.eval.runners.run_validation_impact import (
+    compose_and_write_e2,
+    load_e1_summary,
+)
 from ticket_triage_llm.eval.runners.summarize_results import (
     compose_e2,
     summarize_run,
@@ -461,3 +465,135 @@ class TestComposeE2:
 
         e2 = compose_e2(e1_summary, "e2-9b-noval", TICKETS, repo)
         assert e2.model_metrics[0].model == "qwen3.5:2b"
+
+
+class TestLoadE1Summary:
+    def test_returns_none_for_missing_file(self, tmp_path):
+        assert load_e1_summary(tmp_path / "nonexistent.json") is None
+
+    def test_loads_valid_e1_json(self, tmp_path):
+        import json as _json
+
+        e1_data = {
+            "experiment_id": "E1",
+            "experiment_name": "Model size comparison",
+            "date": "2026-04-17",
+            "dataset_size": 2,
+            "prompt_version": "v1",
+            "model_metrics": [
+                ModelMetrics(
+                    model="qwen3.5:2b",
+                    run_id="e1-2b",
+                    category_accuracy=0.8,
+                    severity_accuracy=0.7,
+                    routing_accuracy=0.9,
+                    escalation_accuracy=1.0,
+                    json_valid_rate=1.0,
+                    schema_pass_rate=1.0,
+                    retry_rate=0.0,
+                    retry_success_rate=0.0,
+                    avg_latency_ms=500.0,
+                    p50_latency_ms=450.0,
+                    p95_latency_ms=800.0,
+                    avg_tokens_per_second=60.0,
+                    avg_tokens_input=100.0,
+                    avg_tokens_output=50.0,
+                    avg_tokens_total=150.0,
+                    total_tickets=2,
+                    successful_tickets=2,
+                ).to_dict(),
+            ],
+        }
+        path = tmp_path / "e1.json"
+        path.write_text(_json.dumps(e1_data))
+        result = load_e1_summary(path)
+        assert result is not None
+        assert result.experiment_id == "E1"
+        assert result.model_metrics[0].model == "qwen3.5:2b"
+
+
+class TestComposeAndWriteE2:
+    def test_writes_e2_json_when_e1_exists(self, tmp_path):
+        import json as _json
+
+        e1_data = {
+            "experiment_id": "E1",
+            "experiment_name": "Model size comparison",
+            "date": "2026-04-17",
+            "dataset_size": 2,
+            "prompt_version": "v1",
+            "model_metrics": [
+                ModelMetrics(
+                    model="qwen3.5:2b",
+                    run_id="e1-2b",
+                    category_accuracy=0.8,
+                    severity_accuracy=0.7,
+                    routing_accuracy=0.9,
+                    escalation_accuracy=1.0,
+                    json_valid_rate=1.0,
+                    schema_pass_rate=1.0,
+                    retry_rate=0.0,
+                    retry_success_rate=0.0,
+                    avg_latency_ms=500.0,
+                    p50_latency_ms=450.0,
+                    p95_latency_ms=800.0,
+                    avg_tokens_per_second=60.0,
+                    avg_tokens_input=100.0,
+                    avg_tokens_output=50.0,
+                    avg_tokens_total=150.0,
+                    total_tickets=2,
+                    successful_tickets=2,
+                ).to_dict(),
+            ],
+        }
+        e1_path = tmp_path / "e1-local-comparison.json"
+        e1_path.write_text(_json.dumps(e1_data))
+
+        noval_traces = [
+            _make_trace(
+                "r1",
+                "e2-9b-noval",
+                "n-001",
+                triage_output=VALID_OUTPUT,
+                validation_status="skipped",
+            ),
+            _make_trace(
+                "r2",
+                "e2-9b-noval",
+                "n-002",
+                triage_output={
+                    **VALID_OUTPUT,
+                    "category": "account_access",
+                    "severity": "high",
+                    "routingTeam": "support",
+                },
+                validation_status="skipped",
+            ),
+        ]
+        repo = FakeTraceRepo(noval_traces)
+
+        result = compose_and_write_e2(
+            e1_path=e1_path,
+            e2_run_id="e2-9b-noval",
+            tickets=TICKETS,
+            trace_repo=repo,
+            output_dir=tmp_path,
+        )
+        assert result is not None
+        assert result.experiment_id == "E2"
+        e2_path = tmp_path / "e2-size-vs-controls.json"
+        assert e2_path.exists()
+        written = _json.loads(e2_path.read_text())
+        assert written["experiment_id"] == "E2"
+
+    def test_returns_none_when_e1_missing(self, tmp_path):
+        repo = FakeTraceRepo([])
+        result = compose_and_write_e2(
+            e1_path=tmp_path / "nonexistent.json",
+            e2_run_id="e2-9b-noval",
+            tickets=TICKETS,
+            trace_repo=repo,
+            output_dir=tmp_path,
+        )
+        assert result is None
+        assert not (tmp_path / "e2-size-vs-controls.json").exists()

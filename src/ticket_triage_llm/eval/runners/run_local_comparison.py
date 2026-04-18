@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ticket_triage_llm.eval.datasets import TicketRecord, load_dataset
@@ -21,7 +21,7 @@ def run_local_comparison(
     trace_repo: TraceRepository,
 ) -> ExperimentSummary:
     """Run all local model sizes through the normal set with prompt v1."""
-    timestamp = datetime.now().strftime("%Y%m%dT%H%M")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M")
     metrics = []
 
     for provider in providers:
@@ -41,7 +41,7 @@ def run_local_comparison(
     return ExperimentSummary(
         experiment_id="E1",
         experiment_name="Model size comparison",
-        date=datetime.now().strftime("%Y-%m-%d"),
+        date=datetime.now(UTC).strftime("%Y-%m-%d"),
         dataset_size=len(tickets),
         prompt_version="v1",
         model_metrics=metrics,
