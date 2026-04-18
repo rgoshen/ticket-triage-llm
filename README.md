@@ -115,6 +115,31 @@ curl -X POST http://localhost:7860/api/v1/triage \
   -d '{"ticket_body": "My printer is offline and I cannot print any documents.", "ticket_subject": "Printer not working"}'
 ```
 
+### Run evaluation experiments
+
+The eval harness runs four experiments against the triage pipeline using the normal dataset (`data/normal_set.jsonl`, 35 tickets). All runners require Ollama running with models pulled.
+
+```bash
+# E1: Model size comparison — runs each model in OLLAMA_MODELS through the full
+# normal set with prompt v1 and full validation. One run_id per model.
+OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b \
+  uv run python -m ticket_triage_llm.eval.runners.run_local_comparison
+
+# E3: Validation impact — runs 4B with and without validation, plus 9B without
+# validation (the E2 data point). Three passes total.
+uv run python -m ticket_triage_llm.eval.runners.run_validation_impact
+
+# E4: Prompt comparison — runs v1 (and v2 after Phase 6) on one model.
+uv run python -m ticket_triage_llm.eval.runners.run_prompt_comparison
+
+# Summarize any run by its run_id (printed by the runners during execution)
+uv run python -m ticket_triage_llm.eval.runners.summarize_results --run-id <RUN_ID>
+```
+
+All runners accept `--db-path`, `--dataset-path`, and `--output-dir` flags (defaults: `data/traces.db`, `data/normal_set.jsonl`, `data/phase3/`). Results are written as JSON to `data/phase3/` and as tagged traces in the SQLite database.
+
+**E2 (Model size vs engineering controls)** is not a separate runner — it's composed by `summarize_results.py` from the 2B row of E1 and the 9B-no-validation row produced by E3.
+
 ## Repository structure
 
 ```text

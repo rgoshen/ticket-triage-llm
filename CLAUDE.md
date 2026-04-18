@@ -2,9 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status: Phase 2 complete, Phase 3 next
+## Project status: Phase 3 complete, Phase 4 next
 
-Phases 0 (smoke test), F (foundation), 1 (happy-path slice), and 2 (provider router, retry, guardrail) are complete. The repository has 178 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, and all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI). Phase 3 (evaluation harness) is next — see `TODO.md` for the full phase plan with checkboxes.
+Phases 0 (smoke test), F (foundation), 1 (happy-path slice), 2 (provider router, retry, guardrail), and 3 (evaluation harness) are complete. The repository has 213 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI), and a full eval harness with four experiment runners, ground-truth correlation via `ticket_id`, and a summarizer computing accuracy/reliability/latency metrics. Phase 4 (adversarial evaluation) is next — see `TODO.md` for the full phase plan with checkboxes.
 
 Do not invent tooling — the stack is fixed (see below) and decisions about deviation belong in an ADR or the decision log. When adding new modules, follow the existing layout under `src/ticket_triage_llm/`.
 
@@ -101,18 +101,22 @@ uv run pytest --cov=ticket_triage_llm --cov-fail-under=80
 uv run ruff check .
 uv run ruff format .
 
-# Run the app natively — Phase 1+ (not yet functional)
+# Run the app natively (requires Ollama running + OLLAMA_MODELS env var)
 uv run python -m ticket_triage_llm.app
 
-# Run in Docker — Phase 1+ (not yet functional)
+# Run in Docker (app container only — Ollama stays on host)
 docker build -t ticket-triage-llm .
 docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
 
-# Eval runners — Phase 3+ (not yet functional)
+# Eval runners (requires Ollama running with models pulled)
+# E1: model size comparison — runs all OLLAMA_MODELS through normal set
 uv run python -m ticket_triage_llm.eval.runners.run_local_comparison
+# E3: validation impact — runs 4B validated/skipped + 9B-no-validation (E2 data point)
 uv run python -m ticket_triage_llm.eval.runners.run_validation_impact
+# E4: prompt comparison — v1 only until Phase 6 adds v2
 uv run python -m ticket_triage_llm.eval.runners.run_prompt_comparison
-uv run python -m ticket_triage_llm.eval.runners.summarize_results
+# Summarize a specific run by run_id
+uv run python -m ticket_triage_llm.eval.runners.summarize_results --run-id <RUN_ID>
 
 # Ollama prerequisites (must be pulled on the host before the app works)
 ollama pull qwen3.5:2b
