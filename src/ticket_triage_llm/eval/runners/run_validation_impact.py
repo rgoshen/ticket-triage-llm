@@ -8,7 +8,7 @@ from pathlib import Path
 from ticket_triage_llm.eval.datasets import TicketRecord, load_dataset
 from ticket_triage_llm.eval.results import ExperimentSummary
 from ticket_triage_llm.eval.runners.common import run_experiment_pass
-from ticket_triage_llm.eval.runners.summarize_results import summarize_run
+from ticket_triage_llm.eval.runners.summarize_results import compose_e2, summarize_run
 from ticket_triage_llm.providers.base import LlmProvider
 from ticket_triage_llm.storage.trace_repo import TraceRepository
 
@@ -117,7 +117,28 @@ if __name__ == "__main__":
     out_path = out_dir / "e3-validation-impact.json"
     out_path.write_text(json.dumps(summary.to_dict(), indent=2))
     logger.info("E3 results written to %s", out_path)
-    logger.info(
-        "E2 9B no-validation run_id: %s (use with summarize_results)",
-        e2_run_id,
-    )
+
+    e1_path = out_dir / "e1-local-comparison.json"
+    if e1_path.exists():
+        from ticket_triage_llm.eval.results import ExperimentSummary, ModelMetrics
+
+        e1_data = json.loads(e1_path.read_text())
+        e1_summary = ExperimentSummary(
+            experiment_id=e1_data["experiment_id"],
+            experiment_name=e1_data["experiment_name"],
+            date=e1_data["date"],
+            dataset_size=e1_data["dataset_size"],
+            prompt_version=e1_data["prompt_version"],
+            model_metrics=[ModelMetrics(**m) for m in e1_data["model_metrics"]],
+        )
+        e2_summary = compose_e2(e1_summary, e2_run_id, tickets, repo)
+        e2_path = out_dir / "e2-size-vs-controls.json"
+        e2_path.write_text(json.dumps(e2_summary.to_dict(), indent=2))
+        logger.info("E2 results written to %s", e2_path)
+    else:
+        logger.info(
+            "E1 results not found at %s — run E1 first, then re-run E3"
+            " to generate E2, or use summarize_results --run-id %s",
+            e1_path,
+            e2_run_id,
+        )
