@@ -163,21 +163,21 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ## [2026-04-17] Phase C — Cleanup (deferred polish from PR reviews)
 
-- [ ] Type `_save_trace` `model_result` parameter as `ModelResult | None` instead of `object | None` (triage.py:149)
-- [ ] Reduce `_save_trace` call-site duplication — extract common kwargs or consolidate to single exit point (triage.py:53-133)
-- [ ] Remove verbose docstrings that restate type signatures (prompt.py, validation.py) per CLAUDE.md "no comments" default
-- [ ] Update design spec and plan docs to reflect final signatures (`run_triage` returns tuple, provider catches `APIError`) or add staleness note
-- [ ] Extract shared `FakeProvider`/`FakeTraceRepo` into `tests/conftest.py` or `tests/fakes.py`
-- [ ] Rename `_trace` to `_` in API route if genuinely unused, or keep named if Phase 2 will use it
-- [ ] Refactor `api/triage_route.py` module-level globals to FastAPI `app.state` or `Depends()` pattern (prevents test state leakage, enables multiple app instances)
-- [ ] Harden repair prompt delimiter — `prompts/repair_json_v1.py` wraps raw output in triple backticks; if the model's failed output itself contains backticks, the message is structurally ambiguous
-- [ ] Include pre-repair error in `TriageFailure.message` when repair ProviderError drops the original schema error detail (retry.py)
-- [ ] Extract `RetryResult(TriageFailure(...))` helper in `retry.py` to reduce ~30 lines of near-identical construction
-- [ ] Fix `.gitignore` oddities: `Icon[]` split across lines, `*/memory/` should be `**/memory/`
+- [x] ~~Type `_save_trace` `model_result` parameter as `ModelResult | None` instead of `object | None`~~ — already correct after Phase 3 refactoring
+- [x] ~~Reduce `_save_trace` call-site duplication~~ — current 4-call-site pattern is clear after Phase 3 skip_validation addition
+- [x] Remove verbose docstrings that restate type signatures (prompt.py, validation.py) per CLAUDE.md "no comments" default
+- [ ] Update design spec and plan docs to reflect final signatures — deferred to Phase 7
+- [x] Extract shared `FakeProvider`/`FakeTraceRepo` into `tests/fakes.py`
+- [x] Rename `_trace` to `_` in API route (genuinely unused)
+- [ ] Refactor `api/triage_route.py` module-level globals to FastAPI `app.state` or `Depends()` pattern — deferred to Phase 7
+- [x] Harden repair prompt delimiter — switched from triple backticks to XML `<failed_output>` tags
+- [ ] Include pre-repair error in `TriageFailure.message` when repair ProviderError drops the original schema error detail — deferred to Phase 7
+- [x] Extract `RetryResult(TriageFailure(...))` helper in `retry.py`
+- [x] Fix `.gitignore` oddities: `*/memory/` → `**/memory/` (Icon[] is correct macOS syntax)
 
 **Dependencies:** none — can run anytime after Phase 1.
 **PLAN.md mapping:** none — these are PR review polish items, not plan phases.
-**Branch:** `feature/phase-cleanup` or bundled into Phase 7 hardening.
+**Branch:** `feature/phase-cleanup`.
 
 ---
 
