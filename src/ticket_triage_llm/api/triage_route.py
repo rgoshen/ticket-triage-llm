@@ -43,7 +43,7 @@ def triage_ticket(payload: TriageInput) -> TriageResult:
             detail=f"Unknown provider: {payload.model!r}",
         ) from None
 
-    result, _trace = run_triage(
+    result, _ = run_triage(
         ticket_body=payload.ticket_body,
         ticket_subject=payload.ticket_subject,
         provider=provider,

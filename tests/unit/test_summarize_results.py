@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from tests.fakes import FakeTraceRepo
 from ticket_triage_llm.eval.datasets import GroundTruth, TicketRecord
 from ticket_triage_llm.eval.results import ExperimentSummary, ModelMetrics
 from ticket_triage_llm.eval.runners.run_validation_impact import (
@@ -92,29 +93,6 @@ def _make_trace(
         or (json.dumps(triage_output) if triage_output else "bad"),
         triage_output_json=triage_json,
     )
-
-
-class FakeTraceRepo:
-    def __init__(self, traces: list[TraceRecord]):
-        self._traces = traces
-
-    def save_trace(self, trace: TraceRecord) -> None:
-        self._traces.append(trace)
-
-    def get_recent_traces(self, limit: int) -> list[TraceRecord]:
-        return self._traces[:limit]
-
-    def get_traces_by_run(self, run_id: str) -> list[TraceRecord]:
-        return [t for t in self._traces if t.run_id == run_id]
-
-    def get_traces_by_provider(self, provider: str) -> list[TraceRecord]:
-        raise NotImplementedError
-
-    def get_traces_since(self, since: datetime) -> list[TraceRecord]:
-        raise NotImplementedError
-
-    def get_all_traces(self) -> list[TraceRecord]:
-        return list(self._traces)
 
 
 class TestSummarizeRunAccuracy:
