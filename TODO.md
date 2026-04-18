@@ -163,21 +163,21 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ## [2026-04-17] Phase C — Cleanup (deferred polish from PR reviews)
 
-- [ ] Type `_save_trace` `model_result` parameter as `ModelResult | None` instead of `object | None` (triage.py:149)
-- [ ] Reduce `_save_trace` call-site duplication — extract common kwargs or consolidate to single exit point (triage.py:53-133)
-- [ ] Remove verbose docstrings that restate type signatures (prompt.py, validation.py) per CLAUDE.md "no comments" default
-- [ ] Update design spec and plan docs to reflect final signatures (`run_triage` returns tuple, provider catches `APIError`) or add staleness note
-- [ ] Extract shared `FakeProvider`/`FakeTraceRepo` into `tests/conftest.py` or `tests/fakes.py`
-- [ ] Rename `_trace` to `_` in API route if genuinely unused, or keep named if Phase 2 will use it
-- [ ] Refactor `api/triage_route.py` module-level globals to FastAPI `app.state` or `Depends()` pattern (prevents test state leakage, enables multiple app instances)
-- [ ] Harden repair prompt delimiter — `prompts/repair_json_v1.py` wraps raw output in triple backticks; if the model's failed output itself contains backticks, the message is structurally ambiguous
-- [ ] Include pre-repair error in `TriageFailure.message` when repair ProviderError drops the original schema error detail (retry.py)
-- [ ] Extract `RetryResult(TriageFailure(...))` helper in `retry.py` to reduce ~30 lines of near-identical construction
-- [ ] Fix `.gitignore` oddities: `Icon[]` split across lines, `*/memory/` should be `**/memory/`
+- [x] ~~Type `_save_trace` `model_result` parameter as `ModelResult | None` instead of `object | None`~~ — already correct after Phase 3 refactoring
+- [x] ~~Reduce `_save_trace` call-site duplication~~ — current 4-call-site pattern is clear after Phase 3 skip_validation addition
+- [x] Remove verbose docstrings that restate type signatures (prompt.py, validation.py) per CLAUDE.md "no comments" default
+- [ ] Update design spec and plan docs to reflect final signatures — deferred to Phase 7
+- [x] Extract shared `FakeProvider`/`FakeTraceRepo` into `tests/fakes.py`
+- [x] Rename `_trace` to `_` in API route (genuinely unused)
+- [ ] Refactor `api/triage_route.py` module-level globals to FastAPI `app.state` or `Depends()` pattern — deferred to Phase 7
+- [x] Harden repair prompt delimiter — switched from triple backticks to XML `<failed_output>` tags
+- [ ] Include pre-repair error in `TriageFailure.message` when repair ProviderError drops the original schema error detail — deferred to Phase 7
+- [x] Extract `RetryResult(TriageFailure(...))` helper in `retry.py`
+- [x] Fix `.gitignore` oddities: `*/memory/` → `**/memory/` (Icon[] is correct macOS syntax)
 
 **Dependencies:** none — can run anytime after Phase 1.
 **PLAN.md mapping:** none — these are PR review polish items, not plan phases.
-**Branch:** `feature/phase-cleanup` or bundled into Phase 7 hardening.
+**Branch:** `feature/phase-cleanup`.
 
 ---
 
@@ -213,6 +213,14 @@ P2 and P3 can kick off in parallel once P1 merges, subject to the "E3 needs retr
 **Outcome:** 213 tests, 92.47% coverage, ruff clean. Eval runners produce tagged traces and JSON result files in `data/phase3/`. Summarizer computes accuracy, reliability, and operational metrics from traces joined to ground truth. E2 composed from E1 + E3 data.
 
 **References:** `SUMMARY.md` (Phase 3 entry), design spec at `docs/superpowers/specs/2026-04-17-phase-3-eval-harness-design.md`, implementation plan at `docs/superpowers/plans/2026-04-17-phase-3-eval-harness.md`.
+
+### [2026-04-17] Phase 2 — Provider abstraction, retry, and guardrail (COMPLETE)
+
+**Objective:** Config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, and model selector dropdown in the Triage tab.
+
+**Outcome:** 178 tests, 98.76% coverage, ruff clean. `ProviderRegistry` driven by `OLLAMA_MODELS` env var. Bounded retry service with repair prompt. Heuristic guardrail with `pass`/`warn`/`block` + namespaced `matched_rules`. PR review identified 4 mediums (fixed) and 4 lows (deferred to Phase C).
+
+**References:** `SUMMARY.md` (Phase 2 entry), design spec at `docs/superpowers/specs/2026-04-17-phase-2-providers-retry-guardrail-design.md`, PR #8 and #9 (merged to `develop`/`main`).
 
 ### [2026-04-17] Phase 1 — Single happy-path slice (COMPLETE)
 

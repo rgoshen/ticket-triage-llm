@@ -87,18 +87,20 @@ Analytical findings from the smoke test data. These inform Phase 1+ implementati
 
 **5. Quality differentiation is subtle at this sample size.** All three models achieved 100% accuracy on category, severity, routing, and escalation across 3 tickets. Quality differences — summary precision, draft reply professionalism, confidence calibration — are visible but not measurable at n=3. The Phase 3 evaluation on 35 tickets will provide enough data to characterize quality differences meaningfully.
 
+**6. Quantization levels differ across model sizes.** The 2B uses Q8_0 (8-bit) quantization while the 4B and 9B use Q4_K_M (4-bit). This is a confound in the size comparison: the 2B carries more precision per parameter than the larger models. Differences in structured-output reliability between the 2B and the others cannot be attributed purely to parameter count — the quantization scheme is also a variable. Ollama does not offer a Q4_K_M variant for the 2B or a Q8_0 variant for the larger sizes, so this confound cannot be controlled within the current toolchain.
+
 ---
 
 ## Sampling Configuration Log
 
 ### Baseline Configuration
 
-| Parameter          | Planned value  | Actual value used | Notes                                |
-| ------------------ | -------------- | ----------------- | ------------------------------------ |
-| Temperature        | 0.2            |                   | Locked 2026-04-16 — see decision log |
-| Top-p              | 0.9            |                   | Locked 2026-04-16 — see decision log |
-| Top-k              | 40             |                   |                                      |
-| Repetition penalty | 1.0 (disabled) |                   |                                      |
+| Parameter          | Planned value  | Actual value used | Notes                                                        |
+| ------------------ | -------------- | ----------------- | ------------------------------------------------------------ |
+| Temperature        | 0.2            | 0.2               | Locked 2026-04-16 — see decision log. Set in `config.py`.   |
+| Top-p              | 0.9            | 0.9               | Locked 2026-04-16 — see decision log. Set in `config.py`.   |
+| Top-k              | 40             | 40                | Set in `config.py`, passed via `extra_body` to Ollama.       |
+| Repetition penalty | 1.0 (disabled) | 1.0               | Set in `config.py`, passed via `extra_body` to Ollama.       |
 
 ### Sampling Observations During Development
 
@@ -106,8 +108,7 @@ Log any observations about how sampling settings affect output quality as you en
 
 | Date | Model | Parameter changed | From → To | Observed effect | Keep change? |
 | ---- | ----- | ----------------- | --------- | --------------- | ------------ |
-|      |       |                   |           |                 |              |
-|      |       |                   |           |                 |              |
+| — | — | None | — | No sampling parameter changes made through Phase 3. Baseline values (temperature=0.2, top_p=0.9, top_k=40, repetition_penalty=1.0) used unchanged across Phase 0 smoke test and all Phase 1–3 development. | N/A |
 |      |       |                   |           |                 |              |
 |      |       |                   |           |                 |              |
 
@@ -130,18 +131,20 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 
 ### Experiment 1: Model Size Comparison
 
-**Date run:** _______________
-**Dataset:** gold_tickets.json (__ tickets)
+**Date run:** 2026-04-18
+**Dataset:** normal_set.jsonl (35 tickets)
 **Prompt version:** v1
-**Sampling config:** temperature=___ top_p=___ top_k=___
+**Sampling config:** temperature=0.2 top_p=0.9 top_k=40
 
 | Model       | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Avg latency | p95 latency | Tokens/s | Notes |
 | ----------- | ------ | ------------ | ------------ | ----------- | ---------- | ---------- | ----------- | ----------- | -------- | ----- |
-| Qwen 3.5 2B |        |              |              |             |            |            |             |             |          |       |
-| Qwen 3.5 4B |        |              |              |             |            |            |             |             |          |       |
-| Qwen 3.5 9B |        |              |              |             |            |            |             |             |          |       |
+| Qwen 3.5 2B | e1-2b-20260418T0103 | 2.9% | 0.0% | 2.9% | 2.9% | 97.1% | 69,077ms | 72,005ms | 58.4 | 1/35 successful. Q8_0 quant. Reasoning mode produces ~4,031 output tokens/req but almost never valid JSON. |
+| Qwen 3.5 4B | e1-4b-20260418T0103 | 57.1% | 51.4% | 57.1% | 82.9% | 42.9% | 73,886ms | 129,101ms | 32.0 | 29/35 successful. Q4_K_M quant. Best accuracy and reliability of the three. |
+| Qwen 3.5 9B | e1-9b-20260418T0103 | 54.3% | 48.6% | 54.3% | 74.3% | 51.4% | 107,012ms | 168,789ms | 24.3 | 26/35 successful. Q4_K_M quant. Slower and less reliable than 4B despite more parameters. |
 
-**Key finding from Experiment 1:** _______________________________________________
+**Key finding from Experiment 1:** The 4B is the best performer across all metrics — higher accuracy, better JSON validity, faster, and more successful retries than the 9B. The 2B is essentially unusable for structured output (1/35 success rate). Bigger is not better in this setup: the 9B's longer reasoning chains produce more malformed output than the 4B's.
+
+**Limitation:** The 2B uses Q8_0 quantization while the 4B and 9B use Q4_K_M. The 2B's poor structured-output performance cannot be attributed solely to parameter count — the different quantization scheme is a confound. See Phase 0 Observation #6.
 
 ### Experiment 2: Model Size vs Engineering Controls
 
@@ -260,9 +263,9 @@ Fill in from actual benchmark token counts. See `docs/cost-analysis.md` for the 
 
 | Model       | Avg tokens in | Avg tokens out | Avg total |
 | ----------- | ------------- | -------------- | --------- |
-| Qwen 3.5 2B |               |                |           |
-| Qwen 3.5 4B |               |                |           |
-| Qwen 3.5 9B |               |                |           |
+| Qwen 3.5 2B | 920           | 4,031          | 4,951     |
+| Qwen 3.5 4B | 729           | 2,369          | 3,098     |
+| Qwen 3.5 9B | 765           | 2,612          | 3,378     |
 
 ### Hardware Cost
 
@@ -291,39 +294,39 @@ Using Qwen 3.5 Plus pricing ($0.26/M input, $1.56/M output):
 ## Overall Project Completion Checklist
 
 ### Build phases
-- ☐ Phase 0: Smoke test complete, model lineup confirmed
-- ☐ Phase 1: Single happy-path slice working (native + Docker)
-- ☐ Phase 2: Provider abstraction, multiple models, guardrail, retry
-- ☐ Phase 3: Eval harness, labeled datasets, experiments run
+- ☒ Phase 0: Smoke test complete, model lineup confirmed
+- ☒ Phase 1: Single happy-path slice working (native + Docker)
+- ☒ Phase 2: Provider abstraction, multiple models, guardrail, retry
+- ☒ Phase 3: Eval harness, labeled datasets, experiments run
 - ☐ Phase 4: Adversarial evaluation, guardrail iteration
 - ☐ Phase 5: Dashboard, traces, live monitoring
 - ☐ Phase 6: Prompt v2, prompt comparison experiment
 - ☐ Phase 7: Hardening, docs, deployment testing, presentation prep
 
 ### Rubric coverage
-- ☐ Model running and producing meaningful outputs
-- ☐ Evaluation dataset created and used
-- ☐ Innovation demonstrated (prompt injection investigation)
-- ☐ Deployed in production environment (local + Docker)
-- ☐ Accessible via API endpoint (FastAPI + Swagger)
-- ☐ Inference pipeline documented and optimized
-- ☐ Sampling method documented with rationale
-- ☐ Technical documentation comprehensive
-- ☐ Demo rehearsed (at least twice)
-- ☐ Presentation slides complete (6 max)
+- ☒ Model running and producing meaningful outputs
+- ☒ Evaluation dataset created and used
+- ☐ Innovation demonstrated (prompt injection investigation) — Phase 4
+- ☒ Deployed in production environment (local + Docker)
+- ☒ Accessible via API endpoint (FastAPI + Swagger)
+- ☒ Inference pipeline documented and optimized
+- ☒ Sampling method documented with rationale
+- ☐ Technical documentation comprehensive — Phase 7
+- ☐ Demo rehearsed (at least twice) — Phase 7
+- ☐ Presentation slides complete (6 max) — Phase 7
 
 ### Documentation deliverables
-- ☐ PLAN.md current
-- ☐ README.md current
-- ☐ All ADRs written and indexed
-- ☐ Decision log up to date
-- ☐ architecture.md current
-- ☐ evaluation-plan.md current
-- ☐ threat-model.md current
-- ☐ tradeoffs.md current
-- ☐ cost-analysis.md populated with real data
-- ☐ future-improvements.md current
-- ☐ prompt-versions.md written
-- ☐ DEPLOYMENT.md written and tested
+- ☒ PLAN.md current
+- ☒ README.md current
+- ☒ All ADRs written and indexed
+- ☒ Decision log up to date
+- ☒ architecture.md current
+- ☒ evaluation-plan.md current
+- ☒ threat-model.md current
+- ☒ tradeoffs.md current
+- ☐ cost-analysis.md populated with real data — token data filled, costs pending
+- ☒ future-improvements.md current
+- ☐ prompt-versions.md written — Phase 6
+- ☐ DEPLOYMENT.md written and tested — Phase 7
 - ☐ demo-script.md written
 - ☐ presentation-notes.md written

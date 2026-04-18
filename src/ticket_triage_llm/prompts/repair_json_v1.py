@@ -47,7 +47,7 @@ false otherwise\
 def build_repair_user_prompt(raw_output: str, error_message: str) -> str:
     return (
         "Your previous output was:\n\n"
-        f"```\n{raw_output}\n```\n\n"
+        f"<failed_output>\n{raw_output}\n</failed_output>\n\n"
         f"The error was: {error_message}\n\n"
         "Please produce the corrected JSON object now."
     )

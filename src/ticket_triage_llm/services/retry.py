@@ -31,6 +31,28 @@ class RetryResult:
     repair_model_result: ModelResult | None = None
 
 
+def _failure_result(
+    category: str,
+    detected_by: str,
+    message: str,
+    raw_output: str,
+    retry_count: int,
+    repair_model_result: ModelResult | None = None,
+) -> RetryResult:
+    return RetryResult(
+        result=TriageFailure(
+            category=category,
+            detected_by=detected_by,
+            message=message,
+            raw_model_output=raw_output,
+            retry_count=retry_count,
+        ),
+        retry_count=retry_count,
+        final_raw_output=raw_output,
+        repair_model_result=repair_model_result,
+    )
+
+
 def _attempt_repair(
     provider: LlmProvider,
     raw_output: str,
@@ -61,46 +83,34 @@ def validate_or_retry(
             provider, raw_output, "Failed to parse output as JSON"
         )
         if repair_mr is None:
-            return RetryResult(
-                result=TriageFailure(
-                    category="model_unreachable",
-                    detected_by="provider",
-                    message="Provider error during repair attempt",
-                    raw_model_output=raw_output,
-                    retry_count=1,
-                ),
+            return _failure_result(
+                "model_unreachable",
+                "provider",
+                "Provider error during repair attempt",
+                raw_output,
                 retry_count=1,
-                final_raw_output=raw_output,
             )
 
         repair_raw = repair_mr.raw_output
         parsed = parse_json(repair_raw)
         if parsed is None:
-            return RetryResult(
-                result=TriageFailure(
-                    category="parse_failure",
-                    detected_by="parser",
-                    message="Failed to parse repaired output as JSON",
-                    raw_model_output=repair_raw,
-                    retry_count=1,
-                ),
+            return _failure_result(
+                "parse_failure",
+                "parser",
+                "Failed to parse repaired output as JSON",
+                repair_raw,
                 retry_count=1,
-                final_raw_output=repair_raw,
                 repair_model_result=repair_mr,
             )
 
         output, schema_error = validate_schema_with_error(parsed)
         if output is None:
-            return RetryResult(
-                result=TriageFailure(
-                    category="schema_failure",
-                    detected_by="schema",
-                    message=f"Repaired output failed schema validation: {schema_error}",
-                    raw_model_output=repair_raw,
-                    retry_count=1,
-                ),
+            return _failure_result(
+                "schema_failure",
+                "schema",
+                f"Repaired output failed schema validation: {schema_error}",
+                repair_raw,
                 retry_count=1,
-                final_raw_output=repair_raw,
                 repair_model_result=repair_mr,
             )
 
@@ -123,49 +133,35 @@ def validate_or_retry(
         provider, raw_output, f"Schema validation failed: {schema_error}"
     )
     if repair_mr is None:
-        return RetryResult(
-            result=TriageFailure(
-                category="model_unreachable",
-                detected_by="provider",
-                message="Provider error during repair attempt",
-                raw_model_output=raw_output,
-                retry_count=1,
-            ),
+        return _failure_result(
+            "model_unreachable",
+            "provider",
+            "Provider error during repair attempt",
+            raw_output,
             retry_count=1,
-            final_raw_output=raw_output,
         )
 
     repair_raw = repair_mr.raw_output
     repair_parsed = parse_json(repair_raw)
     if repair_parsed is None:
-        return RetryResult(
-            result=TriageFailure(
-                category="schema_failure",
-                detected_by="schema",
-                message=(
-                    f"Original schema error: {schema_error}; "
-                    "repair produced unparseable output"
-                ),
-                raw_model_output=repair_raw,
-                retry_count=1,
-            ),
+        return _failure_result(
+            "schema_failure",
+            "schema",
+            f"Original schema error: {schema_error}; "
+            "repair produced unparseable output",
+            repair_raw,
             retry_count=1,
-            final_raw_output=repair_raw,
             repair_model_result=repair_mr,
         )
 
     repair_output, repair_schema_error = validate_schema_with_error(repair_parsed)
     if repair_output is None:
-        return RetryResult(
-            result=TriageFailure(
-                category="schema_failure",
-                detected_by="schema",
-                message=f"Repair also failed schema validation: {repair_schema_error}",
-                raw_model_output=repair_raw,
-                retry_count=1,
-            ),
+        return _failure_result(
+            "schema_failure",
+            "schema",
+            f"Repair also failed schema validation: {repair_schema_error}",
+            repair_raw,
             retry_count=1,
-            final_raw_output=repair_raw,
             repair_model_result=repair_mr,
         )
 
