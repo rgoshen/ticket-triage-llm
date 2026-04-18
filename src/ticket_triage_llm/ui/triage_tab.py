@@ -144,9 +144,9 @@ def build_triage_tab(
         )
 
         cancel_btn.click(
-            fn=None,
+            fn=lambda: ("*Ticket submission cancelled.*", "", ""),
             inputs=None,
-            outputs=None,
+            outputs=[status_output, result_output, trace_output],
             cancels=[triage_event],
         )
 
