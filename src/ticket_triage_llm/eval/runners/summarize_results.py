@@ -1,6 +1,7 @@
 """Aggregate and summarize experiment results — Phase 3."""
 
 import json
+import re
 import statistics
 from datetime import datetime
 
@@ -140,13 +141,14 @@ def compose_e2(
     model *with* full validation against the largest model *without* validation,
     answering whether engineering controls compensate for model size.
     """
-    smallest_metrics = None
-    for m in e1_summary.model_metrics:
-        if "2b" in m.model.lower():
-            smallest_metrics = m
-            break
-    if smallest_metrics is None:
-        smallest_metrics = e1_summary.model_metrics[0]
+
+    def _extract_size(model_name: str) -> float:
+        match = re.search(r"(\d+(?:\.\d+)?)b", model_name.lower())
+        return float(match.group(1)) if match else float("inf")
+
+    smallest_metrics = min(
+        e1_summary.model_metrics, key=lambda m: _extract_size(m.model)
+    )
 
     largest_noval_metrics = summarize_run(e2_9b_noval_run_id, tickets, trace_repo)
 

@@ -398,3 +398,66 @@ class TestComposeE2:
         assert len(e2.model_metrics) == 2
         assert e2.model_metrics[0].model == "qwen3.5:2b"
         assert e2.model_metrics[1].run_id == "e2-9b-noval"
+
+    def test_picks_smallest_regardless_of_order(self):
+        def _metrics(model: str, run_id: str) -> ModelMetrics:
+            return ModelMetrics(
+                model=model,
+                run_id=run_id,
+                category_accuracy=0.8,
+                severity_accuracy=0.7,
+                routing_accuracy=0.9,
+                escalation_accuracy=1.0,
+                json_valid_rate=1.0,
+                schema_pass_rate=1.0,
+                retry_rate=0.0,
+                retry_success_rate=0.0,
+                avg_latency_ms=500.0,
+                p50_latency_ms=450.0,
+                p95_latency_ms=800.0,
+                avg_tokens_per_second=60.0,
+                avg_tokens_input=100.0,
+                avg_tokens_output=50.0,
+                avg_tokens_total=150.0,
+                total_tickets=2,
+                successful_tickets=2,
+            )
+
+        e1_summary = ExperimentSummary(
+            experiment_id="E1",
+            experiment_name="Model size comparison",
+            date="2026-04-17",
+            dataset_size=2,
+            prompt_version="v1",
+            model_metrics=[
+                _metrics("qwen3.5:9b", "e1-9b"),
+                _metrics("qwen3.5:4b", "e1-4b"),
+                _metrics("qwen3.5:2b", "e1-2b"),
+            ],
+        )
+
+        noval_traces = [
+            _make_trace(
+                "r1",
+                "e2-9b-noval",
+                "n-001",
+                triage_output=VALID_OUTPUT,
+                validation_status="skipped",
+            ),
+            _make_trace(
+                "r2",
+                "e2-9b-noval",
+                "n-002",
+                triage_output={
+                    **VALID_OUTPUT,
+                    "category": "account_access",
+                    "severity": "high",
+                    "routingTeam": "support",
+                },
+                validation_status="skipped",
+            ),
+        ]
+        repo = FakeTraceRepo(noval_traces)
+
+        e2 = compose_e2(e1_summary, "e2-9b-noval", TICKETS, repo)
+        assert e2.model_metrics[0].model == "qwen3.5:2b"
