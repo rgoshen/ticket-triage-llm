@@ -48,15 +48,22 @@ def build_triage_tab(
 
         if isinstance(result, TriageSuccess):
             output = result.output
+            esc = "Yes" if output.escalation else "No"
+            sev = output.severity.capitalize()
             result_text = (
-                f"**Category:** {output.category}\n"
-                f"**Severity:** {output.severity}\n"
-                f"**Routing Team:** {output.routing_team}\n"
-                f"**Escalation:** {output.escalation}\n"
-                f"**Confidence:** {output.confidence:.0%}\n\n"
-                f"**Summary:** {output.summary}\n\n"
-                f"**Business Impact:** {output.business_impact}\n\n"
-                f"**Draft Reply:** {output.draft_reply}"
+                f"### Triage Result\n\n"
+                f"| Field | Value |\n"
+                f"|-------|-------|\n"
+                f"| Category | {output.category} |\n"
+                f"| Severity | {sev} |\n"
+                f"| Routing Team | {output.routing_team} |\n"
+                f"| Escalation | {esc} |\n"
+                f"| Confidence | {output.confidence:.0%} |\n\n"
+                f"---\n\n"
+                f"**Summary**\n\n{output.summary}\n\n"
+                f"**Business Impact**\n\n"
+                f"{output.business_impact}\n\n"
+                f"**Draft Reply**\n\n{output.draft_reply}"
             )
             return result_text, trace_text
 
