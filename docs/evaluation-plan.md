@@ -174,6 +174,32 @@ Results are viewable in the Metrics tab (Benchmark Results section) and the Expe
 
 ---
 
+## Evaluation methodology limitations
+
+All experiments in Phase 3 and Phase 4 were executed once per configuration (n=1 per run). This section documents what that means for the strength of the findings and where the methodology has known gaps.
+
+### Aggregate findings are defensible at n=35
+
+The Phase 3 experiments ran each model/configuration against the full 35-ticket normal set. At this sample size, ticket-level noise averages out for large observed differences. The magnitude of the key findings — the 2B at 2.9% JSON validity vs the 4B at 82.9%, or the 4B-with-validation at 29/35 successful vs the 9B-without-validation at 17/35 — exceeds any plausible sampling noise floor. These are robust conclusions even without replication.
+
+### Small numeric differences are not meaningful
+
+Differences within a few percentage points at n=35 should not be interpreted as real signal. For example, the 4B's 57.1% category accuracy vs the 9B's 54.3% is a single-ticket disagreement (~3% per ticket across 6 categories). The evaluation reports these numbers honestly but does not claim that the 4B is categorically more accurate than the 9B — at this sample size, they are statistically indistinguishable on category accuracy. The 4B's advantage over the 9B is driven by structured-output reliability (82.9% vs 74.3% JSON validity) and latency (74s vs 107s), not by classification accuracy.
+
+### Per-ticket adversarial observations are point observations
+
+The Phase 4 adversarial evaluation ran 14 tickets per model. Each ticket's outcome is a single observation, not a measured rate. The a-008 finding demonstrates this directly: the original single run showed a partial field overlap on the 4B; two replication attempts produced parse failures instead. Had the evaluation relied solely on the single-run result, the a-008 partial match would have been reported as the central integrity finding. Replication (even just two additional runs) changed the classification from "ambiguous integrity compromise" to "non-reproducing observation." Per-category rates (e.g., "0% integrity risk on direct injection") are point observations from single runs and are subject to the same replication caveat.
+
+### Replication gap
+
+A production-grade evaluation would replicate each run 3-5 times to establish confidence intervals on all metrics. This project executed single runs per configuration due to time constraints (each 4B adversarial run takes ~20 minutes; each 9B run takes ~30 minutes; full replication across all experiments and models would require 15-25 additional hours of GPU time). The a-008 replication was performed ad hoc after the finding appeared interesting, not as part of a systematic replication protocol. Systematic multi-run evaluation is documented in [future-improvements.md](future-improvements.md) as a methodology improvement.
+
+### Evaluation configuration vs production configuration
+
+Phase 3 and Phase 4 measurements were taken with `think=true` (Qwen 3.5 reasoning mode enabled by default). The demo/production configuration uses `think=false` (reasoning mode disabled — see `docs/decisions/decision-log.md`, 2026-04-18 thinking-mode entry). Accuracy, latency, retry, and reliability numbers in `docs/evaluation-checklist.md` reflect thinking-enabled behavior. If accuracy comparisons are needed between the evaluation baseline and the production configuration, a separate evaluation run with `think=false` would be required.
+
+---
+
 ## Reporting
 
 The evaluation results are reported in three places:

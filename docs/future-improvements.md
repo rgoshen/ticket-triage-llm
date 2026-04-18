@@ -102,6 +102,24 @@ These are not gaps or oversights. They are the result of explicit scoping decisi
 
 ---
 
+## Multi-issue ticket detection and splitting
+
+**What it would add:** Detection and handling of tickets that contain multiple distinct issues in a single submission (e.g., "my password won't reset AND my billing is wrong"). Currently the pipeline produces a single `TriageOutput` per ticket, which means one of the issues is under-served — the triage reflects whichever issue the model deemed primary, and the secondary issue receives no routing, severity, or escalation assessment.
+
+**Scope of the improvement:**
+
+1. A pre-LLM check (heuristic or LLM-based) that flags tickets likely to contain multiple distinct issues, based on structural cues (conjunctions joining unrelated topics, multiple question marks addressing different systems, explicit "also" / "separately" / "unrelated" markers).
+2. A decision layer for flagged tickets: split into separate triage requests (each processed independently through the pipeline), route to human review for manual splitting, or prompt the user to resubmit as separate tickets.
+3. Evaluation criteria for the detector (precision/recall on a labeled multi-issue subset) and for the splitter (whether each sub-ticket produces better triage than the combined original).
+
+**Why it's deferred:** The current pipeline's contract is one ticket in, one `TriageOutput` out. Multi-issue handling requires redesigning this contract — either the pipeline returns a list of results, or it returns a single result with a "multi-issue detected" flag that triggers a secondary workflow. Both options affect the `TriageResult` discriminated union (ADR 0003), the trace schema (ADR 0005), the UI display, and the evaluation harness. The design surface is larger than the implementation.
+
+**What was done instead:** The pipeline triages the ticket as a single unit. If the model's output reflects only one of the issues, the other is effectively dropped. This is a known limitation of the one-ticket-one-output design.
+
+**Estimated effort to add:** 2–3 days. Includes: multi-issue detection heuristic or classifier (~0.5 day), pipeline contract redesign and splitting logic (~1 day), evaluation dataset with labeled multi-issue tickets and per-sub-ticket ground truth (~0.5 day), evaluation run and writeup (~0.5 day).
+
+---
+
 ## Cross-family model comparison
 
 **What it would add:** Comparing Qwen 3.5 against other model families (Llama, Mistral, Gemma, DeepSeek) on the same benchmark suite.
