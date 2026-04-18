@@ -214,6 +214,14 @@ P2 and P3 can kick off in parallel once P1 merges, subject to the "E3 needs retr
 
 **References:** `SUMMARY.md` (Phase 3 entry), design spec at `docs/superpowers/specs/2026-04-17-phase-3-eval-harness-design.md`, implementation plan at `docs/superpowers/plans/2026-04-17-phase-3-eval-harness.md`.
 
+### [2026-04-17] Phase 2 — Provider abstraction, retry, and guardrail (COMPLETE)
+
+**Objective:** Config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, and model selector dropdown in the Triage tab.
+
+**Outcome:** 178 tests, 98.76% coverage, ruff clean. `ProviderRegistry` driven by `OLLAMA_MODELS` env var. Bounded retry service with repair prompt. Heuristic guardrail with `pass`/`warn`/`block` + namespaced `matched_rules`. PR review identified 4 mediums (fixed) and 4 lows (deferred to Phase C).
+
+**References:** `SUMMARY.md` (Phase 2 entry), design spec at `docs/superpowers/specs/2026-04-17-phase-2-providers-retry-guardrail-design.md`, PR #8 and #9 (merged to `develop`/`main`).
+
 ### [2026-04-17] Phase 1 — Single happy-path slice (COMPLETE)
 
 **Objective:** Deliver the first end-to-end triage slice: OllamaQwenProvider → prompt builder → JSON parse → schema validation → trace storage, with FastAPI + Gradio UI and a Dockerfile.
