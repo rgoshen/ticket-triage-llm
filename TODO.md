@@ -97,14 +97,14 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
-## [2026-04-17] Phase 4 — Adversarial evaluation + guardrail iteration
+## [2026-04-18] Phase 4 — Adversarial evaluation + guardrail iteration (COMPLETE)
 
-- [ ] Run adversarial set (`data/adversarial_set.jsonl`) against all local models using Phase 3 harness
-- [ ] Per-layer accounting: guardrail blocked / reached model / model complied / validation caught / end-to-end success
-- [ ] Fill Phase 4 tables in `docs/evaluation-checklist.md`
-- [ ] Iterate on `services/guardrail.py` only if findings reveal concretely fixable misses
-- [ ] Update `docs/threat-model.md` with measured numbers + residual-risk paragraph
-- [ ] SUMMARY.md + TODO.md updated
+- [x] Run adversarial set (`data/adversarial_set.jsonl`) against all local models using Phase 3 harness
+- [x] Per-layer accounting: guardrail blocked / reached model / model complied / validation caught / end-to-end success
+- [x] Fill Phase 4 tables in `docs/evaluation-checklist.md`
+- [x] Iterate on `services/guardrail.py` only if findings reveal concretely fixable misses — no iteration needed (ADR 0008 expected baseline)
+- [x] Update `docs/threat-model.md` with measured numbers + residual-risk paragraph
+- [x] SUMMARY.md + TODO.md updated
 - [ ] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F), Phase 2 (guardrail), Phase 3 (baseline numbers).
@@ -205,6 +205,14 @@ P2 and P3 can kick off in parallel once P1 merges, subject to the "E3 needs retr
 ---
 
 ## Completed phases
+
+### [2026-04-18] Phase 4 — Adversarial evaluation + guardrail iteration (COMPLETE)
+
+**Objective:** Run the adversarial set against all local models, produce per-layer accounting (guardrail → model → validation), measure integrity and availability residual risk, iterate on guardrail if findings warrant, and update threat model with measured numbers.
+
+**Outcome:** 266 tests, 93.56% coverage, ruff clean. Adversarial runner produces per-model JSON results in `data/phase4/`. Headline finding: a-008 (indirect injection via quoted content) is the only integrity compromise — the 4B complied (`escalation=True`), the 9B resisted. Guardrail blocked 0/14 (expected per ADR 0008). No guardrail iteration performed. Threat model updated with integrity/availability distinction, measured per-layer rates, and empirical weakest-seam analysis.
+
+**References:** `SUMMARY.md` (Phase 4 entry), design spec at `docs/superpowers/specs/2026-04-18-phase-4-adversarial-eval-design.md`, implementation plan at `docs/superpowers/plans/2026-04-18-phase-4-adversarial-eval.md`.
 
 ### [2026-04-17] Phase 3 — Evaluation harness + benchmark run (COMPLETE)
 
