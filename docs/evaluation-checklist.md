@@ -93,12 +93,12 @@ Analytical findings from the smoke test data. These inform Phase 1+ implementati
 
 ### Baseline Configuration
 
-| Parameter          | Planned value  | Actual value used | Notes                                |
-| ------------------ | -------------- | ----------------- | ------------------------------------ |
-| Temperature        | 0.2            |                   | Locked 2026-04-16 — see decision log |
-| Top-p              | 0.9            |                   | Locked 2026-04-16 — see decision log |
-| Top-k              | 40             |                   |                                      |
-| Repetition penalty | 1.0 (disabled) |                   |                                      |
+| Parameter          | Planned value  | Actual value used | Notes                                                        |
+| ------------------ | -------------- | ----------------- | ------------------------------------------------------------ |
+| Temperature        | 0.2            | 0.2               | Locked 2026-04-16 — see decision log. Set in `config.py`.   |
+| Top-p              | 0.9            | 0.9               | Locked 2026-04-16 — see decision log. Set in `config.py`.   |
+| Top-k              | 40             | 40                | Set in `config.py`, passed via `extra_body` to Ollama.       |
+| Repetition penalty | 1.0 (disabled) | 1.0               | Set in `config.py`, passed via `extra_body` to Ollama.       |
 
 ### Sampling Observations During Development
 
@@ -106,8 +106,7 @@ Log any observations about how sampling settings affect output quality as you en
 
 | Date | Model | Parameter changed | From → To | Observed effect | Keep change? |
 | ---- | ----- | ----------------- | --------- | --------------- | ------------ |
-|      |       |                   |           |                 |              |
-|      |       |                   |           |                 |              |
+| — | — | None | — | No sampling parameter changes made through Phase 3. Baseline values (temperature=0.2, top_p=0.9, top_k=40, repetition_penalty=1.0) used unchanged across Phase 0 smoke test and all Phase 1–3 development. | N/A |
 |      |       |                   |           |                 |              |
 |      |       |                   |           |                 |              |
 
