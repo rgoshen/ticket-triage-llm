@@ -48,28 +48,44 @@ def build_triage_tab(
 
         if isinstance(result, TriageSuccess):
             output = result.output
+            esc = "Yes" if output.escalation else "No"
+            cat = output.category.replace("_", " ").title()
+            sev = output.severity.title()
+            team = output.routing_team.title()
             result_text = (
-                f"**Category:** {output.category}\n"
-                f"**Severity:** {output.severity}\n"
-                f"**Routing Team:** {output.routing_team}\n"
-                f"**Escalation:** {output.escalation}\n"
-                f"**Confidence:** {output.confidence:.0%}\n\n"
-                f"**Summary:** {output.summary}\n\n"
-                f"**Business Impact:** {output.business_impact}\n\n"
-                f"**Draft Reply:** {output.draft_reply}"
+                f"### Triage Result\n\n"
+                f"**Category:** {cat}  \n"
+                f"**Severity:** {sev}  \n"
+                f"**Routing Team:** {team}  \n"
+                f"**Escalation:** {esc}\n\n"
+                f"---\n\n"
+                f"**Summary**  \n{output.summary}\n\n"
+                f"**Business Impact**  \n"
+                f"{output.business_impact}\n\n"
+                f"**Draft Reply**  \n{output.draft_reply}"
             )
             return result_text, trace_text
 
         if isinstance(result, TriageFailure):
-            result_text = (
-                f"**Triage Failed**\n\n"
-                f"**Failure:** {result.category}\n"
-                f"**Detected By:** {result.detected_by}\n"
-                f"**Message:** {result.message}"
-            )
-            if result.raw_model_output:
-                result_text += (
-                    f"\n\n**Raw Output:**\n```\n{result.raw_model_output[:500]}\n```"
+            if result.category == "guardrail_blocked":
+                result_text = (
+                    "**Ticket Blocked**\n\n"
+                    "This ticket was flagged by the safety guardrail "
+                    "and was not sent to the model."
+                )
+            elif result.category == "parse_failure":
+                result_text = (
+                    "**Triage Unavailable**\n\n"
+                    "The model could not produce a structured response "
+                    "for this ticket. Try again or select a different "
+                    "model from the dropdown."
+                )
+            else:
+                result_text = (
+                    "**Triage Failed**\n\n"
+                    f"The model response did not pass validation "
+                    f"({result.category}). Try again or select a "
+                    f"different model."
                 )
             return result_text, trace_text
 
@@ -95,20 +111,54 @@ def build_triage_tab(
                     placeholder="Paste the support ticket text here...",
                     lines=10,
                 )
-                submit_btn = gr.Button("Triage", variant="primary")
+                with gr.Row():
+                    submit_btn = gr.Button("Triage", variant="primary", scale=2)
+                    cancel_btn = gr.Button("Cancel", variant="stop", scale=1)
+                    clear_btn = gr.Button("New Ticket", scale=1)
 
             with gr.Column(scale=1):
+                status_output = gr.Markdown(value="", label="Status")
                 result_output = gr.Markdown(label="Triage Result")
-                trace_output = gr.Textbox(
-                    label="Trace Summary",
-                    lines=8,
-                    interactive=False,
-                )
+                with gr.Accordion("Trace Details", open=False):
+                    trace_output = gr.Textbox(
+                        label="Trace Summary",
+                        lines=8,
+                        interactive=False,
+                    )
 
-        submit_btn.click(
-            fn=handle_triage,
+        def run_triage_with_status(provider_name, ticket_subject, ticket_body):
+            result_text, trace_text = handle_triage(
+                provider_name, ticket_subject, ticket_body
+            )
+            return "", result_text, trace_text
+
+        triage_event = submit_btn.click(
+            fn=lambda: ("*Processing ticket...*", "", ""),
+            inputs=None,
+            outputs=[status_output, result_output, trace_output],
+        ).then(
+            fn=run_triage_with_status,
             inputs=[provider_dropdown, subject_input, body_input],
-            outputs=[result_output, trace_output],
+            outputs=[status_output, result_output, trace_output],
+        )
+
+        cancel_btn.click(
+            fn=lambda: ("*Ticket submission cancelled.*", "", ""),
+            inputs=None,
+            outputs=[status_output, result_output, trace_output],
+            cancels=[triage_event],
+        )
+
+        clear_btn.click(
+            fn=lambda: ("", "", "", "", ""),
+            inputs=None,
+            outputs=[
+                subject_input,
+                body_input,
+                status_output,
+                result_output,
+                trace_output,
+            ],
         )
 
     return demo

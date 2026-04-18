@@ -8,6 +8,46 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-18 — OD-4 resolved: Qwen 3.5 4B is the default demo model
+
+**Decision:** The default model loaded when the Triage tab opens is **Qwen 3.5 4B**. OD-4 is now closed.
+
+**Gate:** OD-4 was explicitly gated on Phase 3 evaluation results. Phase 3 is complete. All four experiments (E1 size comparison, E2 size-vs-controls, E3 validation impact, E4 prompt comparison v1-only) have run on the full 35-ticket normal set. The evidence is decisive — the 4B wins on every metric that matters.
+
+**Evidence from Phase 3 (all on normal_set.jsonl, 35 tickets, prompt v1, locked sampling):**
+
+| Metric | Qwen 3.5 2B | Qwen 3.5 4B | Qwen 3.5 9B |
+|---|---|---|---|
+| Successful tickets | 1/35 (2.9%) | 29/35 (82.9%) | 26/35 (74.3%) |
+| Category accuracy | 2.9% | 57.1% | 54.3% |
+| Severity accuracy | 0.0% | 51.4% | 48.6% |
+| Escalation accuracy | 2.9% | 74.3% | 65.7% |
+| JSON validity rate | 2.9% | 82.9% | 74.3% |
+| Retry rate | 97.1% | 42.9% | 51.4% |
+| Retry recovery rate | 0.0% | 57.1% | 50.0% |
+| Avg latency | 69,077ms | 73,886ms | 107,012ms |
+| Avg tokens/request | 4,951 | 3,098 | 3,378 |
+
+**Why the 4B, not the 9B:**
+
+1. **Higher accuracy across all dimensions.** Category accuracy 57.1% vs 54.3%, severity 51.4% vs 48.6%, escalation 74.3% vs 65.7%. The 4B is better on every classification metric.
+2. **Higher reliability.** JSON validity 82.9% vs 74.3%. The 4B produces structurally valid output more often, meaning fewer requests enter the retry path.
+3. **Better retry recovery.** When the 4B does fail, the repair prompt recovers 57.1% of failures vs 50.0% for the 9B. The 4B is both less likely to fail and more likely to recover when it does.
+4. **Lower latency.** 74s vs 107s average — 31% faster. In a demo context, this is the difference between "watch and wait" and "noticeably slow."
+5. **Lower token cost.** 3,098 tokens/request vs 3,378. The 4B is cheaper to run both locally (less GPU time) and hypothetically in the cloud (fewer billed tokens).
+
+**Why bigger is not better here:** The 9B's longer reasoning chains have more opportunities to produce structurally invalid output. It generates more tokens per request but converts fewer of them into valid JSON. The additional parameters buy longer deliberation, not better outcomes, for this structured-output task.
+
+**Why the 2B is not viable:** 1/35 success rate. The 2B cannot reliably produce structured JSON output at the required complexity. It remains in the model dropdown for the size-comparison story — showing the failure mode is itself a finding — but it is not a candidate for the default.
+
+**Thesis support:** The cross-experiment finding is that 4B-with-validation (29/35 successful, 57.1% category accuracy) beats 9B-without-validation (17/35 successful, 48.6% category accuracy). A smaller model with engineering controls outperforms a larger model without them. This is the project's headline result.
+
+**Architectural consequence:** See [ADR 0011](../adr/0011-default-model-selection.md) for the architectural decision on how the default is configured and how model selection interacts with the provider registry.
+
+**Updated:** `TODO.md` (OD-4 marked resolved), `CLAUDE.md` (project status if applicable), this decision log.
+
+---
+
 ## 2026-04-16 — Phase 0 smoke test complete: 2B / 4B / 9B all pass, all three retained
 
 **Decision:** All three planned local models — Qwen 3.5 2B, 4B, and 9B — are retained for the Phase 3 size comparison. None is dropped.

@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from openai import APIConnectionError, APIStatusError
+from ollama import ResponseError
 
 from ticket_triage_llm.providers.base import LlmProvider
 from ticket_triage_llm.providers.cloud_qwen import CloudQwenProvider
@@ -71,19 +71,16 @@ class TestOllamaQwenProviderConcrete:
         )
         assert provider.name == "ollama:qwen3.5:4b"
 
-    @patch("ticket_triage_llm.providers.ollama_qwen.OpenAI")
-    def test_generate_returns_model_result(self, mock_openai_cls):
+    @patch("ticket_triage_llm.providers.ollama_qwen.ollama_client.Client")
+    def test_generate_returns_model_result(self, mock_client_cls):
         mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
+        mock_client_cls.return_value = mock_client
 
-        mock_choice = MagicMock()
-        mock_choice.message.content = '{"category": "billing"}'
         mock_response = MagicMock()
-        mock_response.choices = [mock_choice]
-        mock_response.usage.prompt_tokens = 100
-        mock_response.usage.completion_tokens = 50
-        mock_response.usage.total_tokens = 150
-        mock_client.chat.completions.create.return_value = mock_response
+        mock_response.message.content = '{"category": "billing"}'
+        mock_response.prompt_eval_count = 100
+        mock_response.eval_count = 50
+        mock_client.chat.return_value = mock_response
 
         provider = OllamaQwenProvider(
             model="qwen3.5:4b", base_url="http://localhost:11434/v1"
@@ -98,42 +95,38 @@ class TestOllamaQwenProviderConcrete:
         assert result.tokens_total == 150
         assert result.latency_ms > 0
 
-    @patch("ticket_triage_llm.providers.ollama_qwen.OpenAI")
-    def test_generate_passes_sampling_params(self, mock_openai_cls):
+    @patch("ticket_triage_llm.providers.ollama_qwen.ollama_client.Client")
+    def test_generate_passes_sampling_params(self, mock_client_cls):
         mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
+        mock_client_cls.return_value = mock_client
 
-        mock_choice = MagicMock()
-        mock_choice.message.content = '{"category": "billing"}'
         mock_response = MagicMock()
-        mock_response.choices = [mock_choice]
-        mock_response.usage.prompt_tokens = 10
-        mock_response.usage.completion_tokens = 5
-        mock_response.usage.total_tokens = 15
-        mock_client.chat.completions.create.return_value = mock_response
+        mock_response.message.content = '{"category": "billing"}'
+        mock_response.prompt_eval_count = 10
+        mock_response.eval_count = 5
+        mock_client.chat.return_value = mock_response
 
         provider = OllamaQwenProvider(
             model="qwen3.5:4b", base_url="http://localhost:11434/v1"
         )
         provider.generate_structured_ticket("test ticket", "v1")
 
-        call_kwargs = mock_client.chat.completions.create.call_args
-        assert call_kwargs.kwargs["temperature"] == 0.2
-        assert call_kwargs.kwargs["max_tokens"] == 2048
-        extra = call_kwargs.kwargs["extra_body"]
-        assert extra["top_p"] == 0.9
-        assert extra["top_k"] == 40
-        assert extra["repetition_penalty"] == 1.0
+        call_kwargs = mock_client.chat.call_args
+        assert call_kwargs.kwargs["think"] is False
+        options = call_kwargs.kwargs["options"]
+        assert options["temperature"] == 0.2
+        assert options["num_predict"] == 2048
+        assert options["top_p"] == 0.9
+        assert options["top_k"] == 40
+        assert options["repeat_penalty"] == 1.0
 
-    @patch("ticket_triage_llm.providers.ollama_qwen.OpenAI")
+    @patch("ticket_triage_llm.providers.ollama_qwen.ollama_client.Client")
     def test_generate_raises_provider_error_on_connection_failure(
-        self, mock_openai_cls
+        self, mock_client_cls
     ):
         mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
-        mock_client.chat.completions.create.side_effect = APIConnectionError(
-            request=MagicMock()
-        )
+        mock_client_cls.return_value = mock_client
+        mock_client.chat.side_effect = ConnectionError("refused")
 
         provider = OllamaQwenProvider(
             model="qwen3.5:4b", base_url="http://localhost:11434/v1"
@@ -141,18 +134,11 @@ class TestOllamaQwenProviderConcrete:
         with pytest.raises(ProviderError):
             provider.generate_structured_ticket("test ticket", "v1")
 
-    @patch("ticket_triage_llm.providers.ollama_qwen.OpenAI")
-    def test_generate_raises_provider_error_on_status_error(self, mock_openai_cls):
+    @patch("ticket_triage_llm.providers.ollama_qwen.ollama_client.Client")
+    def test_generate_raises_provider_error_on_response_error(self, mock_client_cls):
         mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.headers = {}
-        mock_client.chat.completions.create.side_effect = APIStatusError(
-            message="Internal Server Error",
-            response=mock_response,
-            body=None,
-        )
+        mock_client_cls.return_value = mock_client
+        mock_client.chat.side_effect = ResponseError("model not found")
 
         provider = OllamaQwenProvider(
             model="qwen3.5:4b", base_url="http://localhost:11434/v1"

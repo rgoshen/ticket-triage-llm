@@ -25,6 +25,8 @@ ADRs follow the standard format used by [`adr-tools`](https://github.com/npryce/
 | [0007](0007-local-deployment-with-docker.md) | Local-only deployment with Docker for app, Ollama on host | Accepted |
 | [0008](0008-heuristic-only-guardrail-baseline.md) | Heuristic-only guardrail as baseline | Accepted |
 | [0009](0009-monitoring-distinct-from-benchmarking.md) | Monitoring distinct from benchmarking | Accepted |
+| [0010](0010-non-actionable-and-ambiguous-input-handling.md) | Non-actionable and ambiguous input handling | Accepted |
+| [0011](0011-default-model-selection.md) | Default model selection: Qwen 3.5 4B | Accepted |
 
 ## Status definitions
 

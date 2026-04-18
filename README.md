@@ -2,7 +2,7 @@
 
 A production-style support ticket triage system built on local LLMs, with a focus on prompt injection defense and structured-output reliability under realistic adversarial conditions.
 
-> **Status:** Phase 3 complete — eval harness built with four experiment runners and summarizer. Phase 4 (adversarial evaluation) is next.
+> **Status:** Phase 4 complete — adversarial evaluation with per-layer accounting, compliance detection, and threat model with measured numbers. Phase 5 (dashboard) is next.
 
 ## What this project is
 
@@ -73,41 +73,61 @@ uv run ruff format --check .
 
 #### Prerequisites
 
-Ollama must be **installed and running** on the host before the app will work. Pull at least one model:
+Ollama must be **installed and running** on the host before the app will work. The app container does not include Ollama — it runs natively on your machine to use the GPU (see ADR 0007).
 
 ```bash
-ollama pull qwen3.5:4b          # recommended starting point
-ollama pull qwen3.5:2b          # lighter alternative
-ollama pull qwen3.5:9b          # higher quality, slower
+# Install Ollama: https://ollama.com/
+# Start it (runs in background)
+ollama serve
+
+# Pull at least the default model
+ollama pull qwen3.5:4b
+
+# Optional: pull all three for the model comparison dropdown
+ollama pull qwen3.5:2b
+ollama pull qwen3.5:9b
 ```
 
 #### Option A: run natively
 
 ```bash
-# Set the models via env var (comma-separated list)
-OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b uv run python -m ticket_triage_llm.app
+# 1. Create your .env file (one-time setup)
+cp .env.example .env
 
-# Or copy .env.example → .env and set OLLAMA_MODELS there
-cp .env.example .env             # then edit OLLAMA_MODELS=qwen3.5:4b,qwen3.5:9b
+# 2. Start the app
 uv run python -m ticket_triage_llm.app
 ```
 
-**Configuration note:** `OLLAMA_MODELS` is a comma-separated list of model names. All models in the list will appear in the Triage tab dropdown. The first model in the list is the default selection.
+Open **http://localhost:7860** in your browser. Select a model from the dropdown, paste a ticket, and click Triage.
 
-#### Option B: run in Docker (app container only — Ollama stays on host)
+To customize which models appear in the dropdown, edit `OLLAMA_MODELS` in `.env`:
+
+```
+OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b
+```
+
+#### Option B: run in Docker
+
+The Docker container runs the app only — Ollama stays on the host for GPU access.
 
 ```bash
+# Build and run (recommended)
+docker compose up --build
+
+# Or without docker compose
 docker build -t ticket-triage-llm .
 docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
 ```
 
-The container reaches Ollama via `host.docker.internal:11434` (Mac/Windows). On Linux, use `--network=host` instead.
+Open **http://localhost:7860** in your browser.
+
+The container reaches Ollama at `host.docker.internal:11434` (Mac/Windows). On Linux, add `--network=host` to the `docker run` command, or add `network_mode: host` to `docker-compose.yml`.
 
 #### Verify it's working
 
-Open the Gradio UI at **http://localhost:7860**.
+The Gradio UI should show a Triage tab with a model dropdown, subject/body fields, and Triage/Cancel/New Ticket buttons.
 
-Or test the REST API directly:
+You can also test the REST API directly:
 
 ```bash
 curl -X POST http://localhost:7860/api/v1/triage \

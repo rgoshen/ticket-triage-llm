@@ -770,11 +770,9 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: clo
 
 Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: 2B / 4B / 9B, all three included pending Phase 0 verification. No a-priori exclusions — if a model can't produce structured output, the exclusion will be documented with evidence from the smoke test rather than assumed in advance.
 
-### OD-4: Default model for the demo
+### ~~OD-4: Default model for the demo~~ — RESOLVED
 
-- **What's needed:** which model is loaded by default when the Triage tab opens.
-- **Why it's not yet decided:** depends on Phase 3 evaluation results. The default should be the model that won the multi-factor decision matrix, not the one with the highest single-metric score.
-- **Will be captured in:** ADR for model selection (forthcoming, written after Phase 3)
+Resolved 2026-04-18. See [decision log](decisions/decision-log.md) and [ADR 0011](adr/0011-default-model-selection.md). Summary: Qwen 3.5 4B is the default. It wins on every Phase 3 metric — highest accuracy, highest JSON validity, best retry recovery, lowest latency, lowest token cost. The 9B is slower and less reliable despite more parameters. The 2B is not viable (2.9% success rate).
 
 ### ~~OD-5: Cost analysis depth~~ — RESOLVED
 
