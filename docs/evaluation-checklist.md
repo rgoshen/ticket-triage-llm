@@ -263,9 +263,9 @@ Fill in from actual benchmark token counts. See `docs/cost-analysis.md` for the 
 
 | Model       | Avg tokens in | Avg tokens out | Avg total |
 | ----------- | ------------- | -------------- | --------- |
-| Qwen 3.5 2B |               |                |           |
-| Qwen 3.5 4B |               |                |           |
-| Qwen 3.5 9B |               |                |           |
+| Qwen 3.5 2B | 920           | 4,031          | 4,951     |
+| Qwen 3.5 4B | 729           | 2,369          | 3,098     |
+| Qwen 3.5 9B | 765           | 2,612          | 3,378     |
 
 ### Hardware Cost
 
@@ -294,39 +294,39 @@ Using Qwen 3.5 Plus pricing ($0.26/M input, $1.56/M output):
 ## Overall Project Completion Checklist
 
 ### Build phases
-- ☐ Phase 0: Smoke test complete, model lineup confirmed
-- ☐ Phase 1: Single happy-path slice working (native + Docker)
-- ☐ Phase 2: Provider abstraction, multiple models, guardrail, retry
-- ☐ Phase 3: Eval harness, labeled datasets, experiments run
+- ☒ Phase 0: Smoke test complete, model lineup confirmed
+- ☒ Phase 1: Single happy-path slice working (native + Docker)
+- ☒ Phase 2: Provider abstraction, multiple models, guardrail, retry
+- ☒ Phase 3: Eval harness, labeled datasets, experiments run
 - ☐ Phase 4: Adversarial evaluation, guardrail iteration
 - ☐ Phase 5: Dashboard, traces, live monitoring
 - ☐ Phase 6: Prompt v2, prompt comparison experiment
 - ☐ Phase 7: Hardening, docs, deployment testing, presentation prep
 
 ### Rubric coverage
-- ☐ Model running and producing meaningful outputs
-- ☐ Evaluation dataset created and used
-- ☐ Innovation demonstrated (prompt injection investigation)
-- ☐ Deployed in production environment (local + Docker)
-- ☐ Accessible via API endpoint (FastAPI + Swagger)
-- ☐ Inference pipeline documented and optimized
-- ☐ Sampling method documented with rationale
-- ☐ Technical documentation comprehensive
-- ☐ Demo rehearsed (at least twice)
-- ☐ Presentation slides complete (6 max)
+- ☒ Model running and producing meaningful outputs
+- ☒ Evaluation dataset created and used
+- ☐ Innovation demonstrated (prompt injection investigation) — Phase 4
+- ☒ Deployed in production environment (local + Docker)
+- ☒ Accessible via API endpoint (FastAPI + Swagger)
+- ☒ Inference pipeline documented and optimized
+- ☒ Sampling method documented with rationale
+- ☐ Technical documentation comprehensive — Phase 7
+- ☐ Demo rehearsed (at least twice) — Phase 7
+- ☐ Presentation slides complete (6 max) — Phase 7
 
 ### Documentation deliverables
-- ☐ PLAN.md current
-- ☐ README.md current
-- ☐ All ADRs written and indexed
-- ☐ Decision log up to date
-- ☐ architecture.md current
-- ☐ evaluation-plan.md current
-- ☐ threat-model.md current
-- ☐ tradeoffs.md current
-- ☐ cost-analysis.md populated with real data
-- ☐ future-improvements.md current
-- ☐ prompt-versions.md written
-- ☐ DEPLOYMENT.md written and tested
+- ☒ PLAN.md current
+- ☒ README.md current
+- ☒ All ADRs written and indexed
+- ☒ Decision log up to date
+- ☒ architecture.md current
+- ☒ evaluation-plan.md current
+- ☒ threat-model.md current
+- ☒ tradeoffs.md current
+- ☐ cost-analysis.md populated with real data — token data filled, costs pending
+- ☒ future-improvements.md current
+- ☐ prompt-versions.md written — Phase 6
+- ☐ DEPLOYMENT.md written and tested — Phase 7
 - ☐ demo-script.md written
 - ☐ presentation-notes.md written
