@@ -2,7 +2,7 @@ import sqlite3
 
 
 def get_connection(db_path: str) -> sqlite3.Connection:
-    conn = sqlite3.Connection(db_path)
+    conn = sqlite3.Connection(db_path, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
