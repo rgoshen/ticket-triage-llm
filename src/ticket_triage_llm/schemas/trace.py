@@ -43,6 +43,7 @@ TraceStatus = Literal["success", "failure"]
 class TraceRecord(BaseModel):
     request_id: str
     run_id: str | None = None
+    ticket_id: str | None = None
     timestamp: datetime
     model: str
     provider: str

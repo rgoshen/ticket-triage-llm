@@ -16,6 +16,7 @@ from ticket_triage_llm.schemas.trace import (
 )
 from ticket_triage_llm.services.guardrail import check_guardrail
 from ticket_triage_llm.services.retry import validate_or_retry
+from ticket_triage_llm.services.validation import parse_json, validate_schema
 from ticket_triage_llm.storage.trace_repo import TraceRepository
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,9 @@ def run_triage(
     prompt_version: str,
     trace_repo: TraceRepository,
     guardrail_max_length: int = 10_000,
+    skip_validation: bool = False,
+    run_id: str | None = None,
+    ticket_id: str | None = None,
 ) -> tuple[TriageResult, TraceRecord]:
     request_id = str(uuid.uuid4())
     start = time.perf_counter()
@@ -54,6 +58,8 @@ def run_triage(
             raw_output=None,
             result=result,
             retry_count=0,
+            run_id=run_id,
+            ticket_id=ticket_id,
         )
         return result, trace
 
@@ -83,6 +89,50 @@ def run_triage(
             raw_output=None,
             result=result,
             retry_count=0,
+            run_id=run_id,
+            ticket_id=ticket_id,
+        )
+        return result, trace
+
+    if skip_validation:
+        parsed = parse_json(model_result.raw_output)
+        if parsed is None:
+            result = TriageFailure(
+                category="parse_failure",
+                detected_by="parser",
+                message="Failed to parse output as JSON (validation skipped)",
+                raw_model_output=model_result.raw_output,
+                retry_count=0,
+            )
+        else:
+            output = validate_schema(parsed)
+            if output is None:
+                result = TriageFailure(
+                    category="schema_failure",
+                    detected_by="schema",
+                    message="Schema validation failed (validation skipped)",
+                    raw_model_output=model_result.raw_output,
+                    retry_count=0,
+                )
+            else:
+                result = TriageSuccess(output=output, retry_count=0)
+
+        trace = _build_and_save_trace(
+            trace_repo=trace_repo,
+            request_id=request_id,
+            start=start,
+            provider=provider,
+            prompt_version=prompt_version,
+            ticket_body=ticket_body,
+            guardrail_result=guardrail.decision,
+            guardrail_matched_rules=guardrail.matched_rules,
+            model_result=model_result,
+            raw_output=model_result.raw_output,
+            result=result,
+            retry_count=0,
+            validation_status_override="skipped",
+            run_id=run_id,
+            ticket_id=ticket_id,
         )
         return result, trace
 
@@ -132,6 +182,8 @@ def run_triage(
         result=retry.result,
         retry_count=retry.retry_count,
         validation_status_override=validation_status,
+        run_id=run_id,
+        ticket_id=ticket_id,
     )
     return retry.result, trace
 
@@ -151,6 +203,8 @@ def _build_and_save_trace(
     result: TriageResult,
     retry_count: int,
     validation_status_override: str | None = None,
+    run_id: str | None = None,
+    ticket_id: str | None = None,
 ) -> TraceRecord:
     elapsed_ms = (time.perf_counter() - start) * 1000
     is_success = isinstance(result, TriageSuccess)
@@ -166,6 +220,8 @@ def _build_and_save_trace(
 
     trace = TraceRecord(
         request_id=request_id,
+        run_id=run_id,
+        ticket_id=ticket_id,
         timestamp=datetime.now(UTC),
         model=model_result.model if model_result else "unknown",
         provider=provider.name,

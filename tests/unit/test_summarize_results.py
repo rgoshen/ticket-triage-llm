@@ -1,0 +1,599 @@
+import json
+from datetime import UTC, datetime
+
+import pytest
+
+from ticket_triage_llm.eval.datasets import GroundTruth, TicketRecord
+from ticket_triage_llm.eval.results import ExperimentSummary, ModelMetrics
+from ticket_triage_llm.eval.runners.run_validation_impact import (
+    compose_and_write_e2,
+    load_e1_summary,
+)
+from ticket_triage_llm.eval.runners.summarize_results import (
+    compose_e2,
+    summarize_run,
+)
+from ticket_triage_llm.schemas.trace import TraceRecord
+
+VALID_OUTPUT = {
+    "category": "billing",
+    "severity": "medium",
+    "routingTeam": "billing",
+    "summary": "Billing issue",
+    "businessImpact": "Cannot process payments",
+    "draftReply": "We are looking into it.",
+    "confidence": 0.85,
+    "escalation": False,
+}
+
+TICKETS = [
+    TicketRecord(
+        id="n-001",
+        subject="Billing issue",
+        body="I have a billing question",
+        ground_truth=GroundTruth(
+            category="billing",
+            severity="medium",
+            routing_team="billing",
+            escalation=False,
+        ),
+    ),
+    TicketRecord(
+        id="n-002",
+        subject="Account access",
+        body="Cannot log in",
+        ground_truth=GroundTruth(
+            category="account_access",
+            severity="high",
+            routing_team="support",
+            escalation=False,
+        ),
+    ),
+]
+
+
+def _make_trace(
+    request_id: str,
+    run_id: str,
+    ticket_id: str,
+    triage_output: dict | None = None,
+    status: str = "success",
+    failure_category: str | None = None,
+    validation_status: str = "valid",
+    retry_count: int = 0,
+    latency_ms: float = 1500.0,
+    tokens_input: int = 100,
+    tokens_output: int = 50,
+    tokens_total: int = 150,
+    tokens_per_second: float | None = 33.0,
+    raw_model_output: str | None = None,
+) -> TraceRecord:
+    triage_json = json.dumps(triage_output) if triage_output else None
+    return TraceRecord(
+        request_id=request_id,
+        run_id=run_id,
+        ticket_id=ticket_id,
+        timestamp=datetime(2026, 4, 17, 12, 0, 0, tzinfo=UTC),
+        model="qwen3.5:4b",
+        provider="ollama:qwen3.5:4b",
+        prompt_version="v1",
+        ticket_body="test",
+        guardrail_result="pass",
+        validation_status=validation_status,
+        retry_count=retry_count,
+        latency_ms=latency_ms,
+        tokens_input=tokens_input,
+        tokens_output=tokens_output,
+        tokens_total=tokens_total,
+        tokens_per_second=tokens_per_second,
+        status=status,
+        failure_category=failure_category,
+        raw_model_output=raw_model_output
+        or (json.dumps(triage_output) if triage_output else "bad"),
+        triage_output_json=triage_json,
+    )
+
+
+class FakeTraceRepo:
+    def __init__(self, traces: list[TraceRecord]):
+        self._traces = traces
+
+    def save_trace(self, trace: TraceRecord) -> None:
+        self._traces.append(trace)
+
+    def get_recent_traces(self, limit: int) -> list[TraceRecord]:
+        return self._traces[:limit]
+
+    def get_traces_by_run(self, run_id: str) -> list[TraceRecord]:
+        return [t for t in self._traces if t.run_id == run_id]
+
+    def get_traces_by_provider(self, provider: str) -> list[TraceRecord]:
+        raise NotImplementedError
+
+    def get_traces_since(self, since: datetime) -> list[TraceRecord]:
+        raise NotImplementedError
+
+    def get_all_traces(self) -> list[TraceRecord]:
+        return list(self._traces)
+
+
+class TestSummarizeRunAccuracy:
+    def test_all_correct(self):
+        trace = _make_trace(
+            request_id="r1",
+            run_id="run-1",
+            ticket_id="n-001",
+            triage_output=VALID_OUTPUT,
+        )
+        repo = FakeTraceRepo([trace])
+        metrics = summarize_run("run-1", TICKETS, repo)
+        assert metrics.category_accuracy == 1.0
+        assert metrics.severity_accuracy == 1.0
+        assert metrics.routing_accuracy == 1.0
+        assert metrics.escalation_accuracy == 1.0
+
+    def test_wrong_category_counts_as_incorrect(self):
+        wrong_output = {**VALID_OUTPUT, "category": "network"}
+        trace = _make_trace(
+            request_id="r1",
+            run_id="run-1",
+            ticket_id="n-001",
+            triage_output=wrong_output,
+        )
+        repo = FakeTraceRepo([trace])
+        metrics = summarize_run("run-1", TICKETS, repo)
+        assert metrics.category_accuracy == 0.0
+        assert metrics.severity_accuracy == 1.0
+
+    def test_failed_trace_counts_as_incorrect_for_all_fields(self):
+        trace = _make_trace(
+            request_id="r1",
+            run_id="run-1",
+            ticket_id="n-001",
+            triage_output=None,
+            status="failure",
+            failure_category="parse_failure",
+            validation_status="invalid",
+        )
+        repo = FakeTraceRepo([trace])
+        metrics = summarize_run("run-1", TICKETS, repo)
+        assert metrics.category_accuracy == 0.0
+        assert metrics.severity_accuracy == 0.0
+        assert metrics.routing_accuracy == 0.0
+        assert metrics.escalation_accuracy == 0.0
+        assert metrics.successful_tickets == 0
+
+    def test_mixed_correct_and_incorrect(self):
+        correct_trace = _make_trace(
+            request_id="r1",
+            run_id="run-1",
+            ticket_id="n-001",
+            triage_output=VALID_OUTPUT,
+        )
+        failed_trace = _make_trace(
+            request_id="r2",
+            run_id="run-1",
+            ticket_id="n-002",
+            triage_output=None,
+            status="failure",
+            failure_category="parse_failure",
+            validation_status="invalid",
+        )
+        repo = FakeTraceRepo([correct_trace, failed_trace])
+        metrics = summarize_run("run-1", TICKETS, repo)
+        assert metrics.category_accuracy == 0.5
+        assert metrics.severity_accuracy == 0.5
+        assert metrics.total_tickets == 2
+        assert metrics.successful_tickets == 1
+
+
+class TestSummarizeRunReliability:
+    def test_json_valid_rate(self):
+        valid_trace = _make_trace(
+            request_id="r1",
+            run_id="run-1",
+            ticket_id="n-001",
+            triage_output=VALID_OUTPUT,
+        )
+        invalid_trace = _make_trace(
+            request_id="r2",
+            run_id="run-1",
+            ticket_id="n-002",
+            triage_output=None,
+            status="failure",
+            failure_category="parse_failure",
+            validation_status="invalid",
+            raw_model_output="not json at all",
+        )
+        repo = FakeTraceRepo([valid_trace, invalid_trace])
+        metrics = summarize_run("run-1", TICKETS, repo)
+        assert metrics.json_valid_rate == 0.5
+
+    def test_retry_rate_and_success(self):
+        no_retry = _make_trace(
+            request_id="r1",
+            run_id="run-1",
+            ticket_id="n-001",
+            triage_output=VALID_OUTPUT,
+            retry_count=0,
+        )
+        retry_success = _make_trace(
+            request_id="r2",
+            run_id="run-1",
+            ticket_id="n-002",
+            triage_output={
+                **VALID_OUTPUT,
+                "category": "account_access",
+                "severity": "high",
+                "routingTeam": "support",
+            },
+            retry_count=1,
+            validation_status="valid_after_retry",
+        )
+        repo = FakeTraceRepo([no_retry, retry_success])
+        metrics = summarize_run("run-1", TICKETS, repo)
+        assert metrics.retry_rate == 0.5
+        assert metrics.retry_success_rate == 1.0
+
+    def test_schema_pass_rate(self):
+        valid_trace = _make_trace(
+            request_id="r1",
+            run_id="run-1",
+            ticket_id="n-001",
+            triage_output=VALID_OUTPUT,
+            validation_status="valid",
+        )
+        invalid_trace = _make_trace(
+            request_id="r2",
+            run_id="run-1",
+            ticket_id="n-002",
+            triage_output=None,
+            status="failure",
+            failure_category="schema_failure",
+            validation_status="invalid",
+        )
+        repo = FakeTraceRepo([valid_trace, invalid_trace])
+        metrics = summarize_run("run-1", TICKETS, repo)
+        assert metrics.schema_pass_rate == 0.5
+
+
+class TestSummarizeRunLatency:
+    def test_latency_percentiles(self):
+        t1 = _make_trace(
+            request_id="r1",
+            run_id="run-1",
+            ticket_id="n-001",
+            triage_output=VALID_OUTPUT,
+            latency_ms=100.0,
+        )
+        t2 = _make_trace(
+            request_id="r2",
+            run_id="run-1",
+            ticket_id="n-002",
+            triage_output={
+                **VALID_OUTPUT,
+                "category": "account_access",
+                "severity": "high",
+                "routingTeam": "support",
+            },
+            latency_ms=200.0,
+        )
+        repo = FakeTraceRepo([t1, t2])
+        metrics = summarize_run("run-1", TICKETS, repo)
+        assert metrics.avg_latency_ms == 150.0
+        assert metrics.p50_latency_ms == 150.0
+
+    def test_token_averages(self):
+        t1 = _make_trace(
+            request_id="r1",
+            run_id="run-1",
+            ticket_id="n-001",
+            triage_output=VALID_OUTPUT,
+            tokens_input=100,
+            tokens_output=50,
+            tokens_total=150,
+        )
+        t2 = _make_trace(
+            request_id="r2",
+            run_id="run-1",
+            ticket_id="n-002",
+            triage_output={
+                **VALID_OUTPUT,
+                "category": "account_access",
+                "severity": "high",
+                "routingTeam": "support",
+            },
+            tokens_input=200,
+            tokens_output=100,
+            tokens_total=300,
+        )
+        repo = FakeTraceRepo([t1, t2])
+        metrics = summarize_run("run-1", TICKETS, repo)
+        assert metrics.avg_tokens_input == 150.0
+        assert metrics.avg_tokens_output == 75.0
+        assert metrics.avg_tokens_total == 225.0
+
+
+class TestSummarizeRunEdgeCases:
+    def test_raises_on_empty_run(self):
+        repo = FakeTraceRepo([])
+        with pytest.raises(ValueError, match="No traces found"):
+            summarize_run("nonexistent", TICKETS, repo)
+
+
+class TestComposeE2:
+    def test_picks_2b_from_e1_and_9b_noval(self):
+        e1_2b = ModelMetrics(
+            model="qwen3.5:2b",
+            run_id="e1-2b",
+            category_accuracy=0.8,
+            severity_accuracy=0.7,
+            routing_accuracy=0.9,
+            escalation_accuracy=1.0,
+            json_valid_rate=1.0,
+            schema_pass_rate=1.0,
+            retry_rate=0.1,
+            retry_success_rate=1.0,
+            avg_latency_ms=500.0,
+            p50_latency_ms=450.0,
+            p95_latency_ms=800.0,
+            avg_tokens_per_second=60.0,
+            avg_tokens_input=100.0,
+            avg_tokens_output=50.0,
+            avg_tokens_total=150.0,
+            total_tickets=2,
+            successful_tickets=2,
+        )
+        e1_9b = ModelMetrics(
+            model="qwen3.5:9b",
+            run_id="e1-9b",
+            category_accuracy=0.95,
+            severity_accuracy=0.9,
+            routing_accuracy=0.95,
+            escalation_accuracy=1.0,
+            json_valid_rate=1.0,
+            schema_pass_rate=1.0,
+            retry_rate=0.0,
+            retry_success_rate=0.0,
+            avg_latency_ms=2000.0,
+            p50_latency_ms=1800.0,
+            p95_latency_ms=3000.0,
+            avg_tokens_per_second=25.0,
+            avg_tokens_input=100.0,
+            avg_tokens_output=50.0,
+            avg_tokens_total=150.0,
+            total_tickets=2,
+            successful_tickets=2,
+        )
+        e1_summary = ExperimentSummary(
+            experiment_id="E1",
+            experiment_name="Model size comparison",
+            date="2026-04-17",
+            dataset_size=2,
+            prompt_version="v1",
+            model_metrics=[e1_2b, e1_9b],
+        )
+
+        noval_traces = [
+            _make_trace(
+                "r1",
+                "e2-9b-noval",
+                "n-001",
+                triage_output=VALID_OUTPUT,
+                validation_status="skipped",
+            ),
+            _make_trace(
+                "r2",
+                "e2-9b-noval",
+                "n-002",
+                triage_output={
+                    **VALID_OUTPUT,
+                    "category": "account_access",
+                    "severity": "high",
+                    "routingTeam": "support",
+                },
+                validation_status="skipped",
+            ),
+        ]
+        repo = FakeTraceRepo(noval_traces)
+
+        e2 = compose_e2(e1_summary, "e2-9b-noval", TICKETS, repo)
+        assert e2.experiment_id == "E2"
+        assert len(e2.model_metrics) == 2
+        assert e2.model_metrics[0].model == "qwen3.5:2b"
+        assert e2.model_metrics[1].run_id == "e2-9b-noval"
+
+    def test_picks_smallest_regardless_of_order(self):
+        def _metrics(model: str, run_id: str) -> ModelMetrics:
+            return ModelMetrics(
+                model=model,
+                run_id=run_id,
+                category_accuracy=0.8,
+                severity_accuracy=0.7,
+                routing_accuracy=0.9,
+                escalation_accuracy=1.0,
+                json_valid_rate=1.0,
+                schema_pass_rate=1.0,
+                retry_rate=0.0,
+                retry_success_rate=0.0,
+                avg_latency_ms=500.0,
+                p50_latency_ms=450.0,
+                p95_latency_ms=800.0,
+                avg_tokens_per_second=60.0,
+                avg_tokens_input=100.0,
+                avg_tokens_output=50.0,
+                avg_tokens_total=150.0,
+                total_tickets=2,
+                successful_tickets=2,
+            )
+
+        e1_summary = ExperimentSummary(
+            experiment_id="E1",
+            experiment_name="Model size comparison",
+            date="2026-04-17",
+            dataset_size=2,
+            prompt_version="v1",
+            model_metrics=[
+                _metrics("qwen3.5:9b", "e1-9b"),
+                _metrics("qwen3.5:4b", "e1-4b"),
+                _metrics("qwen3.5:2b", "e1-2b"),
+            ],
+        )
+
+        noval_traces = [
+            _make_trace(
+                "r1",
+                "e2-9b-noval",
+                "n-001",
+                triage_output=VALID_OUTPUT,
+                validation_status="skipped",
+            ),
+            _make_trace(
+                "r2",
+                "e2-9b-noval",
+                "n-002",
+                triage_output={
+                    **VALID_OUTPUT,
+                    "category": "account_access",
+                    "severity": "high",
+                    "routingTeam": "support",
+                },
+                validation_status="skipped",
+            ),
+        ]
+        repo = FakeTraceRepo(noval_traces)
+
+        e2 = compose_e2(e1_summary, "e2-9b-noval", TICKETS, repo)
+        assert e2.model_metrics[0].model == "qwen3.5:2b"
+
+
+class TestLoadE1Summary:
+    def test_returns_none_for_missing_file(self, tmp_path):
+        assert load_e1_summary(tmp_path / "nonexistent.json") is None
+
+    def test_loads_valid_e1_json(self, tmp_path):
+        import json as _json
+
+        e1_data = {
+            "experiment_id": "E1",
+            "experiment_name": "Model size comparison",
+            "date": "2026-04-17",
+            "dataset_size": 2,
+            "prompt_version": "v1",
+            "model_metrics": [
+                ModelMetrics(
+                    model="qwen3.5:2b",
+                    run_id="e1-2b",
+                    category_accuracy=0.8,
+                    severity_accuracy=0.7,
+                    routing_accuracy=0.9,
+                    escalation_accuracy=1.0,
+                    json_valid_rate=1.0,
+                    schema_pass_rate=1.0,
+                    retry_rate=0.0,
+                    retry_success_rate=0.0,
+                    avg_latency_ms=500.0,
+                    p50_latency_ms=450.0,
+                    p95_latency_ms=800.0,
+                    avg_tokens_per_second=60.0,
+                    avg_tokens_input=100.0,
+                    avg_tokens_output=50.0,
+                    avg_tokens_total=150.0,
+                    total_tickets=2,
+                    successful_tickets=2,
+                ).to_dict(),
+            ],
+        }
+        path = tmp_path / "e1.json"
+        path.write_text(_json.dumps(e1_data))
+        result = load_e1_summary(path)
+        assert result is not None
+        assert result.experiment_id == "E1"
+        assert result.model_metrics[0].model == "qwen3.5:2b"
+
+
+class TestComposeAndWriteE2:
+    def test_writes_e2_json_when_e1_exists(self, tmp_path):
+        import json as _json
+
+        e1_data = {
+            "experiment_id": "E1",
+            "experiment_name": "Model size comparison",
+            "date": "2026-04-17",
+            "dataset_size": 2,
+            "prompt_version": "v1",
+            "model_metrics": [
+                ModelMetrics(
+                    model="qwen3.5:2b",
+                    run_id="e1-2b",
+                    category_accuracy=0.8,
+                    severity_accuracy=0.7,
+                    routing_accuracy=0.9,
+                    escalation_accuracy=1.0,
+                    json_valid_rate=1.0,
+                    schema_pass_rate=1.0,
+                    retry_rate=0.0,
+                    retry_success_rate=0.0,
+                    avg_latency_ms=500.0,
+                    p50_latency_ms=450.0,
+                    p95_latency_ms=800.0,
+                    avg_tokens_per_second=60.0,
+                    avg_tokens_input=100.0,
+                    avg_tokens_output=50.0,
+                    avg_tokens_total=150.0,
+                    total_tickets=2,
+                    successful_tickets=2,
+                ).to_dict(),
+            ],
+        }
+        e1_path = tmp_path / "e1-local-comparison.json"
+        e1_path.write_text(_json.dumps(e1_data))
+
+        noval_traces = [
+            _make_trace(
+                "r1",
+                "e2-9b-noval",
+                "n-001",
+                triage_output=VALID_OUTPUT,
+                validation_status="skipped",
+            ),
+            _make_trace(
+                "r2",
+                "e2-9b-noval",
+                "n-002",
+                triage_output={
+                    **VALID_OUTPUT,
+                    "category": "account_access",
+                    "severity": "high",
+                    "routingTeam": "support",
+                },
+                validation_status="skipped",
+            ),
+        ]
+        repo = FakeTraceRepo(noval_traces)
+
+        result = compose_and_write_e2(
+            e1_path=e1_path,
+            e2_run_id="e2-9b-noval",
+            tickets=TICKETS,
+            trace_repo=repo,
+            output_dir=tmp_path,
+        )
+        assert result is not None
+        assert result.experiment_id == "E2"
+        e2_path = tmp_path / "e2-size-vs-controls.json"
+        assert e2_path.exists()
+        written = _json.loads(e2_path.read_text())
+        assert written["experiment_id"] == "E2"
+
+    def test_returns_none_when_e1_missing(self, tmp_path):
+        repo = FakeTraceRepo([])
+        result = compose_and_write_e2(
+            e1_path=tmp_path / "nonexistent.json",
+            e2_run_id="e2-9b-noval",
+            tickets=TICKETS,
+            trace_repo=repo,
+            output_dir=tmp_path,
+        )
+        assert result is None
+        assert not (tmp_path / "e2-size-vs-controls.json").exists()

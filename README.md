@@ -2,7 +2,7 @@
 
 A production-style support ticket triage system built on local LLMs, with a focus on prompt injection defense and structured-output reliability under realistic adversarial conditions.
 
-> **Status:** Phase 1 complete — first end-to-end triage slice working. Phase 2 (provider router, retry, guardrail) is next.
+> **Status:** Phase 3 complete — eval harness built with four experiment runners and summarizer. Phase 4 (adversarial evaluation) is next.
 
 ## What this project is
 
@@ -115,6 +115,31 @@ curl -X POST http://localhost:7860/api/v1/triage \
   -d '{"ticket_body": "My printer is offline and I cannot print any documents.", "ticket_subject": "Printer not working"}'
 ```
 
+### Run evaluation experiments
+
+The eval harness runs four experiments against the triage pipeline using the normal dataset (`data/normal_set.jsonl`, 35 tickets). All runners require Ollama running with models pulled.
+
+```bash
+# E1: Model size comparison — runs each model in OLLAMA_MODELS through the full
+# normal set with prompt v1 and full validation. One run_id per model.
+OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b \
+  uv run python -m ticket_triage_llm.eval.runners.run_local_comparison
+
+# E3: Validation impact — runs 4B with and without validation, plus 9B without
+# validation (the E2 data point). Three passes total.
+uv run python -m ticket_triage_llm.eval.runners.run_validation_impact
+
+# E4: Prompt comparison — runs v1 (and v2 after Phase 6) on one model.
+uv run python -m ticket_triage_llm.eval.runners.run_prompt_comparison
+
+# Summarize any run by its run_id (printed by the runners during execution)
+uv run python -m ticket_triage_llm.eval.runners.summarize_results --run-id <RUN_ID>
+```
+
+All runners accept `--db-path`, `--dataset-path`, and `--output-dir` flags (defaults: `data/traces.db`, `data/normal_set.jsonl`, `data/phase3/`). Results are written as JSON to `data/phase3/` and as tagged traces in the SQLite database.
+
+**E2 (Model size vs engineering controls)** is not a separate runner — it's composed by `summarize_results.py` from the 2B row of E1 and the 9B-no-validation row produced by E3.
+
 ## Repository structure
 
 ```text
@@ -173,12 +198,20 @@ ticket-triage-llm/
 │   ├── api/                           # FastAPI routes
 │   │   └── triage_route.py            # POST /api/v1/triage
 │   ├── prompts/                       # Prompt templates
-│   └── eval/runners/                  # Evaluation harness (stubs)
+│   └── eval/                          # Evaluation harness
+│       ├── datasets.py                # Dataset loader (GroundTruth, TicketRecord)
+│       ├── results.py                 # ModelMetrics, ExperimentSummary
+│       └── runners/                   # Experiment runners + summarizer
+│           ├── common.py              # run_experiment_pass() shared loop
+│           ├── run_local_comparison.py # E1: model size comparison
+│           ├── run_validation_impact.py# E3: validation on/off + E2 data
+│           ├── run_prompt_comparison.py# E4: prompt v1 vs v2
+│           └── summarize_results.py   # summarize_run(), compose_e2(), CLI
 ├── Dockerfile                         # Multi-stage app container build
 ├── tests/
-│   ├── unit/                          # 129 unit tests
+│   ├── unit/                          # 210+ unit tests
 │   ├── integration/                   # API route smoke tests
-│   └── eval/                          # (stub — Phase 3)
+│   └── eval/                          # Eval harness tests
 ├── data/
 │   ├── normal_set.jsonl               # 35 normal tickets
 │   └── adversarial_set.jsonl          # Adversarial test set

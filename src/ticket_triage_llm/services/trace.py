@@ -15,19 +15,20 @@ class SqliteTraceRepository:
         self._conn.execute(
             """
             INSERT INTO traces (
-                request_id, run_id, timestamp, model, provider,
+                request_id, run_id, ticket_id, timestamp, model, provider,
                 prompt_version, ticket_body, guardrail_result,
                 guardrail_matched_rules, validation_status, retry_count,
                 latency_ms, tokens_input, tokens_output, tokens_total,
                 tokens_per_second, estimated_cost, status,
                 failure_category, raw_model_output, triage_output_json
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             (
                 trace.request_id,
                 trace.run_id,
+                trace.ticket_id,
                 trace.timestamp.isoformat(),
                 trace.model,
                 trace.provider,
@@ -61,7 +62,13 @@ class SqliteTraceRepository:
         return [self._row_to_trace(columns, row) for row in rows]
 
     def get_traces_by_run(self, run_id: str) -> list[TraceRecord]:
-        raise NotImplementedError("get_traces_by_run: Phase 3")
+        cursor = self._conn.execute(
+            "SELECT * FROM traces WHERE run_id = ? ORDER BY timestamp",
+            (run_id,),
+        )
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        return [self._row_to_trace(columns, row) for row in rows]
 
     def get_traces_by_provider(self, provider: str) -> list[TraceRecord]:
         raise NotImplementedError("get_traces_by_provider: Phase 5")
@@ -70,7 +77,12 @@ class SqliteTraceRepository:
         raise NotImplementedError("get_traces_since: Phase 5")
 
     def get_all_traces(self) -> list[TraceRecord]:
-        raise NotImplementedError("get_all_traces: Phase 3")
+        cursor = self._conn.execute(
+            "SELECT * FROM traces ORDER BY timestamp DESC",
+        )
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        return [self._row_to_trace(columns, row) for row in rows]
 
     @staticmethod
     def _row_to_trace(columns: list[str], row: tuple) -> TraceRecord:

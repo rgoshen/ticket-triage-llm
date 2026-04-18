@@ -78,17 +78,17 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
-## [2026-04-17] Phase 3 — Evaluation harness + benchmark run
+## [2026-04-17] Phase 3 — Evaluation harness + benchmark run (COMPLETE)
 
-- [ ] `eval/runners/run_local_comparison.py` (E1) — local model size comparison
-- [ ] `eval/runners/run_validation_impact.py` (E3) — validation on/off impact (needs Phase 2 retry)
-- [ ] `eval/runners/run_prompt_comparison.py` (E4) — prompt v1 vs v2 (partial; re-run after Phase 6)
-- [ ] `eval/runners/summarize_results.py` — aggregate results, compute E2 as composition of E1+E3
-- [ ] All runs tag rows with `run_id` in traces table (ADR 0005)
-- [ ] Fill in `docs/evaluation-checklist.md` Phase 3 sections + "Expected Benchmark Table" in `PLAN.md`
-- [ ] Unit tests (TDD) for summarizer aggregation logic
-- [ ] SUMMARY.md + TODO.md updated
-- [ ] PR opened, CI green, merged to `develop`
+- [x] `eval/runners/run_local_comparison.py` (E1) — local model size comparison
+- [x] `eval/runners/run_validation_impact.py` (E3) — validation on/off impact (needs Phase 2 retry)
+- [x] `eval/runners/run_prompt_comparison.py` (E4) — prompt v1 vs v2 (partial; re-run after Phase 6)
+- [x] `eval/runners/summarize_results.py` — aggregate results, compute E2 as composition of E1+E3
+- [x] All runs tag rows with `run_id` in traces table (ADR 0005)
+- [x] Fill in `docs/evaluation-checklist.md` Phase 3 sections + "Expected Benchmark Table" in `PLAN.md`
+- [x] Unit tests (TDD) for summarizer aggregation logic
+- [x] SUMMARY.md + TODO.md updated
+- [x] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F), Phase 1. E3 needs Phase 2's retry.
 **Can run in parallel with:** Phase 2 (except E3).
@@ -205,6 +205,14 @@ P2 and P3 can kick off in parallel once P1 merges, subject to the "E3 needs retr
 ---
 
 ## Completed phases
+
+### [2026-04-17] Phase 3 — Evaluation harness + benchmark run (COMPLETE)
+
+**Objective:** Build the eval harness: dataset loader, experiment runners (E1–E4), summarizer with accuracy/reliability/latency metrics, ground-truth correlation via `ticket_id`, and `skip_validation` mode for E3.
+
+**Outcome:** 213 tests, 92.47% coverage, ruff clean. Eval runners produce tagged traces and JSON result files in `data/phase3/`. Summarizer computes accuracy, reliability, and operational metrics from traces joined to ground truth. E2 composed from E1 + E3 data.
+
+**References:** `SUMMARY.md` (Phase 3 entry), design spec at `docs/superpowers/specs/2026-04-17-phase-3-eval-harness-design.md`, implementation plan at `docs/superpowers/plans/2026-04-17-phase-3-eval-harness.md`.
 
 ### [2026-04-17] Phase 1 — Single happy-path slice (COMPLETE)
 

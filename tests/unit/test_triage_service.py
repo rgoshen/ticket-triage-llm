@@ -116,7 +116,7 @@ class FakeTraceRepo:
         return self.traces[:limit]
 
     def get_traces_by_run(self, run_id: str) -> list[TraceRecord]:
-        raise NotImplementedError
+        return [t for t in self.traces if t.run_id == run_id]
 
     def get_traces_by_provider(self, provider: str) -> list[TraceRecord]:
         raise NotImplementedError
@@ -125,7 +125,7 @@ class FakeTraceRepo:
         raise NotImplementedError
 
     def get_all_traces(self) -> list[TraceRecord]:
-        raise NotImplementedError
+        return list(self.traces)
 
 
 class TestRunTriageHappyPath:
@@ -361,3 +361,122 @@ class TestRunTriageRetryIntegration:
         )
         assert isinstance(result, TriageSuccess)
         assert trace.tokens_per_second == 50 / 0.2
+
+
+class TestRunTriageEvalParams:
+    def test_run_id_passed_to_trace(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="I have a billing question",
+            ticket_subject="Billing",
+            provider=FakeProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+            run_id="e1-2b-test",
+        )
+        assert trace.run_id == "e1-2b-test"
+
+    def test_ticket_id_passed_to_trace(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="I have a billing question",
+            ticket_subject="Billing",
+            provider=FakeProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+            ticket_id="n-001",
+        )
+        assert trace.ticket_id == "n-001"
+
+    def test_run_id_defaults_to_none(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="I have a billing question",
+            ticket_subject="Billing",
+            provider=FakeProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+        )
+        assert trace.run_id is None
+
+    def test_ticket_id_defaults_to_none(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="I have a billing question",
+            ticket_subject="Billing",
+            provider=FakeProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+        )
+        assert trace.ticket_id is None
+
+
+class TestRunTriageSkipValidation:
+    def test_skip_validation_sets_status_skipped(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="I have a billing question",
+            ticket_subject="Billing",
+            provider=FakeProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+            skip_validation=True,
+        )
+        assert trace.validation_status == "skipped"
+
+    def test_skip_validation_still_returns_success_on_valid_output(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="I have a billing question",
+            ticket_subject="Billing",
+            provider=FakeProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+            skip_validation=True,
+        )
+        assert isinstance(result, TriageSuccess)
+        assert result.retry_count == 0
+
+    def test_skip_validation_returns_parse_failure_on_bad_json(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="test",
+            ticket_subject="",
+            provider=AlwaysBadJsonProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+            skip_validation=True,
+        )
+        assert isinstance(result, TriageFailure)
+        assert result.category == "parse_failure"
+        assert trace.retry_count == 0
+        assert trace.validation_status == "skipped"
+
+    def test_skip_validation_returns_schema_failure_on_bad_schema(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="test",
+            ticket_subject="",
+            provider=AlwaysBadSchemaProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+            skip_validation=True,
+        )
+        assert isinstance(result, TriageFailure)
+        assert result.category == "schema_failure"
+        assert trace.retry_count == 0
+        assert trace.validation_status == "skipped"
+
+    def test_skip_validation_does_not_retry(self):
+        repo = FakeTraceRepo()
+        result, trace = run_triage(
+            ticket_body="test",
+            ticket_subject="",
+            provider=RetrySuccessProvider(),
+            prompt_version="v1",
+            trace_repo=repo,
+            skip_validation=True,
+        )
+        assert isinstance(result, TriageFailure)
+        assert result.category == "parse_failure"
+        assert trace.retry_count == 0
