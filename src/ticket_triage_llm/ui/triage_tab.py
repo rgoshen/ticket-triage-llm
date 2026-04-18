@@ -111,7 +111,10 @@ def build_triage_tab(
                     placeholder="Paste the support ticket text here...",
                     lines=10,
                 )
-                submit_btn = gr.Button("Triage", variant="primary")
+                with gr.Row():
+                    submit_btn = gr.Button("Triage", variant="primary", scale=2)
+                    cancel_btn = gr.Button("Cancel", variant="stop", scale=1)
+                    clear_btn = gr.Button("New Ticket", scale=1)
 
             with gr.Column(scale=1):
                 status_output = gr.Markdown(value="", label="Status")
@@ -125,7 +128,7 @@ def build_triage_tab(
 
         def show_processing(provider_name, ticket_subject, ticket_body):
             yield (
-                "*Processing ticket... this may take 30-90 seconds.*",
+                "*Processing ticket...*",
                 "",
                 "",
             )
@@ -134,10 +137,29 @@ def build_triage_tab(
             )
             yield "", result_text, trace_text
 
-        submit_btn.click(
+        triage_event = submit_btn.click(
             fn=show_processing,
             inputs=[provider_dropdown, subject_input, body_input],
             outputs=[status_output, result_output, trace_output],
+        )
+
+        cancel_btn.click(
+            fn=None,
+            inputs=None,
+            outputs=None,
+            cancels=[triage_event],
+        )
+
+        clear_btn.click(
+            fn=lambda: ("", "", "", "", ""),
+            inputs=None,
+            outputs=[
+                subject_input,
+                body_input,
+                status_output,
+                result_output,
+                trace_output,
+            ],
         )
 
     return demo
