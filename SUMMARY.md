@@ -19,6 +19,33 @@ Related artifacts:
 
 ---
 
+## [2026-04-18] Hotfix: Demo reliability + UI improvements
+
+**What was done:**
+
+- Fixed SQLite threading error — Gradio dispatches handlers to worker threads, but the connection was created in the main thread. Added `check_same_thread=False` to `get_connection()`. Safe because WAL mode handles concurrent reads and the app is single-writer.
+- Switched provider from `openai` Python client to native `ollama` Python client with `think=False`. The OpenAI-compatible endpoint does not support the `think` parameter. Disabling reasoning mode reduced 4B response time from 60-120s (with frequent parse failures) to 5-10s with reliable structured output.
+- Improved triage result display: title-cased field values (Account Access, not account_access), removed confidence from user-facing output (internal metric), user-friendly failure messages instead of raw trace dumps.
+- Added Cancel and New Ticket buttons. Cancel aborts a running request and shows "Ticket submission cancelled." New Ticket clears all fields for the next submission.
+- Put trace details in a collapsed accordion (hidden by default, expandable for debugging).
+- Fixed cancel double-click bug — switched from Gradio generator pattern to `.click().then()` chain so cancel doesn't leave the event queue in a stuck state.
+- Added `PYTHONPATH=/app/src` to Dockerfile (module not found error on container startup).
+- Added `docker-compose.yml` for simpler Docker usage (`docker compose up --build`).
+- Updated README with clear setup instructions for both native and Docker paths, including Ollama prerequisites.
+- Reverted default model back to 4B in `.env.example` — `think=False` resolved the reliability issue that prompted the temporary switch to 9B.
+
+**How it was done:**
+
+- All fixes on `hotfix/demo-reliability` branch, merged to `develop` incrementally. Phase 4 branch rebased after each merge to stay current.
+
+**Issues encountered:**
+
+1. **4B model timing out on normal tickets.** The 4B produced parse failures at 115-120s on straightforward tickets during live demo testing. Root cause: Qwen 3.5's reasoning mode was consuming the entire token budget on internal chain-of-thought before emitting JSON. The `/no_think` prompt tag does not work through the OpenAI-compatible endpoint, but the native `ollama` client's `think=False` parameter does.
+2. **Gradio cancel leaves event queue stuck.** After cancelling a generator-based event, the next click required two presses. Switched from `yield`-based generator to a `.click().then()` chain which cancels cleanly.
+3. **Docker container couldn't find the package.** `uv sync --no-editable` installs dependencies but not the project itself. Added `PYTHONPATH=/app/src` to the Dockerfile so Python finds the `ticket_triage_llm` package.
+
+---
+
 ## [2026-04-18] Phase 4 — Adversarial evaluation + guardrail iteration
 
 **What was done:**
