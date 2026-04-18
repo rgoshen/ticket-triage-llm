@@ -126,9 +126,7 @@ def build_triage_tab(
                         interactive=False,
                     )
 
-        def run_triage_with_status(
-            provider_name, ticket_subject, ticket_body
-        ):
+        def run_triage_with_status(provider_name, ticket_subject, ticket_body):
             result_text, trace_text = handle_triage(
                 provider_name, ticket_subject, ticket_body
             )
