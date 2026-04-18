@@ -4,7 +4,11 @@ from datetime import UTC, datetime
 import pytest
 
 from ticket_triage_llm.eval.datasets import GroundTruth, TicketRecord
-from ticket_triage_llm.eval.runners.summarize_results import summarize_run
+from ticket_triage_llm.eval.results import ExperimentSummary, ModelMetrics
+from ticket_triage_llm.eval.runners.summarize_results import (
+    compose_e2,
+    summarize_run,
+)
 from ticket_triage_llm.schemas.trace import TraceRecord
 
 VALID_OUTPUT = {
@@ -311,3 +315,46 @@ class TestSummarizeRunEdgeCases:
         repo = FakeTraceRepo([])
         with pytest.raises(ValueError, match="No traces found"):
             summarize_run("nonexistent", TICKETS, repo)
+
+
+class TestComposeE2:
+    def test_picks_2b_from_e1_and_9b_noval(self):
+        e1_2b = ModelMetrics(
+            model="qwen3.5:2b", run_id="e1-2b", category_accuracy=0.8,
+            severity_accuracy=0.7, routing_accuracy=0.9, escalation_accuracy=1.0,
+            json_valid_rate=1.0, schema_pass_rate=1.0, retry_rate=0.1,
+            retry_success_rate=1.0, avg_latency_ms=500.0, p50_latency_ms=450.0,
+            p95_latency_ms=800.0, avg_tokens_per_second=60.0,
+            avg_tokens_input=100.0, avg_tokens_output=50.0,
+            avg_tokens_total=150.0, total_tickets=2, successful_tickets=2,
+        )
+        e1_9b = ModelMetrics(
+            model="qwen3.5:9b", run_id="e1-9b", category_accuracy=0.95,
+            severity_accuracy=0.9, routing_accuracy=0.95, escalation_accuracy=1.0,
+            json_valid_rate=1.0, schema_pass_rate=1.0, retry_rate=0.0,
+            retry_success_rate=0.0, avg_latency_ms=2000.0, p50_latency_ms=1800.0,
+            p95_latency_ms=3000.0, avg_tokens_per_second=25.0,
+            avg_tokens_input=100.0, avg_tokens_output=50.0,
+            avg_tokens_total=150.0, total_tickets=2, successful_tickets=2,
+        )
+        e1_summary = ExperimentSummary(
+            experiment_id="E1", experiment_name="Model size comparison",
+            date="2026-04-17", dataset_size=2, prompt_version="v1",
+            model_metrics=[e1_2b, e1_9b],
+        )
+
+        noval_traces = [
+            _make_trace("r1", "e2-9b-noval", "n-001",
+                        triage_output=VALID_OUTPUT, validation_status="skipped"),
+            _make_trace("r2", "e2-9b-noval", "n-002",
+                        triage_output={**VALID_OUTPUT, "category": "account_access",
+                                       "severity": "high", "routingTeam": "support"},
+                        validation_status="skipped"),
+        ]
+        repo = FakeTraceRepo(noval_traces)
+
+        e2 = compose_e2(e1_summary, "e2-9b-noval", TICKETS, repo)
+        assert e2.experiment_id == "E2"
+        assert len(e2.model_metrics) == 2
+        assert e2.model_metrics[0].model == "qwen3.5:2b"
+        assert e2.model_metrics[1].run_id == "e2-9b-noval"
