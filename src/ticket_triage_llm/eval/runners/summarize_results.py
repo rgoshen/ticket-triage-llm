@@ -160,3 +160,51 @@ def compose_e2(
         prompt_version="v1",
         model_metrics=[smallest_metrics, largest_noval_metrics],
     )
+
+
+def _print_metrics(m: ModelMetrics) -> None:
+    print(f"  Model:              {m.model}")
+    print(f"  Run ID:             {m.run_id}")
+    print(f"  Category accuracy:  {m.category_accuracy:.1%}")
+    print(f"  Severity accuracy:  {m.severity_accuracy:.1%}")
+    print(f"  Routing accuracy:   {m.routing_accuracy:.1%}")
+    print(f"  Escalation acc:     {m.escalation_accuracy:.1%}")
+    print(f"  JSON valid rate:    {m.json_valid_rate:.1%}")
+    print(f"  Schema pass rate:   {m.schema_pass_rate:.1%}")
+    print(f"  Retry rate:         {m.retry_rate:.1%}")
+    print(f"  Retry success rate: {m.retry_success_rate:.1%}")
+    print(f"  Avg latency:        {m.avg_latency_ms:.0f}ms")
+    print(f"  p50 latency:        {m.p50_latency_ms:.0f}ms")
+    print(f"  p95 latency:        {m.p95_latency_ms:.0f}ms")
+    tps = f"{m.avg_tokens_per_second:.1f}" if m.avg_tokens_per_second else "N/A"
+    print(f"  Avg tokens/sec:     {tps}")
+    print(f"  Avg tokens in:      {m.avg_tokens_input:.0f}")
+    print(f"  Avg tokens out:     {m.avg_tokens_output:.0f}")
+    print(f"  Tickets:            {m.successful_tickets}/{m.total_tickets}")
+    print()
+
+
+if __name__ == "__main__":
+    import argparse
+    import logging
+    from pathlib import Path
+
+    from ticket_triage_llm.eval.datasets import load_dataset
+    from ticket_triage_llm.services.trace import SqliteTraceRepository
+    from ticket_triage_llm.storage.db import get_connection, init_schema
+
+    parser = argparse.ArgumentParser(description="Summarize experiment results")
+    parser.add_argument("--db-path", default="data/traces.db")
+    parser.add_argument("--dataset-path", default="data/normal_set.jsonl")
+    parser.add_argument("--run-id", required=True, help="Run ID to summarize")
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    conn = get_connection(args.db_path)
+    init_schema(conn)
+    repo = SqliteTraceRepository(conn)
+    tickets = load_dataset(Path(args.dataset_path))
+
+    metrics = summarize_run(args.run_id, tickets, repo)
+    _print_metrics(metrics)
