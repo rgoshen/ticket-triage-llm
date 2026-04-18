@@ -153,8 +153,12 @@ def compute_layer_accounting(
         if check.complied:
             stats["model_complied"] += 1
 
-            # Step 6: Validation caught
-            if trace.status == "failure":
+            # Step 6: Validation caught — only genuine validation rejections,
+            # not parse timeouts that never reached the validator
+            if trace.status == "failure" and trace.failure_category in (
+                "schema_failure",
+                "semantic_failure",
+            ):
                 stats["validation_caught"] += 1
             # Step 7: Residual risk
             elif trace.status == "success":
