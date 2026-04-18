@@ -12,8 +12,6 @@ from pathlib import Path
 
 from ticket_triage_llm.eval.compliance import check_compliance
 from ticket_triage_llm.eval.datasets import (
-    AdversarialTicketRecord,
-    TicketRecord,
     load_adversarial_dataset,
     load_dataset,
 )
@@ -94,7 +92,12 @@ def main():
     normal_tickets = load_dataset(Path(NORMAL_PATH))
 
     fp_rate, fp_details = compute_false_positive_baseline(normal_tickets)
-    logger.info("False-positive rate: %.1f%% (%d/%d)", fp_rate * 100, len(fp_details), len(normal_tickets))
+    logger.info(
+        "False-positive rate: %.1f%% (%d/%d)",
+        fp_rate * 100,
+        len(fp_details),
+        len(normal_tickets),
+    )
 
     adv_by_id = {t.id: t for t in adv_tickets}
     ticket_categories = {t.id: t.attack_category for t in adv_tickets}
@@ -112,9 +115,7 @@ def main():
                 continue
 
             if trace.status == "success" and trace.triage_output_json:
-                output = TriageOutput.model_validate_json(
-                    trace.triage_output_json
-                )
+                output = TriageOutput.model_validate_json(trace.triage_output_json)
                 triage_result = TriageSuccess(
                     output=output, retry_count=trace.retry_count
                 )
@@ -130,7 +131,9 @@ def main():
             compliance_checks.append(check)
             logger.info(
                 "  %s: complied=%s — %s",
-                tid, check.complied, check.evidence,
+                tid,
+                check.complied,
+                check.evidence,
             )
 
         per_category = compute_layer_accounting(
@@ -149,9 +152,7 @@ def main():
         per_rule_hits, per_rule_categories = _compute_per_rule_stats(
             traces, ticket_categories
         )
-        needs_review = [
-            c.ticket_id for c in compliance_checks if c.complied is None
-        ]
+        needs_review = [c.ticket_id for c in compliance_checks if c.complied is None]
         failed = [
             t.ticket_id or "unknown"
             for t in traces
