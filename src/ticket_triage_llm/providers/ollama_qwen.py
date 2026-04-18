@@ -1,6 +1,7 @@
 import time
 
-from openai import APIConnectionError, APIError, APITimeoutError, OpenAI
+import ollama as ollama_client
+from ollama import ResponseError
 
 from ticket_triage_llm.config import (
     REPETITION_PENALTY,
@@ -18,7 +19,8 @@ MAX_TOKENS = 2048
 class OllamaQwenProvider:
     def __init__(self, model: str, base_url: str) -> None:
         self._model = model
-        self._client = OpenAI(base_url=base_url, api_key="ollama")
+        host = base_url.replace("/v1", "")
+        self._client = ollama_client.Client(host=host)
 
     @property
     def name(self) -> str:
@@ -36,37 +38,40 @@ class OllamaQwenProvider:
 
         start = time.perf_counter()
         try:
-            response = self._client.chat.completions.create(
+            response = self._client.chat(
                 model=self._model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                temperature=TEMPERATURE,
-                max_tokens=MAX_TOKENS,
-                extra_body={
+                options={
+                    "temperature": TEMPERATURE,
                     "top_p": TOP_P,
                     "top_k": TOP_K,
-                    "repetition_penalty": REPETITION_PENALTY,
+                    "repeat_penalty": REPETITION_PENALTY,
+                    "num_predict": MAX_TOKENS,
                 },
+                think=False,
             )
-        except (APIConnectionError, APITimeoutError, APIError) as exc:
+        except (ResponseError, ConnectionError) as exc:
             raise ProviderError(str(exc)) from exc
         elapsed_ms = (time.perf_counter() - start) * 1000
 
-        raw_output = response.choices[0].message.content or ""
-        usage = response.usage
+        raw_output = response.message.content or ""
+        tokens_input = response.prompt_eval_count or 0
+        tokens_output = response.eval_count or 0
+        tokens_total = tokens_input + tokens_output
 
         return ModelResult(
             raw_output=raw_output,
             model=self._model,
             latency_ms=elapsed_ms,
-            tokens_input=usage.prompt_tokens if usage else 0,
-            tokens_output=usage.completion_tokens if usage else 0,
-            tokens_total=usage.total_tokens if usage else 0,
+            tokens_input=tokens_input,
+            tokens_output=tokens_output,
+            tokens_total=tokens_total,
             tokens_per_second=(
-                (usage.completion_tokens / (elapsed_ms / 1000))
-                if usage and elapsed_ms > 0
+                (tokens_output / (elapsed_ms / 1000))
+                if tokens_output and elapsed_ms > 0
                 else None
             ),
         )
