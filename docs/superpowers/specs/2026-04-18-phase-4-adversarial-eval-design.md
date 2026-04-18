@@ -331,5 +331,4 @@ After the initial adversarial run, analyze findings:
 - Does not add an LLM-based guardrail classifier (deferred per ADR 0008)
 - Does not modify the `TraceRecord` schema (all needed fields already exist)
 - Does not add new UI components (Phase 5)
-- Does not close OD-4 (default demo model decision — separate task)
 - Does not run Experiment 4 / prompt v2 (Phase 6)
