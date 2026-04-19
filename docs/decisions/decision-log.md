@@ -8,6 +8,27 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-18 — Adopted GitHub Flow over GitFlow for solo-developer project
+
+**Decision:** The project's branching model is GitHub Flow with a `develop` integration branch, not full GitFlow. `CLAUDE.md` updated to reflect the actual process.
+
+**Original plan:** Full GitFlow with `main`, `develop`, `feature/*`, `release/*`, and `hotfix/*` branches.
+
+**Actual practice since Phase F:** GitHub Flow — feature branches off `develop`, PRs merging feature → develop, PRs merging develop → main as the release mechanism. No `release/*` or `hotfix/*` branches have ever been created. The one hotfix (`hotfix/demo-reliability`) was a feature branch in all but name — it merged to `develop`, not directly to `main`.
+
+**Reasoning:** GitFlow's release and hotfix branch ceremony adds overhead without value at single-developer scale. The release branch exists to coordinate parallel release preparation while development continues on `develop` — but there is no separate QA team, no staging environment, and no parallel development stream that needs isolation from the release. The hotfix branch exists to patch production while the next release is in flight — but with a single developer, there is never a release in flight that would conflict with an urgent fix.
+
+**What's preserved from GitFlow:**
+- The semantic distinction between `main` (always deployable) and `develop` (integration)
+- The rule that neither branch takes direct commits
+- Feature branches for all work, merged via PR
+
+**What's dropped:**
+- `release/*` branches — PRs from `develop` to `main` serve this purpose
+- `hotfix/*` branches — urgent fixes go through the same feature → develop → main path
+
+---
+
 ## 2026-04-18 — Thinking mode disabled for demo/production configuration
 
 **Decision:** Qwen 3.5 thinking mode is disabled via `think=false` in the Ollama request options for the demo and production pipeline configuration. The evaluation configuration (Phase 0 through Phase 4) used the default `think=true`.

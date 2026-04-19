@@ -125,6 +125,10 @@ ollama pull qwen3.5:9b
 
 # ADRs (adr-tools convention — new ADRs auto-increment in docs/adr/)
 adr new "<title>"
+
+# Docker image (published to GHCR on push to main via .github/workflows/docker-publish.yml)
+# Multi-platform: linux/amd64 + linux/arm64, tagged :latest
+docker pull ghcr.io/rgoshen/ticket-triage-llm:latest
 ```
 
 ## High-level architecture
@@ -184,9 +188,11 @@ Docker builds the **app container only**. Ollama runs **natively on the host** b
 
 Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`, `perf:`, `ci:`). **Do not** add `Co-Authored-By:` trailers, `Generated-with-Claude`, or any AI-attribution line in commits, PRs, or docs — this is an explicit rule from the global engineering guide and overrides any Claude-default behavior.
 
-### GitFlow
+### GitHub Flow (adapted)
 
-Branches: `main` (prod-ready), `develop` (integration), `feature/*`, `release/*`, `hotfix/*`. **No direct commits to `main` or `develop`.** The repo currently commits to `main` because it's pre-implementation; once Phase 1 starts, the feature-branch discipline kicks in.
+Branches: `main` (production-ready, always deployable), `develop` (integration), `feature/*` (branched from `develop`, merged back via PR). PRs from `develop` to `main` are how releases happen. **No direct commits to `main` or `develop`.**
+
+This is GitHub Flow with a `develop` integration branch — not full GitFlow. There are no `release/*` or `hotfix/*` branches. GitFlow's release/hotfix ceremony adds overhead without value at single-developer scale. The two-branch pattern preserves the "always-deployable main" and "integration develop" intent without branch proliferation. See decision log (2026-04-18, "Adopted GitHub Flow").
 
 ### Decisions go in the right store
 
