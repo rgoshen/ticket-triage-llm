@@ -35,7 +35,7 @@ The project is structured to test that argument empirically. Each of the planned
 - **Model size comparison** asks: how much does raw model capability buy you?
 - **Model size vs engineering controls interaction** asks: can a smaller model with strong controls match a larger model without them?
 - **Validation on/off comparison** asks: how much do engineering controls buy you?
-- **Prompt v1/v2 comparison** asks: how much does prompt design buy you?
+- **Prompt v1/v2 comparison** asks: how much does prompt design buy you? *(Scoped out — Phase 6 skipped per decision log 2026-04-19. E4 ships with v1 only; reliability saturation across all three models left the question narrower than the phase was designed to measure.)*
 
 Together, the experiments produce a defensible answer to *where the value actually comes from* in this kind of system, on this kind of hardware, for this kind of task.
 
@@ -284,7 +284,7 @@ ticket-triage-llm/
 │   ├── architecture.md             # forthcoming
 │   ├── evaluation-plan.md          # forthcoming
 │   ├── tradeoffs.md                # forthcoming
-│   ├── prompt-versions.md          # forthcoming
+│   ├── prompt-versions.md          # not written (Phase 6 scoped out — see decision log)
 │   ├── threat-model.md             # forthcoming — prompt injection threat model
 │   ├── demo-script.md              # forthcoming
 │   └── presentation-notes.md       # forthcoming
@@ -326,8 +326,7 @@ ticket-triage-llm/
 │       ├── prompts/                # prompt templates by version
 │       │   ├── __init__.py
 │       │   ├── triage_v1.py
-│       │   ├── triage_v2.py
-│       │   └── repair_json_v1.py
+│       │   └── repair_json_v1.py    # (triage_v2.py not shipped — Phase 6 scoped out)
 │       │
 │       ├── schemas/                # pydantic models
 │       │   ├── __init__.py
@@ -434,7 +433,7 @@ Features:
 - **Experiment 1** — local size comparison: Qwen 3.5 2B vs 4B vs 9B
 - **Experiment 2** — model size vs engineering controls: smallest model with full validation vs largest model without validation
 - **Experiment 3** — validation impact: pipeline with validation/retry vs pipeline without
-- **Experiment 4** — prompt comparison: triage prompt v1 vs v2
+- **Experiment 4** — prompt comparison: triage prompt v1 only *(Phase 6 scoped out — v2 not authored)*
 - exportable result summaries
 
 ---
@@ -536,7 +535,7 @@ Summary of the four experiments:
 1. **Model size comparison** — Qwen 3.5 2B vs 4B vs 9B: how does quality scale with size on consumer hardware?
 2. **Model size vs engineering controls** — smallest model with full validation vs largest model without: can controls compensate for model size?
 3. **Validation impact** — full pipeline vs no validation on same model: what do engineering controls actually buy?
-4. **Prompt comparison** — prompt v1 vs v2 on same model: how much does prompt design contribute?
+4. **Prompt comparison** — prompt v1 only on same model *(Phase 6 scoped out per decision log 2026-04-19; v2 deferred because reliability saturated at 100% JSON validity across all three models under production config, leaving only a 2.8pp category-accuracy headroom for v2 to measure)*.
 
 Plus a **prompt injection sub-evaluation** measuring per-layer effectiveness across attack categories. See [threat-model.md](threat-model.md) for the defensive layer design and residual risk framing.
 
@@ -703,25 +702,27 @@ Output: the project is fully observable from the UI. Static benchmark results an
 
 Much of this phase can be parallelized — the coding agent can build the time-series queries and chart rendering while the developer authors documentation or runs additional eval batches.
 
-### Phase 6: Prompt v2 and prompt comparison
+### Phase 6: Prompt v2 and prompt comparison *(SCOPED OUT — see decision log 2026-04-19)*
 
-- author triage prompt v2 (a meaningfully different version, not just a tweak)
-- run Experiment 4
-- update the dashboards to support prompt-version filtering
+~~author triage prompt v2 (a meaningfully different version, not just a tweak)~~
+~~run Experiment 4~~
+~~update the dashboards to support prompt-version filtering~~
 
-Output: Experiment 4 has real data. Prompt comparison is available in the dashboard.
+**Status: not executed.** Phase 3 replication showed all three models achieve 100% JSON validity under production config, leaving only a 2.8pp category-accuracy headroom for v2 to measure. The phase's original motivation (reliability + accuracy headroom) no longer applies. E4 is declared complete with v1 only. v2 remains an item in `docs/future-improvements.md` if category accuracy becomes the bottleneck in a later iteration.
 
 ### Phase 7: Hardening, documentation, and presentation prep
 
-- sweep adversarial cases that revealed weaknesses; iterate on guardrail or prompt
-- write `architecture.md`, `evaluation-plan.md`, `tradeoffs.md`, `prompt-versions.md`, `threat-model.md`
+- document a-009 and other adversarial findings as known limitations (guardrail sweep not attempted — preserves ADR 0008 baseline)
+- write `architecture.md`, `evaluation-plan.md`, `tradeoffs.md`, `threat-model.md` *(`prompt-versions.md` not authored — Phase 6 scoped out)*
 - write `DEPLOYMENT.md` with native and Docker quick-starts, architecture note explaining Ollama-on-host design, and troubleshooting section
-- test the Docker setup on Windows and on the work laptop (Linux) — document tested platforms in `DEPLOYMENT.md`
-- finalize ADRs based on what was actually decided during the build
-- author the presentation slides
+- add README "Managing models" section covering add/remove/change default + cloud-via-Ollama-passthrough
+- fill in `cost-analysis.md` TBDs with Phase 3 measured values
+- test the Docker setup on Windows and on the work laptop (Linux) — **cross-platform testing deferred to a follow-up branch**
+- finalize ADRs via addenda based on what was actually decided during the build
+- author the presentation slides + demo script
 - rehearse the demo end-to-end (twice)
 
-Output: complete deliverable. Everything ready for presentation day, deployable on any platform with Docker.
+Output: complete deliverable. Everything ready for presentation day, deployable on macOS (primary) with Docker; cross-platform validation pending.
 
 ### Phase order, not phase duration
 
@@ -739,7 +740,7 @@ Minimum viable strong version:
 - validator-first pipeline with bounded retry
 - guardrail layer with explicit attention to prompt injection
 - 35 labeled normal tickets (including non-actionable and ambiguous-severity edge cases) + 14 labeled adversarial tickets
-- four experiments (size, size-vs-controls interaction, validation-on/off, prompt-v1-vs-v2)
+- four experiments (size, size-vs-controls interaction, validation-on/off, prompt-v1 — v2 comparison scoped out per decision log)
 - prompt injection sub-evaluation across attack categories
 - built-in metrics dashboard and trace explorer
 - 6-slide presentation framed around the central engineering question, not the feature list
@@ -780,7 +781,7 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: thr
 
 ### ~~OD-6: Guardrail implementation depth~~ — RESOLVED
 
-Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: heuristic-only baseline (pattern matching for known injection phrases, structural markers, length extremes, PII patterns). The heuristic will be measured against the adversarial set in Phase 4; expected failures on obfuscated attacks are treated as a finding, not a defect. Optional stretch: LLM-based second-pass classifier post-Phase 6 if time permits.
+Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: heuristic-only baseline (pattern matching for known injection phrases, structural markers, length extremes, PII patterns). The heuristic was measured against the adversarial set in Phase 4; expected failures on obfuscated/indirect attacks are documented as findings, not defects. LLM-based second-pass classifier remains a [`future-improvements.md`](decisions/../future-improvements.md) item — not added in this project iteration.
 
 ### ~~OD-7: Adversarial set final size and exact composition~~ — RESOLVED
 
@@ -801,7 +802,7 @@ Documentation is split across multiple artifact types, each with a clear purpose
 - **`docs/tradeoffs.md`** — cross-cutting tradeoffs with reasoning — **written**
 - **`docs/cost-analysis.md`** — three-component cost analysis with TBD placeholders for Phase 3 data — **structured, awaiting data**
 - **`docs/future-improvements.md`** — everything deliberately out of scope with reasoning and effort estimates — **written**
-- **`docs/prompt-versions.md`** — forthcoming (Phase 6, when v1 and v2 both exist)
+- **`docs/prompt-versions.md`** — not written (Phase 6 scoped out — v2 was never authored; see decision log 2026-04-19)
 - **`DEPLOYMENT.md`** (repo root) — forthcoming (Phase 7, native and Docker quick-start, tested platforms)
 - **`docs/demo-script.md`** — forthcoming (Phase 7, literal walkthrough for the live demo)
 - **`docs/presentation-notes.md`** — forthcoming (Phase 7, slide-by-slide speaker notes)
