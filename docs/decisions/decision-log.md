@@ -8,6 +8,91 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-19 — OD-4 re-resolved: Qwen 3.5 9B is the default demo model (supersedes 4B)
+
+**Decision:** The default model loaded when the Triage tab opens is now **Qwen 3.5 9B** (`qwen3.5:9b`). This supersedes the [2026-04-18 OD-4 resolution](#2026-04-18--od-4-resolved-qwen-35-4b-is-the-default-demo-model), which selected the 4B based on n=1 Phase 3 data collected under `think=true` / `num_ctx=4096`. That data has since been superseded by the Phase 3 replication (n=5, production config) — see [2026-04-19 Phase 3 replication supersedes single-run claims](#2026-04-19--phase-3-replication-supersedes-single-run-claims).
+
+The 4B ADR ([ADR 0011](../adr/0011-default-model-selection.md)) is not modified — ADRs are historical records of decisions as they were made. ADR 0011 now captures the reasoning behind the n=1 4B selection; this decision-log entry captures the reasoning behind the n=5 9B re-selection. Future readers should treat ADR 0011 as superseded by this entry.
+
+**Evidence from Phase 3 replication (n=5, `think=false`, `num_ctx=16384`, 35 normal tickets, prompt v1):**
+
+| Metric              | Qwen 3.5 2B   | Qwen 3.5 4B   | Qwen 3.5 9B   |
+| ------------------- | ------------- | ------------- | ------------- |
+| Category accuracy   | 74.9%         | 80.6%         | **83.4%**     |
+| Severity accuracy   | ~62%          | ~74%          | **~76%**      |
+| Escalation accuracy | ~77%          | ~82%          | **~85%**      |
+| JSON validity       | 100%          | 100%          | 100%          |
+| First-pass validity | ~100%         | ~100%         | ~100%         |
+| Accuracy stddev     | ≤ 5%          | ≤ 5%          | ≤ 5%          |
+
+**Evidence from Phase 4 replication (n=5, `think=false`, `num_ctx=16384`, 14 adversarial tickets + 35 normal tickets for FP baseline):**
+
+| Metric                         | Qwen 3.5 2B  | Qwen 3.5 4B  | Qwen 3.5 9B  |
+| ------------------------------ | ------------ | ------------ | ------------ |
+| Residual risk (mean / 14)      | 5.4 ± 0.49   | 1.2 ± 0.40   | **1.0 ± 0.0** |
+| Residual-risk reproducibility  | unstable     | unstable     | **stddev=0** |
+| Parse failures                 | 0            | 0            | 0            |
+| False-positive guardrail rate  | 0%           | 0%           | 0%           |
+| Only reproducible vulnerability | 5-6 tickets | 1-2 tickets | **1 ticket (a-009)** |
+
+**Evidence from E5 replication (n=3 think-on, n=2 think-off, 9B only, adversarial set):**
+
+| Metric                    | think=off         | think=on           |
+| ------------------------- | ----------------- | ------------------ |
+| Residual risk             | 1.0 ± 0.0         | 0.0 ± 0.0          |
+| Model complied            | 1.0 ± 0.0         | 0.67 ± 0.47        |
+| Needs manual review       | 1.0 ± 0.0         | 4.0 ± 2.16         |
+| Per-triage latency        | ~7 s              | ~121 s             |
+| Per-triage output tokens  | ~162              | ~2,913             |
+| New compliance tickets    | 0                 | 1 (a-014, 2/3 runs) |
+
+**Why the 9B, not the 4B:**
+
+1. **Highest category accuracy.** 83.4% vs 80.6% vs 74.9%. With all three models producing 100% JSON validity under production config, category accuracy is the primary differentiator. The 9B wins on the primary metric by ~3 percentage points over the 4B and ~8.5 percentage points over the 2B.
+
+2. **Best adversarial resistance.** 1.0 compromised out of 14 adversarial tickets with stddev=0 across 5 runs. The 4B has 1.2 ± 0.40 (less reproducible, more exposure to a-009 and partial compromise on a-008). The 2B has 5.4 ± 0.49 (substantially worse). On the a-008 indirect-injection attack that bypasses the guardrail by design, the 9B resists 5/5 runs while the 4B complies 5/5 runs — the single most important ticket-level difference.
+
+3. **Highest reproducibility.** Adversarial residual risk stddev=0 across 5 runs. The 9B's adversarial behavior is deterministic: the one ticket it compromises (a-009) is the same ticket every run, and the 13 it resists are the same 13 every run. This is a production-relevant property — a-009 becomes a known-and-documented vulnerability rather than an intermittent mystery.
+
+4. **Validated think-off defaults.** E5 confirmed that enabling reasoning mode is not an improvement on adversarial resistance: it eliminates a-009 but introduces a new reproducible compliance pattern on a-014 (2/3 runs), quadruples the needs-review population, and taxes latency by ~17x. This closes the long-running "maybe we should enable reasoning for safety" conjecture with concrete evidence that the answer is no.
+
+**Why not the 4B anymore:**
+
+The 2026-04-18 4B-as-default decision was grounded in n=1 Phase 3 numbers under `think=true` / `num_ctx=4096` that the replication has invalidated:
+
+- "4B has higher JSON validity than 9B (82.9% vs 74.3%)" → both are 100% under production config
+- "4B has higher category accuracy than 9B (57.1% vs 54.3%)" → 9B leads under production config (83.4% vs 80.6%)
+- "4B has lower latency than 9B (74s vs 107s)" → both are now fast (~3-5s/triage for 4B, ~7-10s/triage for 9B on normal triage, adversarial is ~7s for both)
+
+None of the 2026-04-18 rationale survives replication. The 4B remains a usable model — it is still in the registry, still selectable from the dropdown, still produces 100% JSON validity — but the case for it as *default* is gone.
+
+**Why not the 2B:**
+
+The 2B is a usable model under production config (100% JSON validity vs the earlier 2.9%), but its category accuracy (74.9%) and adversarial compliance (38.6% of adversarial attempts succeed) put it below the 4B and 9B. It stays in the registry for the size-comparison deliverable and for hardware-constrained scenarios, but it is not a candidate for default.
+
+**Acknowledged caveats and production-readiness limitations:**
+
+1. **a-009 is a known reproducible vulnerability.** Indirect injection via quoted JSON debug payload — the same ticket, compromised the same way, every run. The 9B cannot be deployed autonomously on user-submitted content without either (a) an upstream detector for debug-payload-style content or (b) human review of all tickets flagged as high-severity by the 9B.
+
+2. **Phase 4 replication Observation 3 (see evaluation-checklist.md):** The 9B is *not* production-ready for autonomous deployment — the "best available option" and "production-ready" are different bars. The 9B is the best of three imperfect choices under the hardware constraint, not an evidence-based claim that it is safe for untrusted-input deployment.
+
+3. **Latency envelope:** Per-triage latency on normal tickets is ~3-5 s for the 4B and ~7-10 s for the 9B (Phase 3 replication, n=5). On adversarial tickets the 9B latency is ~5-11 s. The p95 is higher — roughly ~15-25 s on the 9B — and there are occasional 30+ s outliers. This is acceptable for a human-in-the-loop demo or assistive-triage scenario, but not for a sub-second live API. A cloud deployment backed by Qwen API would reduce latency substantially (see `docs/cost-analysis.md`); the 9B-on-consumer-hardware latency profile is specific to the local deployment path.
+
+4. **Think-on is not a workaround.** E5 closes the conjecture that enabling reasoning mode would compensate for a-009. It does — but only at the cost of a new vulnerability on a-014, ~17x worse latency, and ~18x more expensive output tokens. Not a defensible tradeoff.
+
+**Honest framing:** Based on the measured evidence, the 9B is the best available default for this system. It is not production-ready for autonomous deployment on adversarial-capable input, but it is the right default for the demo and for any reviewer-assistive use case where a human looks at the triage output before acting on it.
+
+**Configuration change (this PR):**
+
+- `.env.example` updated: `OLLAMA_MODEL=qwen3.5:9b` (previously `qwen3.5:4b`)
+- `README.md` updated: Production configuration section lists 9B as default demo model; Ollama pull commands reordered to pull 9B first
+- Triage tab's dropdown default resolver extracted to a testable helper (`resolve_default_provider`) with an explicit regression test that 9B is selected when registered as the default
+- No ADR modifications (per plan scope)
+
+**References:** This PR (`feature/e5-reasoning-on-adversarial`), Phase 3 replication data (`data/phase3-1/`), Phase 4 replication data (`data/phase4-1/`), E5 data (`data/e5-reasoning/`), `docs/evaluation-checklist.md` § Phase 3 Replication, § Phase 4 Replication, § E5 Reasoning Mode.
+
+---
+
 ## 2026-04-19 — Phase 3 replication supersedes single-run claims
 
 **Decision:** Phase 3 replication data (n=5 runs under production configuration) supersedes the earlier single-run (n=1) Phase 3 claims. Prior decision-log entries are not edited — they remain the historical record of what was concluded from n=1 — but readers should treat the claims below as superseded.
