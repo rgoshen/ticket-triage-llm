@@ -1,4 +1,4 @@
-"""Triage tab — ticket input, model selection, result display — Phase 2."""
+"""Triage tab — ticket input, model selection, result display — Phase 5."""
 
 import gradio as gr
 
@@ -21,10 +21,10 @@ def build_triage_tab_content(
 
     def handle_triage(provider_name: str, ticket_subject: str, ticket_body: str):
         if not ticket_body.strip():
-            return "Error: ticket body is required", ""
+            return "Error: ticket body is required"
 
         provider = registry.get(provider_name)
-        result, trace = run_triage(
+        result, _ = run_triage(
             ticket_body=ticket_body,
             ticket_subject=ticket_subject,
             provider=provider,
@@ -33,26 +33,13 @@ def build_triage_tab_content(
             guardrail_max_length=guardrail_max_length,
         )
 
-        trace_text = (
-            f"Request ID: {trace.request_id}\n"
-            f"Model: {trace.model}\n"
-            f"Latency: {trace.latency_ms:.0f} ms\n"
-            f"Tokens: {trace.tokens_total} "
-            f"(in={trace.tokens_input}, out={trace.tokens_output})\n"
-            f"Validation: {trace.validation_status}\n"
-            f"Retry Count: {trace.retry_count}\n"
-            f"Guardrail: {trace.guardrail_result}"
-        )
-        if trace.guardrail_matched_rules:
-            trace_text += f"\nMatched Rules: {', '.join(trace.guardrail_matched_rules)}"
-
         if isinstance(result, TriageSuccess):
             output = result.output
             esc = "Yes" if output.escalation else "No"
             cat = output.category.replace("_", " ").title()
             sev = output.severity.title()
             team = output.routing_team.title()
-            result_text = (
+            return (
                 f"### Triage Result\n\n"
                 f"**Category:** {cat}  \n"
                 f"**Severity:** {sev}  \n"
@@ -64,32 +51,29 @@ def build_triage_tab_content(
                 f"{output.business_impact}\n\n"
                 f"**Draft Reply**  \n{output.draft_reply}"
             )
-            return result_text, trace_text
 
         if isinstance(result, TriageFailure):
             if result.category == "guardrail_blocked":
-                result_text = (
+                return (
                     "**Ticket Blocked**\n\n"
                     "This ticket was flagged by the safety guardrail "
                     "and was not sent to the model."
                 )
-            elif result.category == "parse_failure":
-                result_text = (
+            if result.category == "parse_failure":
+                return (
                     "**Triage Unavailable**\n\n"
                     "The model could not produce a structured response "
                     "for this ticket. Try again or select a different "
                     "model from the dropdown."
                 )
-            else:
-                result_text = (
-                    "**Triage Failed**\n\n"
-                    f"The model response did not pass validation "
-                    f"({result.category}). Try again or select a "
-                    f"different model."
-                )
-            return result_text, trace_text
+            return (
+                "**Triage Failed**\n\n"
+                f"The model response did not pass validation "
+                f"({result.category}). Try again or select a "
+                f"different model."
+            )
 
-        return "Unexpected result type", ""
+        return "Unexpected result type"
 
     gr.Markdown("# Ticket Triage LLM")
 
@@ -120,52 +104,39 @@ def build_triage_tab_content(
         with gr.Column(scale=1):
             status_output = gr.Markdown(value="", label="Status")
             result_output = gr.Markdown(label="Triage Result")
-            with gr.Accordion("Trace Details", open=False):
-                trace_output = gr.Textbox(
-                    label="Trace Summary",
-                    lines=8,
-                    interactive=False,
-                )
-
-    def run_triage_with_status(provider_name, ticket_subject, ticket_body):
-        result_text, trace_text = handle_triage(
-            provider_name, ticket_subject, ticket_body
-        )
-        return "", result_text, trace_text
 
     triage_event = submit_btn.click(
-        fn=lambda: ("*Processing ticket...*", "", "", gr.update(interactive=True)),
+        fn=lambda: ("*Processing ticket...*", "", gr.update(interactive=True)),
         inputs=None,
-        outputs=[status_output, result_output, trace_output, cancel_btn],
+        outputs=[status_output, result_output, cancel_btn],
     ).then(
         fn=lambda pn, ts, tb: (
-            *run_triage_with_status(pn, ts, tb),
+            "",
+            handle_triage(pn, ts, tb),
             gr.update(interactive=False),
         ),
         inputs=[provider_dropdown, subject_input, body_input],
-        outputs=[status_output, result_output, trace_output, cancel_btn],
+        outputs=[status_output, result_output, cancel_btn],
     )
 
     cancel_btn.click(
         fn=lambda: (
             "*Ticket submission cancelled.*",
             "",
-            "",
             gr.update(interactive=False),
         ),
         inputs=None,
-        outputs=[status_output, result_output, trace_output, cancel_btn],
+        outputs=[status_output, result_output, cancel_btn],
         cancels=[triage_event],
     )
 
     clear_btn.click(
-        fn=lambda: ("", "", "", "", ""),
+        fn=lambda: ("", "", "", ""),
         inputs=None,
         outputs=[
             subject_input,
             body_input,
             status_output,
             result_output,
-            trace_output,
         ],
     )
