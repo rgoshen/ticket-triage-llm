@@ -167,8 +167,9 @@ Services are pure Python with no Gradio dependencies. They can be called from th
 | Component | Responsibility |
 |---|---|
 | `triage_v1.py` | Triage system prompt, version 1 |
-| `triage_v2.py` | Triage system prompt, version 2 (authored in Phase 6) |
 | `repair_json_v1.py` | Repair prompt used on retry — includes the failed output and the validation error |
+
+*Note: `triage_v2.py` was originally planned for Phase 6 but Phase 6 was scoped out — see decision log 2026-04-19. `services/prompt.py` dispatches on `"v1"` and `"__repair__"` only.*
 
 ### Eval layer (`eval/`)
 
