@@ -8,6 +8,35 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-19 — Phase 3 replication supersedes single-run claims
+
+**Decision:** Phase 3 replication data (n=5 runs under production configuration) supersedes the earlier single-run (n=1) Phase 3 claims. Prior decision-log entries are not edited — they remain the historical record of what was concluded from n=1 — but readers should treat the claims below as superseded.
+
+**Superseded claims (all sourced from n=1 data collected with `think=true` and `num_ctx=4096`):**
+
+- *"The 4B has meaningfully better JSON validity (82.9%) than the 9B (74.3%), making the 4B the reliability leader."* — Superseded. Under production config, all three models achieve 100% first-pass JSON validity. JSON validity is no longer a differentiator. (See [OD-4 resolution, 2026-04-18](#2026-04-18--od-4-resolved-qwen-35-4b-is-the-default-demo-model) and [evaluation-checklist.md § Experiment 1](../evaluation-checklist.md#experiment-1-model-size-comparison).)
+
+- *"The 4B is the accuracy leader across all dimensions (category 57.1% vs 9B 54.3%, severity 51.4% vs 48.6%, escalation 74.3% vs 65.7%)."* — Superseded. Under production config, the 9B leads on every accuracy metric (category 83.4% vs 4B 80.6% vs 2B 74.9%). With reliability equalized, classification accuracy becomes the differentiator and the quality-size curve is monotonic. The original accuracy numbers reflected thinking-mode behavior at a 4096-token context, not the 4B's inherent classification advantage.
+
+- *"The 2B is essentially unusable for structured output (1/35 = 2.9% success rate)."* — Superseded. Under production config, the 2B achieves 35/35 success (100%) with 100% JSON validity. The original "unusable" finding measured thinking-mode + limited-context brokenness, not the 2B's capability. The 2B's accuracy under production config (74.9% category) is lower than the 4B and 9B but it is a usable model, not a broken one.
+
+- *"Validation + retry increases coverage from 23/35 to 29/35 — the retry pipeline recovers 6 additional tickets."* — Superseded. Under production config, first-pass JSON validity is ~100% and retry rate is ~0–3%. The retry path has almost nothing to recover. The validator-first architectural decision (ADR 0002) still holds as defense-in-depth, observability, and the scope carve-out for injection defense — but its *operational role* has shifted from "active correction loop" to "safety net / insurance." See [`tradeoffs.md` § Post-implementation observations](../tradeoffs.md#post-implementation-observations).
+
+- *"The thesis-supporting comparison (4B-validated vs 9B-unvalidated) shows a smaller model with controls beats a larger model without them."* — Superseded. Under production config, 2B-validated (74.9% category) loses to 9B-unvalidated (84.6%) on every accuracy metric, and 4B-validated (79.4%) still loses to 9B-unvalidated (84.6%) by ~5pp on category. Engineering controls do not compensate for a 2x–4x parameter gap when both models produce valid structured output. The thesis statement ("engineering controls matter as much as model choice") now requires the caveat that this holds where controls have failure cases to rescue — not where first-pass validity is already near-ceiling.
+
+**What did not change:**
+
+- The validator-first architectural decision in ADR 0002. ADRs capture decisions at the time they were made; the decision is still correct, only the evidence framing has evolved. No ADRs are modified as part of this reconciliation.
+- The heuristic-only guardrail baseline (ADR 0008).
+- The locked sampling parameters (temperature=0.2, top_p=0.9, top_k=40, repetition_penalty=1.0).
+- Phase 4 adversarial findings, which were collected at n=1 under `think=true` and have not yet been replicated under production config. Phase 4 claims are not superseded; they are *pending replication* and should be read as single-run observations until that replication runs.
+
+**New data source:** PR #24 (`feature/phase3-rerun`), commits `749bd81` through `f394f54`. 5 independent replications of E1/E3/E2 (1,575 total triages across 3 models × 5 runs × 3 experiment passes × 35 tickets) with `think=false` and `num_ctx=16384`. Full results, per-ticket accuracy matrices, ground-truth audit (5 corrected labels out of 35), and 10 analytical observations are in [`evaluation-checklist.md` § Phase 3 Replication](../evaluation-checklist.md#phase-3-replication-n5-thinkfalse-num_ctx16384).
+
+**Operational impact on OD-4 (default demo model):** The [2026-04-18 OD-4 resolution](#2026-04-18--od-4-resolved-qwen-35-4b-is-the-default-demo-model) selected the 4B as the default based on n=1 data that the replication has now superseded. Under production config, the 9B leads on accuracy and all three models produce output in seconds rather than minutes. Reopening OD-4 is out of scope for this reconciliation — the default model is a demo choice that depends on factors beyond raw accuracy (latency, RAM headroom, adversarial availability from Phase 4 which has not been re-run). Flagged for re-evaluation when Phase 4 replication completes.
+
+---
+
 ## 2026-04-18 — Adopted GitHub Flow over GitFlow for solo-developer project
 
 **Decision:** The project's branching model is GitHub Flow with a `develop` integration branch, not full GitFlow. `CLAUDE.md` updated to reflect the actual process.
