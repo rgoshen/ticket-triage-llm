@@ -165,3 +165,20 @@ These are not gaps or oversights. They are the result of explicit scoping decisi
 **What was done instead:** The Live Metrics section shows the same threshold-relevant numbers (p95 latency, retry rate) as KPI cards, making threshold violations visually apparent without log parsing.
 
 **Estimated effort to add:** A few hours. The metrics service already computes the relevant values; adding threshold checks and structured log output is straightforward.
+
+---
+
+## Prompt v2 comparison
+
+**What it would add:** A meaningfully different prompt v2 authored against the same `TriageOutput` schema, measured against v1 on the same model (9B) and dataset (35-ticket normal set) with the same n=5 replication methodology as Phase 3. Produces a quantitative answer to "how much does prompt design contribute vs. model selection?" — one of the four experiments in the original project plan.
+
+**Why it's deferred:** Phase 3 replication (n=5, production config — see `docs/evaluation-checklist.md` § Phase 3 Replication) showed all three models (2B, 4B, 9B) achieve 100% JSON validity and first-pass validity is ~100%. Reliability headroom is zero, so v2 cannot improve the structural-output dimension that was the phase's primary framing. Category-accuracy headroom is a narrow 2.8pp band between the 4B (80.6%) and 9B (83.4%) — v2 could measure inside that band, but the measurement is less informative than the phase was designed to produce. Time budget redirected to Phase 7 deliverables (deployment docs, cloud-model documentation, cost-analysis completion, demo materials) which produce more visible value. See `docs/decisions/decision-log.md` 2026-04-19 "Phase 6 skipped" entry for the full rationale.
+
+**What was done instead:** E4 runs with v1 only. `run_prompt_comparison.py` already accepts a `prompt_versions: list[str]` parameter and iterates dynamically, so a future v2 can be added without runner changes. The v1 baseline metrics per model are captured in E1 (Experiment 1: Model size comparison).
+
+**Estimated effort to add:** 1-2 days total:
+
+- ~Half a day to author `src/ticket_triage_llm/prompts/triage_v2.py` (a meaningfully different prompt, not a tweak — e.g., restructured system prompt, different taxonomy framing, explicit few-shot examples, or JSON-schema-in-prompt). Register v2 in `src/ticket_triage_llm/services/prompt.py::get_prompt()`.
+- ~A few hours to run `uv run python -m ticket_triage_llm.eval.runners.run_prompt_comparison --prompt-versions v1,v2` at n=5 on the 9B.
+- ~Half a day to author `docs/prompt-versions.md` documenting what changed between v1 and v2 and why, and to analyze the comparison results with proper stddev reporting per the Phase 3 replication pattern.
+- Trigger condition: do this if 9B category accuracy (~83%) becomes a bottleneck in any real-world use of this system, or if a reviewer specifically wants the v1-vs-v2 comparison deliverable.
