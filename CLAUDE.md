@@ -2,13 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status: Phase 5 complete, Phase 6 scoped out, Phase 7 in progress
+## Project status: Phase 7 complete, project shipping
 
-Phases 0 (smoke test), F (foundation), 1 (happy-path slice), 2 (provider router, retry, guardrail), 3 (evaluation harness), 4 (adversarial evaluation), and 5 (dashboard) are complete. The repository has 298 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI), a full eval harness with four experiment runners (E4 ships v1 only — see below), ground-truth correlation via `ticket_id`, a summarizer computing accuracy/reliability/latency metrics, and a four-tab Gradio dashboard (Triage, Metrics, Traces, Experiments) with benchmark results, live metrics, trace inspection, and experiment comparison — all computed from traces on the fly per ADR 0005.
+All build phases complete. Phase 0 (smoke test), F (foundation), 1 (happy-path slice), 2 (provider router, retry, guardrail), 3 (evaluation harness), 4 (adversarial evaluation), 5 (dashboard), and 7 (hardening + docs + demo prep) shipped. Phase 6 (prompt v2 + comparison) was deliberately scoped out — see `docs/decisions/decision-log.md` 2026-04-19 entry.
 
-**Phase 6 (prompt v2 + prompt comparison) was scoped out** — see `docs/decisions/decision-log.md` 2026-04-19 entry. With Phase 3 replication showing 100% JSON validity saturation across all three models under production config, v2 cannot improve reliability and the remaining headroom is a narrow 2.8pp category-accuracy band. E4 is declared complete with v1 only; v2 authoring remains a `future-improvements.md` item.
+The repository has 298 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI), a full eval harness with four experiment runners (E4 ships v1 only), ground-truth correlation via `ticket_id`, a summarizer computing accuracy/reliability/latency metrics, and a four-tab Gradio dashboard (Triage, Metrics, Traces, Experiments) with benchmark results, live metrics, trace inspection, and experiment comparison — all computed from traces on the fly per ADR 0005.
 
-**Phase 7 (hardening, deployment docs, demo prep) is in progress** — see `TODO.md` for the checklist. Post-release work after Phase 5 also included a Phase 4 replication (n=5, production config), an E5 reasoning-mode adversarial experiment (9B only, think-off vs think-on, which found reasoning redistributes rather than reduces adversarial failure), and an OD-4 re-resolution to the Qwen 3.5 9B as default model.
+Post-build replication work includes a Phase 4 replication (n=5, production config), an E5 reasoning-mode adversarial experiment (9B only, think-off vs think-on, which found reasoning redistributes rather than reduces adversarial failure), an OD-4 re-resolution to the Qwen 3.5 9B as default model, and this cleanup branch (deleted `TODO.md`, `Final Project Rubric.md`, and Phase 7 demo-materials; moved `PLAN.md` to `docs/`; fixed several latent eval-runner bugs).
+
+For anything beyond shipping maintenance, see `docs/future-improvements.md` for deferred-work items with effort estimates.
 
 Do not invent tooling — the stack is fixed (see below) and decisions about deviation belong in an ADR or the decision log. When adding new modules, follow the existing layout under `src/ticket_triage_llm/`.
 
@@ -32,29 +34,33 @@ This applies to Phase 0, all four experiments in Phase 3, the adversarial evalua
 
 ### Planning artifacts
 
-- Create a phased `TODO.md` at the repo root that lays out the build phases:
-  - The **foundation phase** (first phase) implements any shared files, shared types, shared interfaces, or boundary contracts that subsequent phases depend on. Its purpose is to enable parallelization of everything that follows.
-  - Subsequent phases are listed with explicit dependencies. If a phase depends on the output of another phase (not just the foundation), call that dependency out. Phases with no dependencies on each other can run in parallel.
-  - Phase numbering in `TODO.md` is independent of the "Phase 0–7" numbering in `PLAN.md` (which describes the overall project build plan). Reference them distinctly when it matters.
-- Create a single `SUMMARY.md` at the repo root that serves as the historical log across all phases. Do not create per-phase SUMMARY files. Each entry in `SUMMARY.md` captures:
-  - What was done
-  - How it was done
-  - Any issues encountered
-  - How those issues were resolved
+The original phased-build plan lives in [`docs/PLAN.md`](docs/PLAN.md) — the map for every architectural decision, every experiment, every phase. Refer to it for historical context on what was built and why.
+
+`SUMMARY.md` at the repo root is the project's historical log across all phases — one entry per PR, newest at the top. Each entry captures:
+
+- What was done
+- How it was done
+- Any issues encountered
+- How those issues were resolved
+
+Do not create per-phase SUMMARY files. Append to the existing one.
+
+The project no longer maintains a forward-looking `TODO.md` — the build phases are all complete and that file was removed in the cleanup branch. Genuine future work lives in [`docs/future-improvements.md`](docs/future-improvements.md) with effort estimates.
+
+If future work on this project grows enough to need a phased build plan again (e.g., a v2 effort with multiple parallel workstreams), create a new dated `TODO.md` at repo root and follow the pattern the original one used — phases with explicit dependencies, checkbox items per deliverable, short metadata blocks (PLAN.md mapping, branch name, dependencies).
 
 ### Branch and PR flow
 
-- Each phase is a feature branch off `develop`. The foundation phase branches first; subsequent phases branch from `develop` after the foundation phase is merged, so they share the foundation but don't conflict with each other.
+- Each feature branches off `develop`. PRs merge feature → develop; develop → main as releases.
 - Follow **RED/GREEN/REFACTOR TDD for service and business logic** (pipeline services, validation, retry logic, guardrail, repositories, provider implementations, eval harness). UI components, Dockerfiles, config files, and prompt templates do not require strict TDD — exercise judgment and write the tests that actually prove behavior.
-- At the conclusion of each phase:
+- At the conclusion of each PR:
   - Append a new entry to `SUMMARY.md`
-  - Update `TODO.md` (mark the phase complete, adjust any downstream phases if reality changed)
   - Update `README.md` if necessary
   - If any architecture changes were required, create a new ADR in `docs/adr/` (see existing ADRs for format)
   - Commit with Conventional Commits (see Repository conventions)
   - Open a PR using `.github/PULL_REQUEST_TEMPLATE.md`
-- At the start of a new phase run `/clear` command
-- Read `CLAUDE.md`, `PLAN.md`, and `TODO.md`
+- At the start of new work run `/clear` command
+- Read `CLAUDE.md` and `docs/PLAN.md` for project context
 
 ### Handling uncertainty
 

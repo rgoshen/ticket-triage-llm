@@ -345,7 +345,6 @@ ticket-triage-llm/
 ├── ruff.toml
 ├── .env.example
 ├── .dockerignore
-├── TODO.md                            # Phased build plan with checkboxes
 ├── SUMMARY.md                         # Historical log across all phases
 ├── CLAUDE.md                          # AI assistant instructions
 └── LICENSE                            # MIT
@@ -361,7 +360,6 @@ ticket-triage-llm/
 - **[Threat model](docs/threat-model.md)** — prompt injection defense layers
 - **[Tradeoffs](docs/tradeoffs.md)** — design tradeoff analysis
 - **[Cost analysis](docs/cost-analysis.md)** — three-component cost analysis
-- **[TODO](TODO.md)** — phased build plan with progress checkboxes
 - **[SUMMARY](SUMMARY.md)** — what was done, how, and what went wrong
 
 ## Context
