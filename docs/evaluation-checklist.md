@@ -850,6 +850,6 @@ Using Qwen 3.5 Plus pricing ($0.26/M input, $1.56/M output):
 - ☒ cost-analysis.md populated with real data — Phase 3 replication values, hardware amortization, cloud projections, break-even analysis all filled in
 - ☒ future-improvements.md current
 - ☒ prompt-versions.md — *not written (Phase 6 scoped out — see decision log 2026-04-19)*
-- ☐ DEPLOYMENT.md written and tested — Phase 7
-- ☐ demo-script.md written
-- ☐ presentation-notes.md written
+- ☒ DEPLOYMENT.md written — macOS tested; cross-platform (Windows/Linux) deferred to a follow-up branch
+- ☒ demo-script.md — *not tracked in repo (demo handled outside git)*
+- ☒ presentation-notes.md — *not tracked in repo (slides and speaker notes handled outside git)*
