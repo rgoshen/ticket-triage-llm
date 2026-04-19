@@ -126,7 +126,7 @@ These are not gaps or oversights. They are the result of explicit scoping decisi
 
 **Why it's deferred:** The project's comparison strategy is deliberately within-family to isolate model *size* as the variable without the confound of model *architecture*. Adding cross-family comparisons would muddy the size analysis and expand the eval matrix significantly.
 
-**What was done instead:** The comparison stays within the Qwen 3.5 family (2B, 4B, 9B). The choice to stay within-family is documented in the decision log and model strategy section of PLAN.md.
+**What was done instead:** The comparison stays within the Qwen 3.5 family (2B, 4B, 9B). The choice to stay within-family is documented in the decision log and model strategy section of [`PLAN.md`](PLAN.md).
 
 **Estimated effort to add:** Half a day per additional family (pull models, verify structured output, run benchmark, add to results). The provider abstraction and eval harness support this with no code changes — just adding new provider instances to the runner's list.
 

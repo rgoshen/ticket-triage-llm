@@ -11,8 +11,7 @@ Each entry captures:
 
 Related artifacts:
 
-- [`TODO.md`](TODO.md) — forward-looking phase plan with dependencies
-- [`PLAN.md`](PLAN.md) — overall project build plan (phase numbering differs from `TODO.md`)
+- [`docs/PLAN.md`](docs/PLAN.md) — overall project build plan
 - [`docs/decisions/decision-log.md`](docs/decisions/decision-log.md) — scope/framing/strategy decisions with rationale
 - [`docs/adr/`](docs/adr/) — architectural decision records
 - [`docs/evaluation-checklist.md`](docs/evaluation-checklist.md) — empirical results by phase

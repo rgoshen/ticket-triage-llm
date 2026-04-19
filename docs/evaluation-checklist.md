@@ -839,7 +839,7 @@ Using Qwen 3.5 Plus pricing ($0.26/M input, $1.56/M output):
 - ☐ Presentation slides complete (6 max) — Phase 7
 
 ### Documentation deliverables
-- ☒ PLAN.md current
+- ☒ docs/PLAN.md current (moved from repo root to docs/ in the cleanup branch)
 - ☒ README.md current
 - ☒ All ADRs written and indexed
 - ☒ Decision log up to date

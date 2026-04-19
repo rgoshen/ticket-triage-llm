@@ -353,7 +353,7 @@ ticket-triage-llm/
 
 ## Documentation
 
-- **[Project plan](PLAN.md)** — full plan including architecture, model strategy, evaluation plan, and open decisions
+- **[Project plan](docs/PLAN.md)** — full plan including architecture, model strategy, evaluation plan, and open decisions
 - **[Architecture](docs/architecture.md)** — system overview, pipeline diagram, key components
 - **[ADR index](docs/adr/README.md)** — all Architecture Decision Records
 - **[Decision log](docs/decisions/decision-log.md)** — chronological scope/framing/strategy decisions
