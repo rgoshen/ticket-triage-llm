@@ -1,6 +1,11 @@
-"""Experiment 4: prompt v1 vs v2 comparison — Phase 6.
+"""Experiment 4: prompt comparison runner.
 
-Phase 3 runs v1 only. Re-run after Phase 6 adds triage_v2.py.
+Runs the normal set through one model with different prompt versions.
+This project iteration ships v1 only; Phase 6 (v2 authoring + comparison)
+was scoped out — see docs/decisions/decision-log.md 2026-04-19 entry.
+
+The runner accepts `prompt_versions: list[str]` and iterates dynamically,
+so a future v2 can be compared against v1 with no runner changes.
 """
 
 import json
@@ -27,7 +32,7 @@ def run_prompt_comparison(
     """Execute prompt comparison experiment.
 
     Runs the normal set through one model with different prompt versions.
-    Phase 3 runs v1 only (v2 doesn't exist yet — that's Phase 6).
+    This iteration ships v1 only (Phase 6 scoped out — see decision log).
 
     Args:
         provider: LLM provider instance (single model)
