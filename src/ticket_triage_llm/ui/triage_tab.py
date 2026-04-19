@@ -99,24 +99,30 @@ def build_triage_tab_content(
                 cancel_btn = gr.Button(
                     "Cancel", variant="stop", scale=1, interactive=False
                 )
-                clear_btn = gr.Button("New Ticket", scale=1)
+                clear_btn = gr.Button("New Ticket", scale=1, interactive=False)
 
         with gr.Column(scale=1):
             status_output = gr.Markdown(value="", label="Status")
             result_output = gr.Markdown(label="Triage Result")
 
     triage_event = submit_btn.click(
-        fn=lambda: ("*Processing ticket...*", "", gr.update(interactive=True)),
+        fn=lambda: (
+            "*Processing ticket...*",
+            "",
+            gr.update(interactive=True),
+            gr.update(interactive=False),
+        ),
         inputs=None,
-        outputs=[status_output, result_output, cancel_btn],
+        outputs=[status_output, result_output, cancel_btn, clear_btn],
     ).then(
         fn=lambda pn, ts, tb: (
             "",
             handle_triage(pn, ts, tb),
             gr.update(interactive=False),
+            gr.update(interactive=True),
         ),
         inputs=[provider_dropdown, subject_input, body_input],
-        outputs=[status_output, result_output, cancel_btn],
+        outputs=[status_output, result_output, cancel_btn, clear_btn],
     )
 
     cancel_btn.click(
@@ -124,19 +130,27 @@ def build_triage_tab_content(
             "*Ticket submission cancelled.*",
             "",
             gr.update(interactive=False),
+            gr.update(interactive=True),
         ),
         inputs=None,
-        outputs=[status_output, result_output, cancel_btn],
+        outputs=[status_output, result_output, cancel_btn, clear_btn],
         cancels=[triage_event],
     )
 
     clear_btn.click(
-        fn=lambda: ("", "", "", ""),
+        fn=lambda: (
+            "",
+            "",
+            "",
+            "",
+            gr.update(interactive=False),
+        ),
         inputs=None,
         outputs=[
             subject_input,
             body_input,
             status_output,
             result_output,
+            clear_btn,
         ],
     )
