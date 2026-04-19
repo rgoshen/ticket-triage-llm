@@ -182,3 +182,46 @@ These are not gaps or oversights. They are the result of explicit scoping decisi
 - ~A few hours to run `uv run python -m ticket_triage_llm.eval.runners.run_prompt_comparison --prompt-versions v1,v2` at n=5 on the 9B.
 - ~Half a day to author `docs/prompt-versions.md` documenting what changed between v1 and v2 and why, and to analyze the comparison results with proper stddev reporting per the Phase 3 replication pattern.
 - Trigger condition: do this if 9B category accuracy (~83%) becomes a bottleneck in any real-world use of this system, or if a reviewer specifically wants the v1-vs-v2 comparison deliverable.
+
+---
+
+## Eval-runner polish items (PR review carryover)
+
+**What they are:** Six small code-quality items surfaced during Phase 4 PR review that didn't reach the bar of "fix in this branch." Tracked in the cleanup branch's scope review (2026-04-19) and deferred after explicit evaluation of value vs. change surface.
+
+**Why deferred:**
+
+- **I1 — `detected_by="parser"` hardcoded in runner's trace reconstruction.** The field is a reconstruction artifact read only by compliance analysis, not an operational field. Fixing it surgically for a label that never surfaces anywhere practical. Cost: an hour for analysis + tests; value: near zero.
+- **I3 — Output filename collision on short tags.** `provider.name.split(":")[-1]` would collide only if two different providers produced the same tag. None of the three Qwen models do; no future provider is planned. Guards against a problem that doesn't exist.
+- **I4 — `adversarial_to_ticket_record` fabricates ground truth silently.** The fabrication is intentional (adversarial tickets don't have category/severity ground truth; the compliance checker uses a different signal). Adding a sentinel changes nothing behaviorally. Docstring is sufficient.
+- **I6 — Non-atomic JSON writes in runner.** An interrupted write could leave a partial JSON on disk. But the runner already has `--start-run`/`--end-run` resume support — a partial file on disk just gets overwritten on re-run. Paying to fix a problem that resume already handles.
+- **I8 — Missing compliance dispatch tests for a-003, a-004, a-009, a-011.** Adding coverage for a module whose dispatch logic is already well-tested on other ticket IDs. Would catch bugs that existing tests miss only if the compliance logic has per-ticket branching — which it doesn't.
+- **S9 — `_make_compliance` in test file duck-types instead of importing real `ComplianceCheck`.** Style nit. The duck type works correctly and the test passes. Import-path change only, no behavior.
+
+**What was done instead:** The two real latent bugs (I2 — corrupt trace crashes pass; I5 — unknown ticket_id raises KeyError) and one observability win (I7 — unknown ticket_id silently bucketed) were fixed in the cleanup branch with regression tests. Docstring-staleness items (N1, N3) were also fixed. The net result is 3 real fixes shipped and 6 cosmetic items documented as intentionally-deferred.
+
+**Estimated effort to revisit:** Maybe 2-4 hours for all six combined if a future reviewer specifically requests them. None are blocking anything.
+
+---
+
+## API route dependency injection refactor
+
+**What it would add:** Refactor `src/ticket_triage_llm/api/triage_route.py` from module-level globals (currently `configure(registry, trace_repo, guardrail_max_length)` patches module state) to FastAPI's idiomatic `app.state` / `Depends()` pattern for request-scoped dependency injection.
+
+**Why it's deferred:** This is not cleanup — it's an architectural change to how FastAPI dependency injection flows through the app. The current globals pattern works correctly. Refactoring adds review surface (tests to update, startup-order changes to verify, integration test for the `/docs` Swagger path) without correctness improvement. The change belongs on its own PR with a design note, not bundled into a cleanup branch.
+
+**What was done instead:** The current module-level globals pattern is documented as intentional in `docs/adr/0006-single-app-gradio-architecture.md` and works cleanly for the single-instance-per-process deployment topology. A future multi-app or testability push might motivate the refactor; the current deployment does not.
+
+**Estimated effort to add:** ~4-6 hours. Update `api/triage_route.py` to declare dependencies via `Depends()`, migrate `configure()` callers in `app.py` to set `app.state.registry`, `app.state.trace_repo`, update the route handler to accept dependencies as parameters, update all integration tests that touched `configure()` state, and verify Swagger docs still render.
+
+---
+
+## Pre-repair error in `TriageFailure.message` on repair `ProviderError`
+
+**What it would add:** When the repair-retry call to the provider raises `ProviderError`, the resulting `TriageFailure` currently reports only the `ProviderError` message, losing the original validation error that triggered the repair attempt. The improvement: preserve both error sources in the failure message for better diagnostic signal when examining failed retries in the Traces tab.
+
+**Why it's deferred:** Improves error-message informativeness in a case (repair-retry raises network error) that's rare under production config (retry rate ~0-3%). The failure envelope still returns correctly and the ticket still fails gracefully; the message is just less detailed than it could be. Observability, not correctness.
+
+**What was done instead:** The current `TriageFailure` produces a correct typed failure with the `ProviderError` message. Users debugging rare repair-retry failures can cross-reference the trace's `retry_count > 0` field and the prior `validation_status` to reconstruct what the original validation error was.
+
+**Estimated effort to add:** ~1-2 hours. Modify `services/retry.py` to capture the pre-repair validation error before calling the provider, then include it in the `TriageFailure.message` constructed on `ProviderError`. Add a unit test covering the pre-repair-preserved case.
