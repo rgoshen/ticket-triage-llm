@@ -847,7 +847,7 @@ Using Qwen 3.5 Plus pricing ($0.26/M input, $1.56/M output):
 - ☒ evaluation-plan.md current
 - ☒ threat-model.md current
 - ☒ tradeoffs.md current
-- ☐ cost-analysis.md populated with real data — token data filled, costs pending
+- ☒ cost-analysis.md populated with real data — Phase 3 replication values, hardware amortization, cloud projections, break-even analysis all filled in
 - ☒ future-improvements.md current
 - ☒ prompt-versions.md — *not written (Phase 6 scoped out — see decision log 2026-04-19)*
 - ☐ DEPLOYMENT.md written and tested — Phase 7
