@@ -121,7 +121,7 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 - [x] Category-distribution drift indicator — deferred to `docs/future-improvements.md`
 - [x] Log-based alerts — deferred to `docs/future-improvements.md`
 - [x] SUMMARY.md + TODO.md updated
-- [ ] PR opened, CI green, merged to `develop`
+- [x] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F), Phase 1 (traces exist), Phase 3 (benchmark data exists).
 **Can run in parallel with:** Phase 4 (different surface area).
@@ -157,7 +157,7 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 **Dependencies:** Phases 1–6 all merged.
 **PLAN.md mapping:** PLAN.md Phase 7.
-**Branch:** `release/v1-presentation` (GitFlow stabilization branch).
+**Branch:** `feature/phase-7-hardening`.
 
 ---
 

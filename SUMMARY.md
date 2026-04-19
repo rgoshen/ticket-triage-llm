@@ -19,6 +19,27 @@ Related artifacts:
 
 ---
 
+## [2026-04-18] Process documentation correction — GitHub Flow
+
+**What was done:**
+
+- Updated `CLAUDE.md` branching model section from "GitFlow" to "GitHub Flow (adapted)." Removed references to `release/*` and `hotfix/*` branches that were never used. Documented the actual two-branch pattern: `main` (deployable), `develop` (integration), `feature/*` (all work).
+- Added decision log entry explaining the rationale: GitFlow's release/hotfix ceremony adds overhead without value at single-developer scale. The project preserves the `main`/`develop` semantic distinction and the no-direct-commits rule.
+
+**How it was done:**
+
+- Documentation-only edits on `feature/docker-ghcr-publish` (bundled with GHCR workflow work in the same branch).
+
+**Issues encountered:**
+
+None — the process had been consistent since Phase F; only the documentation was out of date.
+
+**How those issues were resolved:**
+
+N/A.
+
+---
+
 ## [2026-04-18] Phase 5 — Dashboard, traces, and live monitoring
 
 **What was done:**
