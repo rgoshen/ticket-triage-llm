@@ -144,6 +144,18 @@ These are not gaps or oversights. They are the result of explicit scoping decisi
 
 ---
 
+## Versioned container image tags
+
+**What it would add:** Semantic-versioned tags on the GHCR image (e.g., `ghcr.io/<owner>/ticket-triage-llm:1.0.0`) published when git tags are pushed, in addition to the existing `latest` tag on every push to `main`.
+
+**Why it's deferred:** The project does not yet use tagged releases. Adding version-based image tags before the release workflow exists would produce meaningless tags.
+
+**What was done instead:** The `docker-publish.yml` workflow publishes `latest` only. When tagged releases are adopted, the same workflow can be extended with `type=semver,pattern={{version}}` in the metadata action.
+
+**Estimated effort to add:** An hour. Add a `on: push: tags: ['v*']` trigger and a semver tag pattern to the existing metadata-action configuration.
+
+---
+
 ## Log-based alerting
 
 **What it would add:** Structured log warnings (`WARN [monitoring] threshold_breached: p95_latency=6200ms > limit=5000ms`) emitted when configured thresholds are crossed (p95 latency > 5s, retry rate > 20%, single category > 70% of recent traffic). See [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md) for the threshold values and log format.

@@ -2,7 +2,7 @@
 
 A production-style support ticket triage system built on local LLMs, with a focus on prompt injection defense and structured-output reliability under realistic adversarial conditions.
 
-> **Status:** Phase 4 complete — adversarial evaluation with per-layer accounting, compliance detection, and threat model with measured numbers. Phase 5 (dashboard) is next.
+> **Status:** Phase 5 complete — four-tab Gradio dashboard (Triage, Metrics, Traces, Experiments) with benchmark results, live metrics, trace inspection, and experiment comparison. Docker images published to GHCR on push to main.
 
 ## What this project is
 
@@ -106,6 +106,23 @@ To customize which models appear in the dropdown, edit `OLLAMA_MODELS` in `.env`
 OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b
 ```
 
+#### Container image
+
+A multi-platform Docker image (amd64 + arm64) is published to GHCR on every push to `main`:
+
+```bash
+docker pull ghcr.io/rgoshen/ticket-triage-llm:latest
+
+# macOS / Windows (host.docker.internal resolves automatically)
+docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ghcr.io/rgoshen/ticket-triage-llm:latest
+
+# Linux (host.docker.internal is not available by default)
+docker run --rm --network=host -v "$PWD/data:/app/data" \
+  -e OLLAMA_BASE_URL=http://localhost:11434/v1 ghcr.io/rgoshen/ticket-triage-llm:latest
+```
+
+Ollama must still be running on the host (see prerequisites above).
+
 #### Option B: run in Docker
 
 The Docker container runs the app only — Ollama stays on the host for GPU access.
@@ -166,6 +183,7 @@ All runners accept `--db-path`, `--dataset-path`, and `--output-dir` flags (defa
 ticket-triage-llm/
 ├── .github/
 │   ├── workflows/ci.yml              # GitHub Actions: lint, format, test
+│   ├── workflows/docker-publish.yml  # GHCR: build + push on main
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── docs/
 │   ├── adr/                           # Architecture Decision Records

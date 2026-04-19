@@ -116,3 +116,11 @@ Both paths require Ollama and the models to be present on the host. The Docker p
 - **Option C (native only, no Docker):** rejected because it requires the evaluator to have `uv`, the correct Python version, and a compatible system configuration. Docker removes those variables. Native is offered as a second path for evaluators who prefer it, but it is not the primary documented path because it is less reproducible.
 
 - **Option D (cloud deployment):** rejected because it contradicts the project's consumer-hardware thesis. The thesis is that useful LLM systems can run on standard consumer hardware without cloud infrastructure. Deploying to cloud would undermine the argument the project is making.
+
+---
+
+## Addendum: GHCR container publishing (2026-04-18)
+
+A GitHub Actions workflow (`.github/workflows/docker-publish.yml`) builds and pushes the app container to GitHub Container Registry on every push to `main`. The image is multi-platform (linux/amd64 + linux/arm64) so it runs natively on both Intel and Apple Silicon hosts. Tagged `latest` only — versioned image tags are deferred until the project adopts tagged releases.
+
+This does not change the deployment architecture: Ollama still runs on the host for GPU access. The GHCR image replaces the `docker build` step — users can `docker pull` instead of building locally.
