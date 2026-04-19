@@ -18,8 +18,9 @@ NUM_CTX = 16384
 
 
 class OllamaQwenProvider:
-    def __init__(self, model: str, base_url: str) -> None:
+    def __init__(self, model: str, base_url: str, think: bool = False) -> None:
         self._model = model
+        self._think = think
         host = base_url.replace("/v1", "")
         self._client = ollama_client.Client(host=host)
 
@@ -53,7 +54,7 @@ class OllamaQwenProvider:
                     "num_predict": MAX_TOKENS,
                     "num_ctx": NUM_CTX,
                 },
-                think=False,
+                think=self._think,
             )
         except (ResponseError, ConnectionError) as exc:
             raise ProviderError(str(exc)) from exc

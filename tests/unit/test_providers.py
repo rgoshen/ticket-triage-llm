@@ -121,6 +121,44 @@ class TestOllamaQwenProviderConcrete:
         assert options["repeat_penalty"] == 1.0
 
     @patch("ticket_triage_llm.providers.ollama_qwen.ollama_client.Client")
+    def test_think_defaults_to_false(self, mock_client_cls):
+        """Production default: thinking mode must be off unless explicitly enabled."""
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.message.content = '{"category": "billing"}'
+        mock_response.prompt_eval_count = 10
+        mock_response.eval_count = 5
+        mock_client.chat.return_value = mock_response
+
+        provider = OllamaQwenProvider(
+            model="qwen3.5:4b", base_url="http://localhost:11434/v1"
+        )
+        provider.generate_structured_ticket("test ticket", "v1")
+
+        assert mock_client.chat.call_args.kwargs["think"] is False
+
+    @patch("ticket_triage_llm.providers.ollama_qwen.ollama_client.Client")
+    def test_think_true_is_forwarded(self, mock_client_cls):
+        """E5 support: think=True must reach the underlying ollama.chat call."""
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.message.content = '{"category": "billing"}'
+        mock_response.prompt_eval_count = 10
+        mock_response.eval_count = 5
+        mock_client.chat.return_value = mock_response
+
+        provider = OllamaQwenProvider(
+            model="qwen3.5:9b",
+            base_url="http://localhost:11434/v1",
+            think=True,
+        )
+        provider.generate_structured_ticket("test ticket", "v1")
+
+        assert mock_client.chat.call_args.kwargs["think"] is True
+
+    @patch("ticket_triage_llm.providers.ollama_qwen.ollama_client.Client")
     def test_generate_raises_provider_error_on_connection_failure(
         self, mock_client_cls
     ):
