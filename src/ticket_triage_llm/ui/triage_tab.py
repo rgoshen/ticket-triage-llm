@@ -8,12 +8,12 @@ from ticket_triage_llm.services.triage import run_triage
 from ticket_triage_llm.storage.trace_repo import TraceRepository
 
 
-def build_triage_tab(
+def build_triage_tab_content(
     registry: ProviderRegistry,
     trace_repo: TraceRepository,
     default_provider: str | None = None,
     guardrail_max_length: int = 10_000,
-) -> gr.Blocks:
+) -> None:
     provider_names = registry.list_names()
     default_value = (
         default_provider if default_provider in provider_names else provider_names[0]
@@ -91,74 +91,71 @@ def build_triage_tab(
 
         return "Unexpected result type", ""
 
-    with gr.Blocks(title="Ticket Triage LLM") as demo:
-        gr.Markdown("# Ticket Triage LLM")
+    gr.Markdown("# Ticket Triage LLM")
 
-        with gr.Row():
-            with gr.Column(scale=1):
-                provider_dropdown = gr.Dropdown(
-                    choices=provider_names,
-                    value=default_value,
-                    label="Model",
-                )
-                subject_input = gr.Textbox(
-                    label="Subject (optional)",
-                    placeholder="e.g., Cannot login to account",
-                    lines=1,
-                )
-                body_input = gr.Textbox(
-                    label="Ticket Body",
-                    placeholder="Paste the support ticket text here...",
-                    lines=10,
-                )
-                with gr.Row():
-                    submit_btn = gr.Button("Triage", variant="primary", scale=2)
-                    cancel_btn = gr.Button("Cancel", variant="stop", scale=1)
-                    clear_btn = gr.Button("New Ticket", scale=1)
-
-            with gr.Column(scale=1):
-                status_output = gr.Markdown(value="", label="Status")
-                result_output = gr.Markdown(label="Triage Result")
-                with gr.Accordion("Trace Details", open=False):
-                    trace_output = gr.Textbox(
-                        label="Trace Summary",
-                        lines=8,
-                        interactive=False,
-                    )
-
-        def run_triage_with_status(provider_name, ticket_subject, ticket_body):
-            result_text, trace_text = handle_triage(
-                provider_name, ticket_subject, ticket_body
+    with gr.Row():
+        with gr.Column(scale=1):
+            provider_dropdown = gr.Dropdown(
+                choices=provider_names,
+                value=default_value,
+                label="Model",
             )
-            return "", result_text, trace_text
+            subject_input = gr.Textbox(
+                label="Subject (optional)",
+                placeholder="e.g., Cannot login to account",
+                lines=1,
+            )
+            body_input = gr.Textbox(
+                label="Ticket Body",
+                placeholder="Paste the support ticket text here...",
+                lines=10,
+            )
+            with gr.Row():
+                submit_btn = gr.Button("Triage", variant="primary", scale=2)
+                cancel_btn = gr.Button("Cancel", variant="stop", scale=1)
+                clear_btn = gr.Button("New Ticket", scale=1)
 
-        triage_event = submit_btn.click(
-            fn=lambda: ("*Processing ticket...*", "", ""),
-            inputs=None,
-            outputs=[status_output, result_output, trace_output],
-        ).then(
-            fn=run_triage_with_status,
-            inputs=[provider_dropdown, subject_input, body_input],
-            outputs=[status_output, result_output, trace_output],
+        with gr.Column(scale=1):
+            status_output = gr.Markdown(value="", label="Status")
+            result_output = gr.Markdown(label="Triage Result")
+            with gr.Accordion("Trace Details", open=False):
+                trace_output = gr.Textbox(
+                    label="Trace Summary",
+                    lines=8,
+                    interactive=False,
+                )
+
+    def run_triage_with_status(provider_name, ticket_subject, ticket_body):
+        result_text, trace_text = handle_triage(
+            provider_name, ticket_subject, ticket_body
         )
+        return "", result_text, trace_text
 
-        cancel_btn.click(
-            fn=lambda: ("*Ticket submission cancelled.*", "", ""),
-            inputs=None,
-            outputs=[status_output, result_output, trace_output],
-            cancels=[triage_event],
-        )
+    triage_event = submit_btn.click(
+        fn=lambda: ("*Processing ticket...*", "", ""),
+        inputs=None,
+        outputs=[status_output, result_output, trace_output],
+    ).then(
+        fn=run_triage_with_status,
+        inputs=[provider_dropdown, subject_input, body_input],
+        outputs=[status_output, result_output, trace_output],
+    )
 
-        clear_btn.click(
-            fn=lambda: ("", "", "", "", ""),
-            inputs=None,
-            outputs=[
-                subject_input,
-                body_input,
-                status_output,
-                result_output,
-                trace_output,
-            ],
-        )
+    cancel_btn.click(
+        fn=lambda: ("*Ticket submission cancelled.*", "", ""),
+        inputs=None,
+        outputs=[status_output, result_output, trace_output],
+        cancels=[triage_event],
+    )
 
-    return demo
+    clear_btn.click(
+        fn=lambda: ("", "", "", "", ""),
+        inputs=None,
+        outputs=[
+            subject_input,
+            body_input,
+            status_output,
+            result_output,
+            trace_output,
+        ],
+    )
