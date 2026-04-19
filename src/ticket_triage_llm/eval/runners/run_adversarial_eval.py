@@ -78,8 +78,10 @@ def run_adversarial_eval(
     adv_tickets: list[AdversarialTicketRecord],
     normal_tickets: list[TicketRecord],
     trace_repo: TraceRepository,
+    run_suffix: str = "",
 ) -> list[AdversarialSummary]:
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M")
+    suffix = f"-{run_suffix}" if run_suffix else ""
 
     logger.info(
         "Computing false-positive baseline on %d normal tickets...",
@@ -101,7 +103,7 @@ def run_adversarial_eval(
 
     for provider in providers:
         tag = provider.name.split(":")[-1] if ":" in provider.name else provider.name
-        run_id = f"adv-{tag}-{timestamp}"
+        run_id = f"adv-{tag}-{timestamp}{suffix}"
         logger.info("Adversarial: %s — run_id=%s", provider.name, run_id)
 
         traces = run_experiment_pass(
