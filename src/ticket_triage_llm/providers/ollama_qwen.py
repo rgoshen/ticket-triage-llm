@@ -14,6 +14,7 @@ from ticket_triage_llm.schemas.model_result import ModelResult
 from ticket_triage_llm.services.prompt import get_prompt
 
 MAX_TOKENS = 2048
+NUM_CTX = 16384
 
 
 class OllamaQwenProvider:
@@ -50,6 +51,7 @@ class OllamaQwenProvider:
                     "top_k": TOP_K,
                     "repeat_penalty": REPETITION_PENALTY,
                     "num_predict": MAX_TOKENS,
+                    "num_ctx": NUM_CTX,
                 },
                 think=False,
             )
