@@ -1,5 +1,11 @@
 # ticket-triage-llm
 
+[![CI](https://github.com/rgoshen/ticket-triage-llm/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rgoshen/ticket-triage-llm/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/rgoshen/ticket-triage-llm)](https://github.com/rgoshen/ticket-triage-llm/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/rgoshen/ticket-triage-llm)](LICENSE)
+[![Python](https://img.shields.io/badge/python-%E2%89%A53.11-blue)](pyproject.toml)
+[![Docker](https://img.shields.io/badge/ghcr.io-latest-blue)](https://github.com/rgoshen/ticket-triage-llm/pkgs/container/ticket-triage-llm)
+
 A production-style support ticket triage system built on local LLMs, with a focus on prompt injection defense and structured-output reliability under realistic adversarial conditions.
 
 > **Status:** Phase 5 complete — four-tab Gradio dashboard (Triage, Metrics, Traces, Experiments) with benchmark results, live metrics, trace inspection, and experiment comparison. Docker images published to GHCR on push to main.
@@ -268,7 +274,8 @@ All runners accept `--db-path`, `--dataset-path`, and `--output-dir` flags (defa
 ticket-triage-llm/
 ├── .github/
 │   ├── workflows/ci.yml              # GitHub Actions: lint, format, test
-│   ├── workflows/docker-publish.yml  # GHCR: build + push on main
+│   ├── workflows/docker-publish.yml  # GHCR: build + push on main and v* tags
+│   ├── workflows/release.yml        # Auto-release: changelog, tag, GitHub Release
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── docs/
 │   ├── adr/                           # Architecture Decision Records
