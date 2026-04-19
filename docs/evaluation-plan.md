@@ -176,27 +176,31 @@ Results are viewable in the Metrics tab (Benchmark Results section) and the Expe
 
 ## Evaluation methodology limitations
 
-All experiments in Phase 3 and Phase 4 were executed once per configuration (n=1 per run). This section documents what that means for the strength of the findings and where the methodology has known gaps.
+This section documents what the evaluation methodology can and cannot support, and how Phase 3 replication (n=5) and Phase 4 (still n=1) differ in evidentiary strength.
 
-### Aggregate findings are defensible at n=35
+### Phase 3: reproducibility-tested at n=5
 
-The Phase 3 experiments ran each model/configuration against the full 35-ticket normal set. At this sample size, ticket-level noise averages out for large observed differences. The magnitude of the key findings — the 2B at 2.9% JSON validity vs the 4B at 82.9%, or the 4B-with-validation at 29/35 successful vs the 9B-without-validation at 17/35 — exceeds any plausible sampling noise floor. These are robust conclusions even without replication.
+Phase 3 experiments (E1, E2, E3) were replicated 5 times each under the current production configuration (`think=false`, `num_ctx=16384`). Standard deviations across 5 runs are 0-5% on accuracy metrics and 1-3% on latency, establishing these as reproducibility-tested baselines rather than point observations.
 
-### Small numeric differences are not meaningful
+At n=5 runs × 35 tickets, large differences (e.g., 9B category accuracy 83.4% vs 2B 74.9%) have non-overlapping 1-stddev bands and are defensible conclusions. Small differences (e.g., 9B vs 4B at 83.4% vs 80.6%, ~3pp gap) are directionally suggestive — the 1-stddev bands do not overlap — but could reflect systematic label ambiguity on a few tickets rather than a generalizable capability difference. Per-ticket analysis (the accuracy matrix in `data/phase3-1/analysis/`) is more informative than aggregate percentages for these borderline cases.
 
-Differences within a few percentage points at n=35 should not be interpreted as real signal. For example, the 4B's 57.1% category accuracy vs the 9B's 54.3% is a single-ticket disagreement (~3% per ticket across 6 categories). The evaluation reports these numbers honestly but does not claim that the 4B is categorically more accurate than the 9B — at this sample size, they are statistically indistinguishable on category accuracy. The 4B's advantage over the 9B is driven by structured-output reliability (82.9% vs 74.3% JSON validity) and latency (74s vs 107s), not by classification accuracy.
+The original Phase 3 data (n=1, `think=true`, `num_ctx=4096`) remains in `data/phase3/` as a record of the system under its original configuration. Every metric in the replication exceeds 2 standard deviations from the original observation — the two datasets measure different system configurations and are not directly comparable.
 
-### Per-ticket adversarial observations are point observations
+### Phase 4: still n=1, replication pending
 
-The Phase 4 adversarial evaluation ran 14 tickets per model. Each ticket's outcome is a single observation, not a measured rate. The a-008 finding demonstrates this directly: the original single run showed a partial field overlap on the 4B; two replication attempts produced parse failures instead. Had the evaluation relied solely on the single-run result, the a-008 partial match would have been reported as the central integrity finding. Replication (even just two additional runs) changed the classification from "ambiguous integrity compromise" to "non-reproducing observation." Per-category rates (e.g., "0% integrity risk on direct injection") are point observations from single runs and are subject to the same replication caveat.
+The Phase 4 adversarial evaluation ran 14 tickets per model once (n=1). Each ticket's outcome is a single observation, not a measured rate. The a-008 finding demonstrates the risk of single-run methodology: the original run showed a partial field overlap on the 4B; two ad hoc replication attempts produced parse failures instead, reclassifying the finding from "ambiguous integrity compromise" to "non-reproducing observation."
 
-### Replication gap
+Phase 4 was run under `think=true` and `num_ctx=4096`. The configuration changes that transformed Phase 3 results (`think=false`, `num_ctx=16384`) may similarly affect adversarial results — particularly the availability failures (parse timeouts from reasoning-mode exhaustion), which were the dominant adversarial effect. Phase 4 replication under the current configuration is pending.
 
-A production-grade evaluation would replicate each run 3-5 times to establish confidence intervals on all metrics. This project executed single runs per configuration due to time constraints (each 4B adversarial run takes ~20 minutes; each 9B run takes ~30 minutes; full replication across all experiments and models would require 15-25 additional hours of GPU time). The a-008 replication was performed ad hoc after the finding appeared interesting, not as part of a systematic replication protocol. Systematic multi-run evaluation is documented in [future-improvements.md](future-improvements.md) as a methodology improvement.
+Per-category rates (e.g., "0% integrity risk on direct injection") are point observations from single runs and are subject to the same replication caveat demonstrated by a-008.
 
-### Evaluation configuration vs production configuration
+### Small numeric differences require per-ticket analysis
 
-Phase 3 and Phase 4 measurements were taken with `think=true` (Qwen 3.5 reasoning mode enabled by default). The demo/production configuration uses `think=false` (reasoning mode disabled — see `docs/decisions/decision-log.md`, 2026-04-18 thinking-mode entry). Accuracy, latency, retry, and reliability numbers in `docs/evaluation-checklist.md` reflect thinking-enabled behavior. If accuracy comparisons are needed between the evaluation baseline and the production configuration, a separate evaluation run with `think=false` would be required.
+Differences within a few percentage points at n=35 should not be interpreted as real signal from aggregate percentages alone. The per-ticket accuracy matrix (`data/phase3-1/analysis/e1-per-ticket-matrix-corrected.csv`) provides ticket-level visibility into where models diverge. When all three models consistently fail on the same field for the same ticket, the ground truth label is the first thing to audit — the Phase 3 replication surfaced 5 label corrections out of 35 tickets (14%), demonstrating that model consensus is a reliable audit signal.
+
+### Ground truth quality affects all accuracy metrics
+
+The Phase 3 replication revealed that 5 of 35 ground truth labels were incorrect (see `data/phase3-1/analysis/ground-truth-audit.md`). The corrected labels increased aggregate accuracy by 5-10pp for all models. Original-label and corrected-label matrices are both preserved. All replication accuracy numbers in `docs/evaluation-checklist.md` are scored against the corrected labels. The original Phase 3 data (in `data/phase3/`) is scored against the original labels and was not re-scored — it remains a snapshot of the system at that configuration with those labels.
 
 ---
 

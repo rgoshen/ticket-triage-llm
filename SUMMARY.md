@@ -19,6 +19,53 @@ Related artifacts:
 
 ---
 
+## [2026-04-19] Phase 3 Replication — reproducibility baselines under production config
+
+**What was done:**
+
+- Ran 5 independent replications of E1 (model size comparison), E3 (validation impact, generalized to all 3 models), and E2 (composed from E1+E3) under the current production configuration (`think=false`, `num_ctx=16384`). 1,575 total triages across 5 runs × 9 experiment passes × 35 tickets.
+- Built a per-ticket accuracy matrix (105 rows: 35 tickets × 3 models, with correct/5 counts per field per model). Surfaced 6 tickets where all models scored 0/5 on the same field — audited ground truth and corrected 5 labels in `data/normal_set.jsonl`.
+- Computed mean ± stddev for all metrics across 5 runs. Every metric diverges by >2 standard deviations from the original n=1 data, confirming the original and replication measure different system configurations.
+- Updated `docs/evaluation-checklist.md` with replication tables, ground truth audit summary, and 10 analytical observations covering strengthened findings, overturned claims, and methodology implications.
+- Updated `docs/evaluation-plan.md` Evaluation Methodology Limitations section to distinguish Phase 3 (now n=5) from Phase 4 (still n=1), and to document the ground truth quality finding.
+
+**Key findings from the replication:**
+
+1. **The 2B is viable.** Went from 1/35 (2.9%) to 35/35 (100%) success. The original "2B is unusable" finding was about thinking mode + limited context, not inherent model capability.
+2. **The 9B is the accuracy leader.** Category accuracy: 9B 83.4% > 4B 80.6% > 2B 74.9%. The original observation that the 4B outperformed the 9B on reliability is overturned — with `think=false`, all models hit 100% JSON validity, and the 9B's classification advantage becomes the differentiator.
+3. **Validation's marginal value collapsed.** With 100% first-pass JSON validity, the retry pipeline has almost nothing to recover. Original finding: validation rescues 6 tickets. Replication: 0-1 tickets.
+4. **Reproducibility is high.** Stddev ≤ 5% on all accuracy metrics, ≤ 3% on latency. These are stable baselines.
+5. **Ground truth audit found 14% label error rate.** Model consensus (0/5 across all models) is a more reliable label-audit signal than manual review.
+
+**How it was done:**
+
+- Added `run_suffix` parameter to `run_local_comparison()` and `run_validation_impact()` for unique run_id tracking.
+- Generalized E3 from hardcoded 4B+9B to accepting all providers — each model gets validated and skipped passes.
+- Created `scripts/run_phase3_replication.py` orchestration script with `--force`, `--start-run`/`--end-run` for safe resume, non-interactive detection, and overwrite protection.
+- Branch: `feature/phase3-rerun` off `develop`.
+
+**Issues encountered:**
+
+1. **Ollama hung on the 2B during run 4.** The 2B stopped responding partway through ticket n-033 (positive feedback, no-issue ticket). Process killed, runs 1-3 data intact, resumed from run 4 with `--start-run 4 --force`. Did not recur.
+2. **Stale traces from aborted first launch.** The first premature start wrote partial traces (24/35 for 4B, 32/35 for 2B) before being stopped. These remain in the trace database but are not referenced by any JSON output file — the authoritative run_ids are those in the `data/phase3-1/run-N/` JSON files.
+
+**How those issues were resolved:**
+
+1. Killed and resumed. The script's `--start-run` flag with `--force` allows clean resumption without overwrite prompts. Run 4 completed successfully on restart.
+2. Stale traces are harmless — they have distinct run_ids and are not referenced by any output file. The summarizer only queries traces by the authoritative run_ids embedded in the JSON results.
+
+**Exit state:**
+
+- 15 JSON result files in `data/phase3-1/run-{1..5}/` (3 per run).
+- Per-ticket accuracy matrices (original and corrected labels) in `data/phase3-1/analysis/`.
+- Ground truth audit in `data/phase3-1/analysis/ground-truth-audit.md`.
+- Corrected labels in `data/normal_set.jsonl`.
+- `docs/evaluation-checklist.md` updated with replication results and analytical observations.
+- `docs/evaluation-plan.md` limitations section updated to reflect n=5 for Phase 3.
+- Phase 4 replication under current config is the next pending evaluation task.
+
+---
+
 ## [2026-04-18] Process documentation correction — GitHub Flow
 
 **What was done:**

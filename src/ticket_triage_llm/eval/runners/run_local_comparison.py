@@ -19,14 +19,16 @@ def run_local_comparison(
     providers: list[LlmProvider],
     tickets: list[TicketRecord],
     trace_repo: TraceRepository,
+    run_suffix: str = "",
 ) -> ExperimentSummary:
     """Run all local model sizes through the normal set with prompt v1."""
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M")
+    suffix = f"-{run_suffix}" if run_suffix else ""
     metrics = []
 
     for provider in providers:
         tag = provider.name.split(":")[-1] if ":" in provider.name else provider.name
-        run_id = f"e1-{tag}-{timestamp}"
+        run_id = f"e1-{tag}-{timestamp}{suffix}"
         logger.info("E1: running %s — run_id=%s", provider.name, run_id)
         run_experiment_pass(
             tickets=tickets,
