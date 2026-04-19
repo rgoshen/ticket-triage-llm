@@ -1531,7 +1531,7 @@ Add these two sections at the end of `docs/future-improvements.md`, before the c
 
 ## Log-based alerting
 
-**What it would add:** Structured log warnings (`WARN [monitoring] threshold_breached: p95_latency=6200ms > limit=5000ms`) emitted when configured thresholds are crossed (p95 latency > 5s, retry rate > 20%, single category > 70% of recent traffic). See [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md) for the threshold values and log format.
+**What it would add:** Structured log warnings (`WARN [monitoring] threshold_breached: p95_latency=6200ms > limit=5000ms`) emitted when configured thresholds are crossed (p95 latency > 5s, retry rate > 20%, single category > 70% of recent traffic). See [ADR 0009](../../adr/0009-monitoring-distinct-from-benchmarking.md) for the threshold values and log format.
 
 **Why it's deferred:** Log-based alerts are invisible to the audience during a demo unless specifically surfaced in the UI. The monitoring value is real but the demo impact is low compared to the visible dashboard components.
 

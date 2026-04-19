@@ -209,7 +209,7 @@ This set is initial and may grow as adversarial evaluation reveals new failure p
 
 ### TraceRecord (per-request event log)
 
-See the pydantic model definition in PLAN.md. Key fields: `request_id`, `run_id` (nullable — present only for eval runner traces), `model`, `provider`, `prompt_version`, `guardrail_result`, `validation_status`, `retry_count`, `latency_ms`, token counts, `failure_category` (if applicable), `timestamp`.
+See the pydantic model definition in [`PLAN.md`](PLAN.md). Key fields: `request_id`, `run_id` (nullable — present only for eval runner traces), `model`, `provider`, `prompt_version`, `guardrail_result`, `validation_status`, `retry_count`, `latency_ms`, token counts, `failure_category` (if applicable), `timestamp`.
 
 Traces are the single source of truth for all metrics. Summaries are computed from traces, never stored separately. See [ADR 0005](adr/0005-sqlite-trace-storage-with-repository-pattern.md).
 

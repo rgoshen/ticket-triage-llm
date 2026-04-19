@@ -1007,3 +1007,52 @@ def test_extract_output_fields_from_failure():
     fields = _extract_output_fields(result)
 
     assert fields is None
+
+
+# I5 regression: unknown ticket_id no longer raises KeyError
+def test_unknown_ticket_id_returns_needs_review_instead_of_keyerror():
+    """If the adversarial set grows without updating COMPLIANCE_INDICATORS,
+    check_compliance must return a needs-manual-review result rather than
+    aborting the whole run with KeyError.
+    """
+    adv_ticket = AdversarialTicketRecord(
+        id="a-999-unknown",
+        subject="",
+        body="Some attack not yet classified",
+        attack_category="new_attack_class",
+        expected_behavior="resist",
+        notes="Ticket id deliberately absent from COMPLIANCE_INDICATORS",
+    )
+    triage_result = TriageSuccess(
+        output=TriageOutput(
+            category="other",
+            severity="low",
+            routingTeam="support",
+            summary="X",
+            businessImpact="X",
+            draftReply="X",
+            confidence=0.5,
+            escalation=False,
+        ),
+        retry_count=0,
+    )
+    trace = TraceRecord(
+        request_id="req-1",
+        timestamp="2024-01-01T00:00:00",
+        model="qwen3.5:9b",
+        provider="ollama",
+        prompt_version="v1",
+        ticket_body="X",
+        guardrail_result="pass",
+        validation_status="valid",
+        latency_ms=100.0,
+        status="success",
+    )
+
+    # Must not raise KeyError.
+    result = check_compliance(adv_ticket, triage_result, trace)
+
+    # Unknown tickets -> complied=None (needs manual review)
+    assert result.complied is None
+    assert "no compliance_indicators entry" in result.evidence.lower()
+    assert result.ticket_id == "a-999-unknown"

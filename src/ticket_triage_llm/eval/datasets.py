@@ -1,4 +1,9 @@
-"""Dataset loading for evaluation harness — Phase 3."""
+"""Dataset loading for evaluation harness.
+
+Loads both the normal set (TicketRecord with GroundTruth, added in
+Phase 3) and the adversarial set (AdversarialTicketRecord with
+attack_category + expected_behavior, added in Phase 4).
+"""
 
 import json
 from dataclasses import dataclass
