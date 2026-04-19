@@ -20,6 +20,7 @@ def run_validation_impact(
     provider_9b: LlmProvider,
     tickets: list[TicketRecord],
     trace_repo: TraceRepository,
+    run_suffix: str = "",
 ) -> tuple[ExperimentSummary, str]:
     """Run E3 (validation impact) and E2 data point (9B no-validation).
 
@@ -28,13 +29,15 @@ def run_validation_impact(
         provider_9b: 9B model provider
         tickets: Normal dataset tickets
         trace_repo: Trace repository for storing results
+        run_suffix: Optional suffix appended to run_ids for replication tracking
 
     Returns:
         Tuple of (E3 ExperimentSummary, E2 9B no-validation run_id)
     """
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M")
+    suffix = f"-{run_suffix}" if run_suffix else ""
 
-    run_id_validated = f"e3-4b-validated-{timestamp}"
+    run_id_validated = f"e3-4b-validated-{timestamp}{suffix}"
     logger.info("E3: 4B validated — run_id=%s", run_id_validated)
     run_experiment_pass(
         tickets=tickets,
@@ -45,7 +48,7 @@ def run_validation_impact(
         skip_validation=False,
     )
 
-    run_id_skipped = f"e3-4b-skipped-{timestamp}"
+    run_id_skipped = f"e3-4b-skipped-{timestamp}{suffix}"
     logger.info("E3: 4B no-validation — run_id=%s", run_id_skipped)
     run_experiment_pass(
         tickets=tickets,
@@ -56,7 +59,7 @@ def run_validation_impact(
         skip_validation=True,
     )
 
-    e2_run_id = f"e2-9b-noval-{timestamp}"
+    e2_run_id = f"e2-9b-noval-{timestamp}{suffix}"
     logger.info("E2 data point: 9B no-validation — run_id=%s", e2_run_id)
     run_experiment_pass(
         tickets=tickets,
