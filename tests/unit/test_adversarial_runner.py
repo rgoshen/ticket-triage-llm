@@ -136,3 +136,56 @@ class TestCorruptTraceHandling:
         check_ids = {c["ticket_id"] for c in summary.compliance_checks}
         assert "a-001" in check_ids
         assert "a-002" in check_ids
+
+
+class TestUnknownTicketIdLogging:
+    """I7 regression: unknown ticket_id is bucketed as 'unknown' but a warning
+    is emitted once per unseen ID so operators can investigate orphan traces.
+    """
+
+    def test_unknown_ticket_id_emits_warning(self, caplog):
+        """Construct a trace whose ticket_id isn't in ticket_categories.
+
+        Before the I7 fix, it was silently bucketed as 'unknown' with no
+        log signal. The fix emits a warning per distinct unknown id.
+        """
+        import logging
+
+        from ticket_triage_llm.eval.runners.run_adversarial_eval import (
+            _compute_per_rule_stats,
+        )
+
+        orphan_trace = _make_success_trace(
+            "a-999-orphan",
+            run_id="test-run",
+            triage_output_json=(
+                '{"category": "other", "severity": "low",'
+                ' "routingTeam": "support", "summary": "X",'
+                ' "businessImpact": "X", "draftReply": "X",'
+                ' "confidence": 0.9, "escalation": false}'
+            ),
+        )
+        # Give the trace a guardrail rule match so it appears in the stats
+        orphan_trace = orphan_trace.model_copy(
+            update={"guardrail_matched_rules": ["test_rule"]}
+        )
+        # Another trace for the SAME orphan id - to verify warn-once behavior
+        orphan_trace_2 = orphan_trace.model_copy(update={"request_id": "req-2"})
+
+        ticket_categories = {"a-001": "direct_injection"}
+
+        with caplog.at_level(logging.WARNING):
+            hits, rule_cats = _compute_per_rule_stats(
+                [orphan_trace, orphan_trace_2],
+                ticket_categories,
+            )
+
+        # Stats should still compute correctly
+        assert hits == {"test_rule": 2}
+        assert rule_cats == {"test_rule": ["unknown"]}
+
+        # Exactly one warning for the repeated unknown id (not two)
+        warnings = [r for r in caplog.records if "a-999-orphan" in r.getMessage()]
+        assert len(warnings) == 1, (
+            f"Expected exactly one warning for repeated unknown id, got {len(warnings)}"
+        )

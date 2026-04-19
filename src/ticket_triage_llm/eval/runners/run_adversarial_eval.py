@@ -60,10 +60,22 @@ def _compute_per_rule_stats(
 ) -> tuple[dict[str, int], dict[str, list[str]]]:
     hits: dict[str, int] = {}
     rule_cats: dict[str, set[str]] = {}
+    unknown_ids: set[str] = set()
 
     for trace in traces:
         tid = trace.ticket_id or ""
-        cat = ticket_categories.get(tid, "unknown")
+        cat = ticket_categories.get(tid)
+        if cat is None:
+            cat = "unknown"
+            if tid and tid not in unknown_ids:
+                unknown_ids.add(tid)
+                logger.warning(
+                    "Per-rule stats: trace ticket_id=%r not in "
+                    "ticket_categories — bucketing as 'unknown'. "
+                    "Expected ids: %s",
+                    tid,
+                    sorted(ticket_categories.keys())[:10],
+                )
         for rule in trace.guardrail_matched_rules:
             hits[rule] = hits.get(rule, 0) + 1
             if rule not in rule_cats:
