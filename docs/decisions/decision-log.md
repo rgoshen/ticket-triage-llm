@@ -2,7 +2,7 @@
 
 A chronological log of scope, framing, and strategy decisions for `ticket-triage-llm`.
 
-This is not the place for architectural decisions — those belong in [ADRs](decisions/). This is the place for *what the project is, isn't, and why*: scope boundaries, things considered and rejected, framing choices, and the reasoning trail behind them.
+This is not the place for architectural decisions — those belong in [ADRs](../adr/). This is the place for *what the project is, isn't, and why*: scope boundaries, things considered and rejected, framing choices, and the reasoning trail behind them.
 
 Newest entries at the top.
 
@@ -310,7 +310,7 @@ The 2B is a usable model under production config (100% JSON validity vs the earl
 - Confidence is the unified signal for "the model had to guess." Both non-actionable and ambiguous-severity scenarios use lower confidence as the flag, keeping the mechanism simple and consistent.
 - Non-actionable tickets go in the normal set (not adversarial) because they are not attack vectors — they are edge cases of legitimate usage.
 
-**Updated:** `docs/evaluation-plan.md` (dataset sizes, new scenario documentation), `docs/PLAN.md` (size references in Phases 3 and Final Recommendation, OD-7 resolution). See also [ADR 0010](adr/0010-non-actionable-and-ambiguous-input-handling.md) for the architectural decision on where in the pipeline this detection belongs.
+**Updated:** `docs/evaluation-plan.md` (dataset sizes, new scenario documentation), `docs/PLAN.md` (size references in Phases 3 and Final Recommendation, OD-7 resolution). See also [ADR 0010](../adr/0010-non-actionable-and-ambiguous-input-handling.md) for the architectural decision on where in the pipeline this detection belongs.
 
 ---
 
@@ -511,7 +511,7 @@ The following are deliberately not part of this iteration of the project, and th
 - Multimodal / vision input (see above)
 - Cloud Qwen comparison (see OD-2 resolution above — deferred to future work)
 - Qwen 3.5 27B and larger (consumer-hardware constraint)
-- TypeScript / Node / React stack (see [ADR 0001](decisions/0001-language-and-stack.md))
+- TypeScript / Node / React stack (see [ADR 0001](../adr/0001-language-and-stack.md))
 - Two-tickets-in-one adversarial category (see above)
 
 ### Documentation strategy
