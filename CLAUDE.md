@@ -2,9 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status: Phase 3 complete, Phase 4 next
+## Project status: Phase 5 complete, Phase 6 next
 
-Phases 0 (smoke test), F (foundation), 1 (happy-path slice), 2 (provider router, retry, guardrail), and 3 (evaluation harness) are complete. The repository has 213 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI), and a full eval harness with four experiment runners, ground-truth correlation via `ticket_id`, and a summarizer computing accuracy/reliability/latency metrics. Phase 4 (adversarial evaluation) is next — see `TODO.md` for the full phase plan with checkboxes.
+Phases 0 (smoke test), F (foundation), 1 (happy-path slice), 2 (provider router, retry, guardrail), 3 (evaluation harness), 4 (adversarial evaluation), and 5 (dashboard) are complete. The repository has 290 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI), a full eval harness with four experiment runners, ground-truth correlation via `ticket_id`, a summarizer computing accuracy/reliability/latency metrics, and a four-tab Gradio dashboard (Triage, Metrics, Traces, Experiments) with benchmark results, live metrics, trace inspection, and experiment comparison — all computed from traces on the fly per ADR 0005. Phase 6 (prompt v2 + prompt comparison) is next — see `TODO.md` for the full phase plan with checkboxes.
 
 Do not invent tooling — the stack is fixed (see below) and decisions about deviation belong in an ADR or the decision log. When adding new modules, follow the existing layout under `src/ticket_triage_llm/`.
 
