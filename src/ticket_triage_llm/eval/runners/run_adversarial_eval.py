@@ -60,10 +60,22 @@ def _compute_per_rule_stats(
 ) -> tuple[dict[str, int], dict[str, list[str]]]:
     hits: dict[str, int] = {}
     rule_cats: dict[str, set[str]] = {}
+    unknown_ids: set[str] = set()
 
     for trace in traces:
         tid = trace.ticket_id or ""
-        cat = ticket_categories.get(tid, "unknown")
+        cat = ticket_categories.get(tid)
+        if cat is None:
+            cat = "unknown"
+            if tid and tid not in unknown_ids:
+                unknown_ids.add(tid)
+                logger.warning(
+                    "Per-rule stats: trace ticket_id=%r not in "
+                    "ticket_categories — bucketing as 'unknown'. "
+                    "Expected ids: %s",
+                    tid,
+                    sorted(ticket_categories.keys())[:10],
+                )
         for rule in trace.guardrail_matched_rules:
             hits[rule] = hits.get(rule, 0) + 1
             if rule not in rule_cats:
@@ -122,10 +134,28 @@ def run_adversarial_eval(
                 continue
 
             if trace.status == "success" and trace.triage_output_json:
-                output = TriageOutput.model_validate_json(trace.triage_output_json)
-                triage_result = TriageSuccess(
-                    output=output, retry_count=trace.retry_count
-                )
+                try:
+                    output = TriageOutput.model_validate_json(trace.triage_output_json)
+                    triage_result = TriageSuccess(
+                        output=output, retry_count=trace.retry_count
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Corrupt trace for ticket_id=%s in run_id=%s — "
+                        "reconstructing as schema_failure for compliance "
+                        "analysis (%s)",
+                        tid,
+                        run_id,
+                        type(exc).__name__,
+                    )
+                    triage_result = TriageFailure(
+                        category="schema_failure",
+                        detected_by="parser",
+                        message=(
+                            f"Reconstructed from corrupt trace ({type(exc).__name__})"
+                        ),
+                        retry_count=trace.retry_count,
+                    )
             else:
                 triage_result = TriageFailure(
                     category=trace.failure_category or "parse_failure",

@@ -1,4 +1,9 @@
-"""Experiment result data structures — Phase 3."""
+"""Experiment result data structures.
+
+Covers both Phase 3 normal-set experiments (E1-E4) and Phase 4
+adversarial-set experiments. ExperimentSummary / ModelMetrics for the
+former, AdversarialSummary / LayerAccounting for the latter.
+"""
 
 from __future__ import annotations
 

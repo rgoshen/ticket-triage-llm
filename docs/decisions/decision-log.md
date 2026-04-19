@@ -2,7 +2,7 @@
 
 A chronological log of scope, framing, and strategy decisions for `ticket-triage-llm`.
 
-This is not the place for architectural decisions — those belong in [ADRs](decisions/). This is the place for *what the project is, isn't, and why*: scope boundaries, things considered and rejected, framing choices, and the reasoning trail behind them.
+This is not the place for architectural decisions — those belong in [ADRs](../adr/). This is the place for *what the project is, isn't, and why*: scope boundaries, things considered and rejected, framing choices, and the reasoning trail behind them.
 
 Newest entries at the top.
 
@@ -20,7 +20,7 @@ This is a scope decision, not a slipped deliverable.
 
 1. **Reliability saturated.** Phase 3 replication (n=5, production config) showed all three models (2B, 4B, 9B) produce 100% JSON validity on the 35-ticket normal set. First-pass validity is ~100%; retry rate is ~0–3%. A v2 prompt cannot improve reliability because there's no reliability headroom left to measure. The v1 prompt is already doing its structural job across the size range.
 
-2. **The measurement v2 would produce is narrower than planned.** The original Phase 6 motivation (PLAN.md:38, "how much does prompt design buy you?") was framed when JSON validity was 82.9% on the 4B and 74.3% on the 9B under the original configuration. Under production config, the question collapses from "validity + accuracy" to "accuracy only" — a ~3 percentage-point range between the 4B (80.6%) and 9B (83.4%) category accuracy. A v2 comparison would measure headroom inside that narrow band, not the structural reliability question the phase was designed to answer.
+2. **The measurement v2 would produce is narrower than planned.** The original Phase 6 motivation (`docs/PLAN.md` § Project Thesis, "how much does prompt design buy you?") was framed when JSON validity was 82.9% on the 4B and 74.3% on the 9B under the original configuration. Under production config, the question collapses from "validity + accuracy" to "accuracy only" — a ~3 percentage-point range between the 4B (80.6%) and 9B (83.4%) category accuracy. A v2 comparison would measure headroom inside that narrow band, not the structural reliability question the phase was designed to answer.
 
 3. **Remaining time produces more value elsewhere.** Phase 7 deliverables (DEPLOYMENT.md, cross-platform notes, cost-analysis completion, README model-management documentation, cloud-model path documentation, demo materials, ADR addenda reflecting Phase 4/5/E5 findings) are visible deliverables that a reviewer will evaluate directly. Writing v2 and running a comparison that's bounded by the 2.8pp gap between 4B and 9B is less visible value per unit time.
 
@@ -34,7 +34,7 @@ This is a scope decision, not a slipped deliverable.
 
 **E4 status update:** E4 is declared complete, v1 only. The comparison dimension (v1 vs v2) is reduced to a one-value dataset; the experiment's measured deliverable becomes "v1 baseline metrics per model" rather than "v1 vs v2 delta." `docs/evaluation-checklist.md` and `docs/evaluation-plan.md` are updated to reflect this framing.
 
-**Honest acknowledgement:** The original rubric (`docs/archive/Final Project Rubric.md`) and PLAN.md listed four experiments. With Phase 6 skipped, only three experiments have a full dataset (E1 size comparison, E2 size-vs-controls composed from E1/E3, E3 validation impact). E4 has a partial dataset (v1 only, no v2). This reduces the breadth of the prompt-comparison story and should be acknowledged in the presentation — the point to make is that reliability saturation under production config made the original v1-vs-v2 framing less informative than it was designed to be, not that the work ran out of time.
+**Honest acknowledgement:** The original rubric (archived at `docs/archive/Final Project Rubric.docx`) and PLAN.md listed four experiments. With Phase 6 skipped, only three experiments have a full dataset (E1 size comparison, E2 size-vs-controls composed from E1/E3, E3 validation impact). E4 has a partial dataset (v1 only, no v2). This reduces the breadth of the prompt-comparison story and should be acknowledged in the presentation — the point to make is that reliability saturation under production config made the original v1-vs-v2 framing less informative than it was designed to be, not that the work ran out of time.
 
 **References:** This decision was made after Phase 4 replication (n=5), E5 reasoning-mode experiment, and OD-4 re-resolution landed. The accumulated evidence from the Phase 3 replication (commits `749bd81`..`f394f54`) is what makes "reliability saturated" a defensible claim.
 
@@ -310,7 +310,7 @@ The 2B is a usable model under production config (100% JSON validity vs the earl
 - Confidence is the unified signal for "the model had to guess." Both non-actionable and ambiguous-severity scenarios use lower confidence as the flag, keeping the mechanism simple and consistent.
 - Non-actionable tickets go in the normal set (not adversarial) because they are not attack vectors — they are edge cases of legitimate usage.
 
-**Updated:** `docs/evaluation-plan.md` (dataset sizes, new scenario documentation), `docs/PLAN.md` (size references in Phases 3 and Final Recommendation, OD-7 resolution). See also [ADR 0010](adr/0010-non-actionable-and-ambiguous-input-handling.md) for the architectural decision on where in the pipeline this detection belongs.
+**Updated:** `docs/evaluation-plan.md` (dataset sizes, new scenario documentation), `docs/PLAN.md` (size references in Phases 3 and Final Recommendation, OD-7 resolution). See also [ADR 0010](../adr/0010-non-actionable-and-ambiguous-input-handling.md) for the architectural decision on where in the pipeline this detection belongs.
 
 ---
 
@@ -511,7 +511,7 @@ The following are deliberately not part of this iteration of the project, and th
 - Multimodal / vision input (see above)
 - Cloud Qwen comparison (see OD-2 resolution above — deferred to future work)
 - Qwen 3.5 27B and larger (consumer-hardware constraint)
-- TypeScript / Node / React stack (see [ADR 0001](decisions/0001-language-and-stack.md))
+- TypeScript / Node / React stack (see [ADR 0001](../adr/0001-language-and-stack.md))
 - Two-tickets-in-one adversarial category (see above)
 
 ### Documentation strategy
