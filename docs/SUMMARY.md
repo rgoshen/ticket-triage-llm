@@ -11,10 +11,10 @@ Each entry captures:
 
 Related artifacts:
 
-- [`docs/PLAN.md`](docs/PLAN.md) — overall project build plan
-- [`docs/decisions/decision-log.md`](docs/decisions/decision-log.md) — scope/framing/strategy decisions with rationale
-- [`docs/adr/`](docs/adr/) — architectural decision records
-- [`docs/evaluation-checklist.md`](docs/evaluation-checklist.md) — empirical results by phase
+- [`PLAN.md`](PLAN.md) — overall project build plan
+- [`decisions/decision-log.md`](decisions/decision-log.md) — scope/framing/strategy decisions with rationale
+- [`adr/`](adr/) — architectural decision records
+- [`evaluation-checklist.md`](evaluation-checklist.md) — empirical results by phase
 
 ---
 

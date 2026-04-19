@@ -36,7 +36,7 @@ This applies to Phase 0, all four experiments in Phase 3, the adversarial evalua
 
 The original phased-build plan lives in [`docs/PLAN.md`](docs/PLAN.md) — the map for every architectural decision, every experiment, every phase. Refer to it for historical context on what was built and why.
 
-`SUMMARY.md` at the repo root is the project's historical log across all phases — one entry per PR, newest at the top. Each entry captures:
+[`docs/SUMMARY.md`](docs/SUMMARY.md) is the project's historical log across all phases — one entry per PR, newest at the top. Each entry captures:
 
 - What was done
 - How it was done
@@ -54,7 +54,7 @@ If future work on this project grows enough to need a phased build plan again (e
 - Each feature branches off `develop`. PRs merge feature → develop; develop → main as releases.
 - Follow **RED/GREEN/REFACTOR TDD for service and business logic** (pipeline services, validation, retry logic, guardrail, repositories, provider implementations, eval harness). UI components, Dockerfiles, config files, and prompt templates do not require strict TDD — exercise judgment and write the tests that actually prove behavior.
 - At the conclusion of each PR:
-  - Append a new entry to `SUMMARY.md`
+  - Append a new entry to `docs/SUMMARY.md`
   - Update `README.md` if necessary
   - If any architecture changes were required, create a new ADR in `docs/adr/` (see existing ADRs for format)
   - Commit with Conventional Commits (see Repository conventions)

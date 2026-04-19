@@ -282,8 +282,11 @@ ticket-triage-llm/
 │   │   ├── 0007-local-deployment-with-docker.md
 │   │   ├── 0008-heuristic-only-guardrail-baseline.md
 │   │   ├── 0009-monitoring-distinct-from-benchmarking.md
-│   │   └── 0010-non-actionable-and-ambiguous-input-handling.md
+│   │   ├── 0010-non-actionable-and-ambiguous-input-handling.md
+│   │   └── 0011-default-model-selection.md
 │   ├── decisions/decision-log.md      # Scope/framing decisions
+│   ├── PLAN.md                        # Project build plan
+│   ├── SUMMARY.md                     # Historical log across all phases
 │   ├── architecture.md
 │   ├── evaluation-plan.md
 │   ├── evaluation-checklist.md
@@ -291,6 +294,7 @@ ticket-triage-llm/
 │   ├── tradeoffs.md
 │   ├── cost-analysis.md
 │   ├── future-improvements.md
+│   ├── DEPLOYMENT.md                  # Native + Docker quick-starts
 │   └── archive/                       # Original plan and rubric (read-only)
 ├── src/ticket_triage_llm/
 │   ├── __init__.py
@@ -345,7 +349,6 @@ ticket-triage-llm/
 ├── ruff.toml
 ├── .env.example
 ├── .dockerignore
-├── SUMMARY.md                         # Historical log across all phases
 ├── CLAUDE.md                          # AI assistant instructions
 └── LICENSE                            # MIT
 ```
@@ -360,7 +363,9 @@ ticket-triage-llm/
 - **[Threat model](docs/threat-model.md)** — prompt injection defense layers
 - **[Tradeoffs](docs/tradeoffs.md)** — design tradeoff analysis
 - **[Cost analysis](docs/cost-analysis.md)** — three-component cost analysis
-- **[SUMMARY](SUMMARY.md)** — what was done, how, and what went wrong
+- **[Deployment](docs/DEPLOYMENT.md)** — native + Docker quick-starts, architecture context, troubleshooting
+- **[SUMMARY](docs/SUMMARY.md)** — historical log of what was done, how, issues, and resolution per phase
+- **[Future improvements](docs/future-improvements.md)** — deferred work with effort estimates
 
 ## Context
 
