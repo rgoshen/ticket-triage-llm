@@ -8,10 +8,10 @@ Configuration:
 
 Per-run triage counts:
     E1: 3 models × 35 tickets = 105
-    E3: 3 configs × 35 tickets = 105 (4B validated, 4B skipped, 9B no-val)
-    Total per run: 210 triages
-    Total all runs: 1,050 triages
-    Estimated time at ~25s/ticket (think=false): ~7.3 hours
+    E3: 3 models × 2 configs × 35 tickets = 210 (validated + skipped per model)
+    Total per run: 315 triages
+    Total all runs: 1,575 triages
+    Estimated time at ~10s/ticket (think=false): ~4.4 hours
 """
 
 import argparse
@@ -41,8 +41,6 @@ def run_single_iteration(
     run_number: int,
     end_run: int,
     providers: list[OllamaQwenProvider],
-    provider_4b: OllamaQwenProvider,
-    provider_9b: OllamaQwenProvider,
     tickets: list,
     repo: SqliteTraceRepository,
     output_base: Path,
@@ -81,10 +79,14 @@ def run_single_iteration(
 
     # --- E3: validation impact + E2 data point ---
     e3_start = time.perf_counter()
-    logger.info("--- E3: validation impact (3 configs × %d tickets) ---", len(tickets))
+    logger.info(
+        "--- E3: validation impact (%d models × 2 configs × %d tickets) ---",
+        len(providers),
+        len(tickets),
+    )
     try:
         e3_summary, e2_run_id = run_validation_impact(
-            provider_4b, provider_9b, tickets, repo, run_suffix=suffix
+            providers, tickets, repo, run_suffix=suffix
         )
         e3_path = run_dir / "e3-validation-impact.json"
         e3_path.write_text(json.dumps(e3_summary.to_dict(), indent=2))
@@ -201,13 +203,6 @@ def main() -> None:
         OllamaQwenProvider(model=m, base_url=settings.ollama_base_url) for m in models
     ]
 
-    provider_4b = OllamaQwenProvider(
-        model="qwen3.5:4b", base_url=settings.ollama_base_url
-    )
-    provider_9b = OllamaQwenProvider(
-        model="qwen3.5:9b", base_url=settings.ollama_base_url
-    )
-
     conn = get_connection(args.db_path)
     init_schema(conn)
     repo = SqliteTraceRepository(conn)
@@ -215,11 +210,13 @@ def main() -> None:
 
     logger.info("Loaded %d tickets", len(tickets))
 
-    triages_per_run = len(tickets) * (len(providers) + 3)  # E1: N models, E3: 3 configs
+    n_models = len(providers)
+    # E1: N models × tickets, E3: N models × 2 configs × tickets
+    triages_per_run = len(tickets) * (n_models + n_models * 2)
     total_triages = triages_per_run * (args.end_run - args.start_run + 1)
-    est_seconds = total_triages * 25
+    est_seconds = total_triages * 10
     logger.info(
-        "Estimated: %d triages per run, %d total, ~%.1f hours at 25s/triage",
+        "Estimated: %d triages per run, %d total, ~%.1f hours at ~10s/triage",
         triages_per_run,
         total_triages,
         est_seconds / 3600,
@@ -233,8 +230,6 @@ def main() -> None:
             run_number=run_num,
             end_run=args.end_run,
             providers=providers,
-            provider_4b=provider_4b,
-            provider_9b=provider_9b,
             tickets=tickets,
             repo=repo,
             output_base=output_base,
