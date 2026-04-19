@@ -3,6 +3,7 @@ name: Docker Publish
 on:
   push:
     branches: [main]
+    tags: ["v*"]
 
 env:
   REGISTRY: ghcr.io
@@ -38,7 +39,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
 
       - name: Build and push
         uses: docker/build-push-action@v6
