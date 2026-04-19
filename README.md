@@ -16,6 +16,25 @@ These are the most material results to date, drawn from the Phase 3 replication 
 
 Phase 4 adversarial findings were collected at n=1 under the original configuration and have **not** been replicated under the current config — they should be read as single-run observations pending Phase 4 replication.
 
+## Production configuration
+
+These values are pinned in code so the app produces reproducible results regardless of Ollama server defaults or environmental state. Every value here is the single source of truth for its concern — changing it requires either a decision-log entry or a new ADR.
+
+| Concern | Value | Where it lives |
+| --- | --- | --- |
+| Context window (`num_ctx`) | `16384` | `src/ticket_triage_llm/providers/ollama_qwen.py` — module constant `NUM_CTX`, applied via the `num_ctx` option on every `chat()` call |
+| Thinking mode | disabled | `src/ticket_triage_llm/providers/ollama_qwen.py` — `think=False` passed as a top-level kwarg to `self._client.chat(...)`. Not a prompt suffix (`/no_think` does not work through the OpenAI-compatible endpoint and is not used here) |
+| Temperature | `0.2` | `src/ticket_triage_llm/config.py` — module constant `TEMPERATURE`, passed via the `temperature` option |
+| Top-p | `0.9` | `src/ticket_triage_llm/config.py` — module constant `TOP_P`, passed via the `top_p` option |
+| Top-k | `40` | `src/ticket_triage_llm/config.py` — module constant `TOP_K`, passed via the `top_k` option |
+| Repetition penalty | `1.0` (disabled) | `src/ticket_triage_llm/config.py` — module constant `REPETITION_PENALTY`, passed via the `repeat_penalty` option |
+| Max output tokens (`num_predict`) | `2048` | `src/ticket_triage_llm/providers/ollama_qwen.py` — module constant `MAX_TOKENS` |
+| Default demo model | `qwen3.5:9b` | `.env.example` (`OLLAMA_MODEL`) — drives the Triage tab dropdown's default selection via `app.py` |
+
+The sampling parameters (temperature, top-p, top-k, repetition penalty) are deliberately **not** environment-configurable. They are module-level constants because drifting sampling values silently invalidates every prior experiment result. Any change requires a decision-log entry per the project's reproducibility rules.
+
+See `docs/decisions/decision-log.md` for the rationale behind each pinned value — in particular the 2026-04-16 entries that locked the sampling parameters and established `think=false` as the production configuration.
+
 ## What this project is
 
 `ticket-triage-llm` takes a raw support ticket and returns a validated triage object: category, severity, routing team, summary, draft reply, escalation flag, and a confidence score. The system is built around a validator-first inference pipeline with bounded retry, a provider abstraction that supports both local (Ollama) and cloud-hosted Qwen models, and a built-in observability dashboard for runtime metrics and benchmark results.
