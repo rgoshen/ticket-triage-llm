@@ -21,7 +21,8 @@ COPY --from=builder /app/src /app/src
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/src"
 ENV OLLAMA_BASE_URL="http://host.docker.internal:11434/v1"
-ENV OLLAMA_MODEL="qwen3.5:4b"
+ENV OLLAMA_MODEL="qwen3.5:9b"
+ENV OLLAMA_MODELS="qwen3.5:2b,qwen3.5:4b,qwen3.5:9b"
 ENV DB_PATH="/app/data/traces.db"
 
 EXPOSE 7860
