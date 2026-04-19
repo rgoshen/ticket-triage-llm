@@ -113,14 +113,14 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
-## [2026-04-17] Phase 5 — Dashboard, traces, live monitoring
+## [2026-04-18] Phase 5 — Dashboard, traces, live monitoring (COMPLETE)
 
-- [ ] Metrics tab — "Benchmark Results" (static, from `run_id`-tagged traces) + "Live Metrics" (rolling time-series)
-- [ ] Traces tab — request inspection and filtering
-- [ ] Experiments tab — side-by-side experiment comparison
-- [ ] Category-distribution drift indicator
-- [ ] Log-based alerts (`WARN [monitoring] threshold_breached: ...`) per ADR 0009
-- [ ] SUMMARY.md + TODO.md updated
+- [x] Metrics tab — "Benchmark Results" (static, from `run_id`-tagged traces) + "Live Metrics" (rolling time-series)
+- [x] Traces tab — request inspection and filtering
+- [x] Experiments tab — side-by-side experiment comparison
+- [x] Category-distribution drift indicator — deferred to `docs/future-improvements.md`
+- [x] Log-based alerts — deferred to `docs/future-improvements.md`
+- [x] SUMMARY.md + TODO.md updated
 - [ ] PR opened, CI green, merged to `develop`
 
 **Dependencies:** Foundation (F), Phase 1 (traces exist), Phase 3 (benchmark data exists).
@@ -219,6 +219,14 @@ P2 and P3 can kick off in parallel once P1 merges, subject to the "E3 needs retr
 ---
 
 ## Completed phases
+
+### [2026-04-18] Phase 5 — Dashboard, traces, live monitoring (COMPLETE)
+
+**Objective:** Implement the Metrics, Traces, and Experiments tabs plus the metrics service layer, so the dashboard is demo-ready with benchmark results, trace inspection, and experiment comparison. All data computed from traces on the fly (ADR 0005). Monitoring visually distinct from benchmarking (ADR 0009).
+
+**Outcome:** 290 tests, 93.74% coverage, ruff clean. Four-tab Gradio layout (Triage, Metrics, Traces, Experiments). Metrics tab has Benchmark Results (run selector, KPI cards, comparison table) and Live Metrics (time-windowed rolling stats). Traces tab has filtering by provider/validation/status with click-to-inspect detail. Experiments tab groups runs by experiment prefix with side-by-side comparison tables. Triage tab UX improved: Cancel/New Ticket buttons disabled until contextually appropriate, trace details accordion removed (now in Traces tab). Category-distribution drift and log-based alerting deferred to `docs/future-improvements.md`.
+
+**References:** `SUMMARY.md` (Phase 5 entry), design spec at `docs/superpowers/specs/2026-04-18-phase-5-dashboard-design.md`, implementation plan at `docs/superpowers/plans/2026-04-18-phase-5-dashboard.md`.
 
 ### [2026-04-18] Phase 4 — Adversarial evaluation + guardrail iteration (COMPLETE)
 

@@ -71,10 +71,22 @@ class SqliteTraceRepository:
         return [self._row_to_trace(columns, row) for row in rows]
 
     def get_traces_by_provider(self, provider: str) -> list[TraceRecord]:
-        raise NotImplementedError("get_traces_by_provider: Phase 5")
+        cursor = self._conn.execute(
+            "SELECT * FROM traces WHERE provider = ? ORDER BY timestamp DESC",
+            (provider,),
+        )
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        return [self._row_to_trace(columns, row) for row in rows]
 
     def get_traces_since(self, since: datetime) -> list[TraceRecord]:
-        raise NotImplementedError("get_traces_since: Phase 5")
+        cursor = self._conn.execute(
+            "SELECT * FROM traces WHERE timestamp >= ? ORDER BY timestamp DESC",
+            (since.isoformat(),),
+        )
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        return [self._row_to_trace(columns, row) for row in rows]
 
     def get_all_traces(self) -> list[TraceRecord]:
         cursor = self._conn.execute(
@@ -83,6 +95,26 @@ class SqliteTraceRepository:
         columns = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()
         return [self._row_to_trace(columns, row) for row in rows]
+
+    def get_distinct_run_ids(self) -> list[dict]:
+        cursor = self._conn.execute(
+            """
+            SELECT run_id, model, MIN(timestamp) as first_ts, COUNT(*) as ticket_count
+            FROM traces
+            WHERE run_id IS NOT NULL
+            GROUP BY run_id
+            ORDER BY first_ts DESC
+            """
+        )
+        return [
+            {
+                "run_id": row[0],
+                "model": row[1],
+                "timestamp": row[2],
+                "ticket_count": row[3],
+            }
+            for row in cursor.fetchall()
+        ]
 
     @staticmethod
     def _row_to_trace(columns: list[str], row: tuple) -> TraceRecord:
