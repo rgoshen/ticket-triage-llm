@@ -112,11 +112,11 @@ Ollama must be **installed and running** on the host before the app will work. T
 ollama serve
 
 # Pull at least the default model
-ollama pull qwen3.5:4b
+ollama pull qwen3.5:9b
 
 # Optional: pull all three for the model comparison dropdown
 ollama pull qwen3.5:2b
-ollama pull qwen3.5:9b
+ollama pull qwen3.5:4b
 ```
 
 #### Option A: run natively

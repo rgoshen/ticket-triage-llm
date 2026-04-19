@@ -8,6 +8,20 @@ from ticket_triage_llm.services.triage import run_triage
 from ticket_triage_llm.storage.trace_repo import TraceRepository
 
 
+def resolve_default_provider(
+    provider_names: list[str], default_provider: str | None
+) -> str:
+    """Pick the dropdown's default-selected provider.
+
+    Returns default_provider if it's registered; otherwise falls back to the
+    first registered provider. The caller guarantees provider_names is
+    non-empty (registry has at least one provider by app-startup invariant).
+    """
+    if default_provider and default_provider in provider_names:
+        return default_provider
+    return provider_names[0]
+
+
 def build_triage_tab_content(
     registry: ProviderRegistry,
     trace_repo: TraceRepository,
@@ -15,9 +29,7 @@ def build_triage_tab_content(
     guardrail_max_length: int = 10_000,
 ) -> None:
     provider_names = registry.list_names()
-    default_value = (
-        default_provider if default_provider in provider_names else provider_names[0]
-    )
+    default_value = resolve_default_provider(provider_names, default_provider)
 
     def handle_triage(provider_name: str, ticket_subject: str, ticket_body: str):
         if not ticket_body.strip():

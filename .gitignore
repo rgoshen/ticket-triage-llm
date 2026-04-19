@@ -261,6 +261,7 @@ __marimo__/
 data/*.db
 data/*.db-journal
 data/*.db-wal
+data/*.db-shm
 
 # Local claude memory files
 **/memory/
