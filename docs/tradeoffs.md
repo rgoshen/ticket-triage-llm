@@ -103,3 +103,28 @@ These are not failures or limitations. They are engineering judgment calls. A di
 **What we gave up:** Actual cloud latency numbers, actual cloud accuracy numbers, and a direct apples-to-apples comparison on the same tickets.
 
 **Why the gain was worth more:** Integrating a cloud provider requires an API key, a second client library, verification of pricing and availability, and additional eval runs — roughly a half-day of work that produces one more row in the benchmark table. The hypothetical comparison using published pricing recovers the most interesting finding (the break-even volume where local becomes cheaper than cloud) without the integration work. The limitation is documented and the cloud provider integration is listed as future work.
+
+---
+
+## Post-implementation observations
+
+These are observations recorded *after* the tradeoffs above were made, reflecting what the implemented system actually does in measured practice. They recontextualize a decision without reversing it — the engineering call still holds; the observed operating regime is narrower than originally anticipated.
+
+### Validator-first pipeline: retry rate near zero under production config
+
+**What was decided:** A validator-first pipeline with bounded retry (ADR 0002). The validator parses, schema-checks, and runs semantic checks on every model response. On failure, a single repair prompt attempt is made with the failed output and specific error returned to the model.
+
+**What was expected at decision time:** The retry path would be an active correction loop. Small models produce malformed JSON often; the repair prompt would recover a meaningful fraction of those failures; the measured retry rate would be the operational signal justifying the complexity.
+
+**What the replication data shows:** Under the current production configuration (`think=false`, `num_ctx=16384`), first-pass JSON validity is ~100% across all three models (2B/4B/9B) on the 35-ticket normal set, across 5 independent replications. Measured retry rate is ~0–3%. The repair pipeline has almost nothing to recover. The "retry recovers 6 additional tickets" finding from the original n=1 Phase 3 data was an artifact of thinking-mode + limited-context brokenness, not a steady-state observation. See [`evaluation-checklist.md` § Phase 3 Replication](evaluation-checklist.md#phase-3-replication-n5-thinkfalse-num_ctx16384) and the [2026-04-19 decision-log reconciliation](decisions/decision-log.md#2026-04-19--phase-3-replication-supersedes-single-run-claims).
+
+**The architectural decision still holds.** This is a recontextualization, not a reversal:
+
+- **Defense in depth.** The pipeline never returns malformed data to a consumer. Even at ~100% first-pass validity, "the parser has never failed in production" is not a guarantee that it never will — models, prompts, sampling parameters, and input distributions all drift. The validator is an assertion boundary between model output and system consumers; removing it would be removing a guarantee to catch one fewer exception per N thousand requests.
+- **Observability.** The validation result is a structured field on every trace (`validation_status`: passed / failed-and-retried / failed). That signal drives the Metrics tab, the Traces tab, and the retry-rate KPI. Removing validation would also remove the primary signal the monitoring design (ADR 0009) is built around.
+- **Injection scope carve-out.** The three-layer injection defense (`docs/threat-model.md`, ADR 0008) depends on post-LLM validation as Layer 3. Phase 4 adversarial results show this layer has not been meaningfully tested yet (no adversarial ticket produced a schema- or semantic-invalid injected output), but the layer is load-bearing for any future attack that does. Removing validation on the grounds that "it rarely catches anything on normal input" would remove it on adversarial input too, where it is the backstop.
+- **Reversibility.** Keeping the validator is a cheap insurance premium (one parse + one schema validation per request, adding milliseconds). Removing it and reinstating it later is more expensive than keeping it.
+
+**What changed in the framing.** The validator's *operational role* has shifted from "active correction loop where retry frequency is the headline KPI" to "assertion boundary / safety net where retry frequency is a near-zero measurement of system health, and any non-zero drift is a signal worth investigating." The complexity of the retry loop is no longer justified by "it recovers many tickets"; it is justified by "it guarantees no malformed output ever leaves the pipeline, and it is the only Layer 3 defense in the injection threat model." ADR 0002 is not edited — ADRs record decisions at the time they were made, and the decision is still correct under its stated reasoning.
+
+**Limit of this observation.** This is Phase 3 (normal input) data. Phase 4 (adversarial input) at n=1 showed parse-failure rates of 50% on the 4B and 21% on the 9B caused by reasoning-mode exhaustion — which was the motivation for `think=false` in production. A future Phase 4 replication under production config is required before claiming retry is near-zero on adversarial input as well.
