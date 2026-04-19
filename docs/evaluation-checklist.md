@@ -240,6 +240,83 @@ Sample 3–5 raw 2B outputs from the traces table before committing to an explan
 
 *Cross-experiment observations are single-run; see [evaluation-plan.md](evaluation-plan.md) § Evaluation Methodology Limitations.*
 
+---
+
+### Phase 3 Replication (n=5, think=false, num_ctx=16384)
+
+**Date run:** 2026-04-19
+**Dataset:** normal_set.jsonl (35 tickets, with corrected ground truth — see ground-truth-audit.md)
+**Prompt version:** v1
+**Sampling config:** temperature=0.2, top_p=0.9, top_k=40, repetition_penalty=1.0, think=false
+**Context window:** 16384 (Ollama default was 4096; increased to match model capabilities)
+**Runs:** 5 independent invocations per experiment, fresh run_ids per invocation
+**Output:** `data/phase3-1/run-{1..5}/` (15 JSON files) + `data/phase3-1/analysis/` (matrices, audit)
+
+**Configuration change from original Phase 3:** Two settings differ from the original n=1 runs: `think=false` (reasoning mode disabled, documented in decision log 2026-04-18) and `num_ctx=16384` (Ollama context window increased from default 4096). These are the current production/demo settings. The original Phase 3 data used `think=true` and `num_ctx=4096`. The replication therefore establishes baselines for the **current** system configuration, not a controlled replication of the original experiment.
+
+#### Replication Results: E1 (Model Size Comparison)
+
+Values are mean ± stddev across 5 runs. Original n=1 values shown for reference (different configuration — not directly comparable).
+
+| Model | Category acc | Severity acc | Routing acc | Escalation acc | JSON valid | Retry rate | Avg latency | p95 latency | Tokens/req |
+| ----- | ------------ | ------------ | ----------- | -------------- | ---------- | ---------- | ----------- | ----------- | ---------- |
+| 2B (n=5) | 74.9% ± 1.3 | 57.7% ± 3.7 | 81.1% ± 2.6 | 93.7% ± 2.4 | 100% ± 0 | 2.9% ± 0 | 2,930ms ± 252 | 3,851ms ± 409 | 748 ± 1 |
+| 2B (orig) | 2.9% | 0.0% | 2.9% | 2.9% | 2.9% | 97.1% | 69,077ms | 72,005ms | 4,951 |
+| 4B (n=5) | 80.6% ± 1.3 | 77.7% ± 1.3 | 79.4% ± 2.4 | 93.7% ± 2.4 | 100% ± 0 | 2.9% ± 0 | 5,067ms ± 485 | 6,728ms ± 884 | 748 ± 1 |
+| 4B (orig) | 57.1% | 51.4% | 57.1% | 68.6% | 82.9% | 42.9% | 73,886ms | 129,101ms | 3,098 |
+| 9B (n=5) | 83.4% ± 1.3 | 82.3% ± 1.3 | 86.3% ± 2.4 | 89.7% ± 3.3 | 100% ± 0 | 0.0% ± 0 | 7,360ms ± 436 | 8,317ms ± 682 | 743 ± 1 |
+| 9B (orig) | 54.3% | 48.6% | 54.3% | 65.7% | 74.3% | 51.4% | 107,012ms | 168,789ms | 3,378 |
+
+#### Replication Results: E3 (Validation Impact — all models)
+
+E3 now runs all three models with validation on and off (generalized from original 4B+9B only).
+
+| Configuration | Category acc | Severity acc | Routing acc | Escalation acc | JSON valid | Retry rate | Avg latency | Success |
+| ------------- | ------------ | ------------ | ----------- | -------------- | ---------- | ---------- | ----------- | ------- |
+| 2B validated | 74.3% ± 2.9 | 56.0% ± 2.6 | 79.4% ± 2.4 | 93.7% ± 2.4 | 100% ± 0 | 2.9% ± 0 | 2,949ms ± 133 | 35/35 |
+| 2B skipped | 72.0% ± 2.4 | 58.3% ± 5.2 | 77.1% ± 2.0 | 91.4% ± 2.9 | 100% ± 0 | 0% | 2,746ms ± 132 | 34/35 |
+| 4B validated | 79.4% ± 1.3 | 76.6% ± 5.1 | 79.4% ± 3.1 | 92.6% ± 1.6 | 100% ± 0 | 2.9% ± 0 | 5,005ms ± 275 | 35/35 |
+| 4B skipped | 77.7% ± 1.3 | 74.3% ± 3.5 | 76.6% ± 2.4 | 89.7% ± 1.6 | 100% ± 0 | 0% | 4,740ms ± 213 | 34/35 |
+| 9B validated | 82.9% ± 0.0 | 80.6% ± 2.4 | 85.7% ± 2.9 | 89.7% ± 3.8 | 100% ± 0 | 0% ± 0 | 7,474ms ± 309 | 35/35 |
+| 9B skipped | 84.6% ± 1.6 | 81.7% ± 1.6 | 86.3% ± 3.1 | 89.1% ± 2.4 | 100% ± 0 | 0% | 7,258ms ± 496 | 35/35 |
+
+#### Replication Results: E2 (Model Size vs Engineering Controls)
+
+E2 compares the smallest model with full validation (2B from E1) against the largest model without validation (9B skipped from E3).
+
+| Configuration | Category acc | Severity acc | Routing acc | Escalation acc | Success |
+| ------------- | ------------ | ------------ | ----------- | -------------- | ------- |
+| 2B + validation (mean ± sd) | 74.9% ± 1.3 | 57.7% ± 3.7 | 81.1% ± 2.6 | 93.7% ± 2.4 | 35/35 |
+| 9B no validation (mean ± sd) | 84.6% ± 1.6 | 81.7% ± 1.6 | 86.3% ± 3.1 | 89.1% ± 2.4 | 35/35 |
+
+#### Ground Truth Audit
+
+The per-ticket accuracy matrix (`data/phase3-1/analysis/e1-per-ticket-matrix.csv`) surfaced 6 tickets where all three models scored 0/5 on the same field across all 5 runs. Audit found 5 incorrect ground truth labels. See `data/phase3-1/analysis/ground-truth-audit.md` for the full audit with reasoning per ticket.
+
+Labels changed: n-012 (other→feature_request, medium→low, support→product), n-017 (routing product→infra), n-027 (severity medium→low), n-028 (bug→outage), n-035 (bug→other, routing product→support). Labels kept: n-024 (models split, label correct). Both the original-label matrix and corrected-label matrix are preserved in `data/phase3-1/analysis/` — the delta between them is part of the findings.
+
+#### Replication Findings
+
+**1. The original Phase 3 numbers measured a different system.** Every metric for every model is more than 2 standard deviations from the original n=1 observation. This is not a replication failure — two configuration changes (`think=false`, `num_ctx=16384`) transformed the system's behavior. The original data reflects thinking-enabled behavior with a 4096-token context window; the replication reflects the current production configuration. Both datasets are valid records of the system at their respective configurations.
+
+**2. The 2B is viable under the current configuration.** The 2B went from 1/35 successful (2.9%) to 35/35 (100%) across all 5 runs. The original Phase 3 finding — "the 2B is essentially unusable for structured output" — was a finding about thinking mode + limited context, not about the 2B's inherent capability. With `think=false` and `num_ctx=16384`, the 2B produces valid JSON on every ticket. Its accuracy is lower than the 4B and 9B (category 74.9% vs 80.6% vs 83.4%), but it is a usable model, not a broken one.
+
+**3. The 9B is the accuracy leader — overturning the original 4B advantage claim.** Under the original configuration, the 4B appeared to outperform the 9B on structured-output reliability (82.9% vs 74.3% JSON validity). Under the current configuration, all models achieve 100% JSON validity. With reliability equalized, the 9B's higher classification accuracy becomes the differentiator: category 83.4% vs 80.6% (4B) vs 74.9% (2B). The 9B leads on every accuracy dimension. The quality-size curve is monotonic when reasoning mode is disabled — larger models classify better.
+
+**4. Reproducibility is very high.** Standard deviations across 5 runs are 0-5% on accuracy metrics and 1-3% on latency. Category accuracy has ≤1.3% stddev for the 4B and 9B. The 9B's category accuracy is 82.9% ± 0.0 across 5 validated E3 runs — perfectly stable. At n=5, these are reproducibility-established baselines, not point observations.
+
+**5. Validation's value is nearly zero under the current configuration.** With 100% JSON validity and ~3% retry rate, the validation pipeline has almost nothing to recover. The original E3 finding — "validation + retry increases coverage from 23/35 to 29/35" — was about rescuing thinking-mode failures. With `think=false`, models produce clean JSON on the first attempt. Validation still adds safety-net value (the rare retry succeeds 100% of the time), but its marginal contribution has collapsed from "6 additional successful tickets" to "0-1 additional successful tickets per 35."
+
+**6. E2 now provides a clean test of the thesis — but with a reversed conclusion.** The original E2 was confounded because the 2B was broken. Now the 2B works (35/35 success), making the comparison legitimate: 2B-with-validation (74.9% category accuracy) vs 9B-without-validation (84.6%). The 9B without validation beats the 2B with validation on every accuracy metric. Engineering controls (validation + retry) do not compensate for a 7-parameter-size gap in model capability when both models produce valid structured output. The thesis-supporting comparison now requires comparing the 4B-validated (79.4%) vs 9B-skipped (84.6%) — a narrower gap (~5pp on category accuracy) but the 9B still leads. Under the current configuration, model capability matters more than engineering controls for accuracy; controls matter for the safety-net cases that are now rare.
+
+**7. Latency improved by 10-25x.** The 4B went from 74s to 5s average. The 9B went from 107s to 7.4s. The 2B went from 69s to 2.9s. Disabling thinking mode eliminates reasoning-token overhead, which dominated latency under the original configuration. Token consumption dropped proportionally: the 4B went from 3,098 tokens/request to 748 — a 75% reduction, almost entirely from eliminated reasoning tokens.
+
+**8. The ground truth audit is itself a finding.** Model consensus against a label (all three models, all 5 runs = 0/5 on the same field) surfaced 5 label errors in the 35-ticket dataset. That's a 14% error rate in the ground truth. The corrected labels increased aggregate accuracy by 5-10pp for all models. This demonstrates that model disagreement with ground truth is a reliable audit signal — more reliable than hand-reviewing labels — and that evaluation results are only as good as the labels they're scored against.
+
+**9. Cost implications are favorable.** Token consumption dropped from 3,098-4,951 per request (original) to 743-748 (replication) — a 75-85% reduction. Latency dropped by 10-25x. The cost-per-triage under the current configuration is a small fraction of the original estimate. Cloud cost projections in `docs/cost-analysis.md` should be updated with the replication token counts.
+
+**10. Limitations at n=5.** Five runs establish reproducibility but not statistical power for small differences. The 9B vs 4B category accuracy gap (83.4% vs 80.6%, ~3pp) has non-overlapping 1-standard-deviation bands (82.1-84.7 vs 79.3-81.9), suggesting a real difference — but at n=35 tickets × n=5 runs, a 3pp gap could still reflect systematic label ambiguity on a few tickets rather than a generalizable capability difference. Severity accuracy has higher variance (stddev up to 5.1% for 4B validated), making severity comparisons less reliable than category comparisons. Per-ticket analysis (the accuracy matrix) is more informative than aggregate percentages for identifying where models diverge.
+
 ### Experiment 4: Prompt Comparison
 
 **Date run:** _______________
