@@ -112,7 +112,9 @@ def build_triage_tab_content(
             )
             with gr.Row():
                 submit_btn = gr.Button("Triage", variant="primary", scale=2)
-                cancel_btn = gr.Button("Cancel", variant="stop", scale=1)
+                cancel_btn = gr.Button(
+                    "Cancel", variant="stop", scale=1, interactive=False
+                )
                 clear_btn = gr.Button("New Ticket", scale=1)
 
         with gr.Column(scale=1):
@@ -132,19 +134,27 @@ def build_triage_tab_content(
         return "", result_text, trace_text
 
     triage_event = submit_btn.click(
-        fn=lambda: ("*Processing ticket...*", "", ""),
+        fn=lambda: ("*Processing ticket...*", "", "", gr.update(interactive=True)),
         inputs=None,
-        outputs=[status_output, result_output, trace_output],
+        outputs=[status_output, result_output, trace_output, cancel_btn],
     ).then(
-        fn=run_triage_with_status,
+        fn=lambda pn, ts, tb: (
+            *run_triage_with_status(pn, ts, tb),
+            gr.update(interactive=False),
+        ),
         inputs=[provider_dropdown, subject_input, body_input],
-        outputs=[status_output, result_output, trace_output],
+        outputs=[status_output, result_output, trace_output, cancel_btn],
     )
 
     cancel_btn.click(
-        fn=lambda: ("*Ticket submission cancelled.*", "", ""),
+        fn=lambda: (
+            "*Ticket submission cancelled.*",
+            "",
+            "",
+            gr.update(interactive=False),
+        ),
         inputs=None,
-        outputs=[status_output, result_output, trace_output],
+        outputs=[status_output, result_output, trace_output, cancel_btn],
         cancels=[triage_event],
     )
 
