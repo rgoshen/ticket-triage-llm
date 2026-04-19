@@ -18,6 +18,27 @@ Related artifacts:
 
 ---
 
+## [2026-04-19] CI — automated release workflow + versioned Docker tags
+
+**What was done:**
+
+Added a fully automated release pipeline triggered via GitHub Actions `workflow_dispatch`.
+
+1. **New `release.yml` workflow.** Accepts a SemVer version input (e.g., `v1.0.0`) from the Actions UI. Validates format and duplicate-tag guard. Parses all Conventional Commits since the last `v*` tag into categorized sections (Features, Bug Fixes, Documentation, etc.) using a `sed`-based `extract_msg` helper. Creates/updates `CHANGELOG.md`, bumps `pyproject.toml` version, commits to main, creates an annotated git tag, pushes both, and creates a GitHub Release with the generated notes. All untrusted inputs (version string, commit messages) flow through environment variables — no `${{ }}` expression expansion in `run:` blocks — per GitHub Actions injection-prevention best practices.
+
+2. **Updated `docker-publish.yml` to trigger on `v*` tags.** Added `tags: ["v*"]` trigger alongside the existing `branches: [main]` trigger. Updated Docker metadata-action tags to produce `:latest` (default branch only), `:v1.0.0` (full semver), and `:v1.0` (major.minor) image tags from version tags. This means a release dispatch → tag push → Docker image build with version-pinned tags is fully automated.
+
+**Issues encountered:**
+
+- Initial changelog parser used `${line#feat: }` which only strips the unscoped prefix `feat: ` — scoped commits like `feat(eval): msg` produced duplicated output. Fixed by extracting the message via `sed -E 's/^[a-z]+(\([^)]*\))?:[[:space:]]*//'`.
+- Security hook flagged `${{ inputs.version }}` and `${{ steps.changelog.outputs.notes }}` used directly in `run:` blocks. Refactored: version flows through `env:`, changelog notes written to `/tmp/release-notes.md` and read via `cat` — no expression expansion of untrusted content in shell scripts.
+
+**How those issues were resolved:**
+
+Both caught during local testing before commit. Parser fix verified by running the extraction logic against the full project commit history (20-commit sample). Security fix verified by reviewing all `run:` blocks for any remaining `${{ }}` expressions containing user or git-derived input.
+
+---
+
 ## [2026-04-19] Phase cleanup — repo-root tidying + 3 latent eval-runner bug fixes
 
 **What was done:**

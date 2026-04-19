@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., v1.0.0)"
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version format
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$INPUT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must match vMAJOR.MINOR.PATCH (e.g., v1.0.0)"
+            exit 1
+          fi
+          if git rev-parse "$INPUT_VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag $INPUT_VERSION already exists"
+            exit 1
+          fi
+          echo "VERSION=$INPUT_VERSION" >> "$GITHUB_ENV"
+          echo "VERSION_NUM=${INPUT_VERSION#v}" >> "$GITHUB_ENV"
+
+      - name: Generate changelog
+        run: |
+          PREVIOUS_TAG=$(git tag --sort=-v:refname | grep '^v[0-9]' | head -n1 || true)
+          if [ -z "$PREVIOUS_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${PREVIOUS_TAG}..HEAD"
+          fi
+
+          FEATURES=""
+          FIXES=""
+          DOCS=""
+          REFACTORS=""
+          TESTS=""
+          CHORES=""
+          PERF=""
+          CI_CHANGES=""
+
+          extract_msg() {
+            echo "$1" | sed -E 's/^[a-z]+(\([^)]*\))?:[[:space:]]*//'
+          }
+
+          while IFS= read -r line; do
+            MSG=$(extract_msg "$line")
+            case "$line" in
+              feat:*|feat\(*) FEATURES="${FEATURES}- ${MSG}"$'\n' ;;
+              fix:*|fix\(*)   FIXES="${FIXES}- ${MSG}"$'\n' ;;
+              docs:*|docs\(*) DOCS="${DOCS}- ${MSG}"$'\n' ;;
+              refactor:*|refactor\(*) REFACTORS="${REFACTORS}- ${MSG}"$'\n' ;;
+              test:*|test\(*) TESTS="${TESTS}- ${MSG}"$'\n' ;;
+              chore:*|chore\(*) CHORES="${CHORES}- ${MSG}"$'\n' ;;
+              perf:*|perf\(*) PERF="${PERF}- ${MSG}"$'\n' ;;
+              ci:*|ci\(*)     CI_CHANGES="${CI_CHANGES}- ${MSG}"$'\n' ;;
+              Merge*) ;;
+              *) CHORES="${CHORES}- ${line}"$'\n' ;;
+            esac
+          done < <(git log "$RANGE" --pretty=format:"%s" --no-merges)
+
+          BODY=""
+          [ -n "$FEATURES" ]   && BODY="${BODY}## Features"$'\n\n'"${FEATURES}"$'\n'
+          [ -n "$FIXES" ]      && BODY="${BODY}## Bug Fixes"$'\n\n'"${FIXES}"$'\n'
+          [ -n "$PERF" ]       && BODY="${BODY}## Performance"$'\n\n'"${PERF}"$'\n'
+          [ -n "$REFACTORS" ]  && BODY="${BODY}## Refactoring"$'\n\n'"${REFACTORS}"$'\n'
+          [ -n "$DOCS" ]       && BODY="${BODY}## Documentation"$'\n\n'"${DOCS}"$'\n'
+          [ -n "$TESTS" ]      && BODY="${BODY}## Tests"$'\n\n'"${TESTS}"$'\n'
+          [ -n "$CI_CHANGES" ] && BODY="${BODY}## CI/CD"$'\n\n'"${CI_CHANGES}"$'\n'
+          [ -n "$CHORES" ]     && BODY="${BODY}## Maintenance"$'\n\n'"${CHORES}"$'\n'
+
+          if [ -z "$BODY" ]; then
+            BODY="No categorized changes found."$'\n'
+          fi
+
+          echo -n "$BODY" > /tmp/release-notes.md
+
+      - name: Update CHANGELOG.md
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+
+          if [ -f CHANGELOG.md ]; then
+            EXISTING=$(tail -n +2 CHANGELOG.md)
+          else
+            EXISTING=""
+          fi
+
+          {
+            echo "# Changelog"
+            echo ""
+            echo "## [${VERSION}] - ${DATE}"
+            echo ""
+            cat /tmp/release-notes.md
+            echo "${EXISTING}"
+          } > CHANGELOG.md
+
+      - name: Update pyproject.toml version
+        run: |
+          sed -i "s/^version = \".*\"/version = \"${VERSION_NUM}\"/" pyproject.toml
+
+      - name: Commit release changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md pyproject.toml
+          git commit -m "chore(release): ${VERSION} — changelog and version bump"
+
+      - name: Create tag
+        run: git tag -a "$VERSION" -m "Release ${VERSION}"
+
+      - name: Push changes and tag
+        run: |
+          git push origin HEAD:main
+          git push origin "$VERSION"
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --notes-file /tmp/release-notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
