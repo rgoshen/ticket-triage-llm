@@ -1,16 +1,21 @@
 name: Release
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g., v1.0.0)"
-        required: true
+        description: "Release version (e.g., v1.0.0) — leave empty to auto-calculate"
+        required: false
         type: string
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):')
 
     permissions:
       contents: write
@@ -22,20 +27,51 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Validate version format
+      - name: Determine version
         env:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [[ ! "$INPUT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Version must match vMAJOR.MINOR.PATCH (e.g., v1.0.0)"
-            exit 1
+          if [ -n "$INPUT_VERSION" ]; then
+            if [[ ! "$INPUT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Version must match vMAJOR.MINOR.PATCH (e.g., v1.0.0)"
+              exit 1
+            fi
+            if git rev-parse "$INPUT_VERSION" >/dev/null 2>&1; then
+              echo "::error::Tag $INPUT_VERSION already exists"
+              exit 1
+            fi
+            echo "VERSION=$INPUT_VERSION" >> "$GITHUB_ENV"
+            echo "VERSION_NUM=${INPUT_VERSION#v}" >> "$GITHUB_ENV"
+            exit 0
           fi
-          if git rev-parse "$INPUT_VERSION" >/dev/null 2>&1; then
-            echo "::error::Tag $INPUT_VERSION already exists"
-            exit 1
+
+          LATEST_TAG=$(git tag --sort=-v:refname | grep '^v[0-9]' | head -n1 || true)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "VERSION=v1.0.0" >> "$GITHUB_ENV"
+            echo "VERSION_NUM=1.0.0" >> "$GITHUB_ENV"
+            exit 0
           fi
-          echo "VERSION=$INPUT_VERSION" >> "$GITHUB_ENV"
-          echo "VERSION_NUM=${INPUT_VERSION#v}" >> "$GITHUB_ENV"
+
+          MAJOR=$(echo "$LATEST_TAG" | sed -E 's/^v([0-9]+)\..*/\1/')
+          MINOR=$(echo "$LATEST_TAG" | sed -E 's/^v[0-9]+\.([0-9]+)\..*/\1/')
+          PATCH=$(echo "$LATEST_TAG" | sed -E 's/^v[0-9]+\.[0-9]+\.([0-9]+).*/\1/')
+
+          BUMP="patch"
+          while IFS= read -r msg; do
+            case "$msg" in
+              *BREAKING\ CHANGE*|*\!:*) BUMP="major"; break ;;
+              feat:*|feat\(*) [ "$BUMP" != "major" ] && BUMP="minor" ;;
+            esac
+          done < <(git log "${LATEST_TAG}..HEAD" --pretty=format:"%s" --no-merges)
+
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          echo "VERSION=v${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_ENV"
+          echo "VERSION_NUM=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_ENV"
 
       - name: Generate changelog
         run: |

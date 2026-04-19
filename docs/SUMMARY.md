@@ -22,20 +22,23 @@ Related artifacts:
 
 **What was done:**
 
-Added a fully automated release pipeline triggered via GitHub Actions `workflow_dispatch`.
+Added a fully automated release pipeline that triggers on every push to `main` and auto-calculates the next SemVer version from Conventional Commits. Also added status badges to the README.
 
-1. **New `release.yml` workflow.** Accepts a SemVer version input (e.g., `v1.0.0`) from the Actions UI. Validates format and duplicate-tag guard. Parses all Conventional Commits since the last `v*` tag into categorized sections (Features, Bug Fixes, Documentation, etc.) using a `sed`-based `extract_msg` helper. Creates/updates `CHANGELOG.md`, bumps `pyproject.toml` version, commits to main, creates an annotated git tag, pushes both, and creates a GitHub Release with the generated notes. All untrusted inputs (version string, commit messages) flow through environment variables — no `${{ }}` expression expansion in `run:` blocks — per GitHub Actions injection-prevention best practices.
+1. **New `release.yml` workflow.** Dual-trigger: auto on `push to main` (skips its own `chore(release):` commits to avoid infinite loops) and manual via `workflow_dispatch` with an optional version override. Auto-versioning scans commits since the last `v*` tag — `BREAKING CHANGE` or `!:` → major bump, `feat:` → minor, everything else → patch. First release defaults to `v1.0.0`. Parses all Conventional Commits into categorized changelog sections (Features, Bug Fixes, Documentation, etc.) using a `sed`-based `extract_msg` helper. Creates/updates `CHANGELOG.md`, bumps `pyproject.toml` version, commits to main, creates an annotated git tag, pushes both, and creates a GitHub Release with the generated notes. All untrusted inputs (version string, commit messages) flow through environment variables — no `${{ }}` expression expansion in `run:` blocks — per GitHub Actions injection-prevention best practices.
 
-2. **Updated `docker-publish.yml` to trigger on `v*` tags.** Added `tags: ["v*"]` trigger alongside the existing `branches: [main]` trigger. Updated Docker metadata-action tags to produce `:latest` (default branch only), `:v1.0.0` (full semver), and `:v1.0` (major.minor) image tags from version tags. This means a release dispatch → tag push → Docker image build with version-pinned tags is fully automated.
+2. **Updated `docker-publish.yml` to trigger on `v*` tags.** Added `tags: ["v*"]` trigger alongside the existing `branches: [main]` trigger. Updated Docker metadata-action tags to produce `:latest` (default branch only), `:v1.0.0` (full semver), and `:v1.0` (major.minor) image tags from version tags. This means a merge to main → auto-release → tag push → Docker image build with version-pinned tags is fully automated end-to-end.
+
+3. **Added README badges.** CI status, latest release version, license (MIT), Python version (≥3.11), and Docker image link — all using shields.io. Updated repo structure tree to include `release.yml`.
 
 **Issues encountered:**
 
 - Initial changelog parser used `${line#feat: }` which only strips the unscoped prefix `feat: ` — scoped commits like `feat(eval): msg` produced duplicated output. Fixed by extracting the message via `sed -E 's/^[a-z]+(\([^)]*\))?:[[:space:]]*//'`.
 - Security hook flagged `${{ inputs.version }}` and `${{ steps.changelog.outputs.notes }}` used directly in `run:` blocks. Refactored: version flows through `env:`, changelog notes written to `/tmp/release-notes.md` and read via `cat` — no expression expansion of untrusted content in shell scripts.
+- Release workflow pushing to main would re-trigger itself infinitely. Solved with a commit-message guard: `if: !startsWith(github.event.head_commit.message, 'chore(release):')`.
 
 **How those issues were resolved:**
 
-Both caught during local testing before commit. Parser fix verified by running the extraction logic against the full project commit history (20-commit sample). Security fix verified by reviewing all `run:` blocks for any remaining `${{ }}` expressions containing user or git-derived input.
+All caught during local development before commit. Parser fix verified by running the extraction logic against the full project commit history (20-commit sample). Security fix verified by reviewing all `run:` blocks for any remaining `${{ }}` expressions. Infinite-loop guard verified by tracing the event flow: merge → release workflow → `chore(release):` commit pushed → workflow triggers again but `if` condition skips the job.
 
 ---
 
