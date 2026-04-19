@@ -185,11 +185,136 @@ class TestGetAllTraces:
         assert traces == []
 
 
-class TestUnimplementedMethods:
-    def test_get_traces_by_provider_raises(self, repo):
-        with pytest.raises(NotImplementedError):
-            repo.get_traces_by_provider("ollama")
+class TestGetTracesByProvider:
+    def test_filters_by_provider(self, repo):
+        repo.save_trace(_make_trace(request_id="req-1", provider="ollama:qwen3.5:2b"))
+        repo.save_trace(_make_trace(request_id="req-2", provider="ollama:qwen3.5:2b"))
+        repo.save_trace(_make_trace(request_id="req-3", provider="ollama:qwen3.5:4b"))
 
-    def test_get_traces_since_raises(self, repo):
-        with pytest.raises(NotImplementedError):
-            repo.get_traces_since(datetime.now(UTC))
+        traces = repo.get_traces_by_provider("ollama:qwen3.5:2b")
+        assert len(traces) == 2
+        assert all(t.provider == "ollama:qwen3.5:2b" for t in traces)
+        assert {t.request_id for t in traces} == {"req-1", "req-2"}
+
+    def test_returns_empty_for_unknown_provider(self, repo):
+        repo.save_trace(_make_trace(request_id="req-1", provider="ollama:qwen3.5:2b"))
+        traces = repo.get_traces_by_provider("ollama:qwen3.5:9b")
+        assert traces == []
+
+    def test_returns_newest_first(self, repo):
+        repo.save_trace(
+            _make_trace(
+                request_id="old",
+                provider="ollama:qwen3.5:2b",
+                timestamp=datetime(2026, 4, 17, 10, 0, 0, tzinfo=UTC),
+            )
+        )
+        repo.save_trace(
+            _make_trace(
+                request_id="new",
+                provider="ollama:qwen3.5:2b",
+                timestamp=datetime(2026, 4, 17, 12, 0, 0, tzinfo=UTC),
+            )
+        )
+        traces = repo.get_traces_by_provider("ollama:qwen3.5:2b")
+        assert len(traces) == 2
+        assert traces[0].request_id == "new"
+        assert traces[1].request_id == "old"
+
+
+class TestGetTracesSince:
+    def test_filters_by_timestamp(self, repo):
+        old_time = datetime(2026, 4, 17, 10, 0, 0, tzinfo=UTC)
+        new_time = datetime(2026, 4, 17, 12, 0, 0, tzinfo=UTC)
+        midpoint = datetime(2026, 4, 17, 11, 0, 0, tzinfo=UTC)
+
+        repo.save_trace(_make_trace(request_id="old", timestamp=old_time))
+        repo.save_trace(_make_trace(request_id="new", timestamp=new_time))
+
+        traces = repo.get_traces_since(midpoint)
+        assert len(traces) == 1
+        assert traces[0].request_id == "new"
+
+    def test_returns_empty_when_none_match(self, repo):
+        old_time = datetime(2026, 4, 17, 10, 0, 0, tzinfo=UTC)
+        future_time = datetime(2026, 4, 17, 14, 0, 0, tzinfo=UTC)
+
+        repo.save_trace(_make_trace(request_id="old", timestamp=old_time))
+        traces = repo.get_traces_since(future_time)
+        assert traces == []
+
+    def test_returns_newest_first(self, repo):
+        time1 = datetime(2026, 4, 17, 11, 0, 0, tzinfo=UTC)
+        time2 = datetime(2026, 4, 17, 12, 0, 0, tzinfo=UTC)
+        since_time = datetime(2026, 4, 17, 10, 0, 0, tzinfo=UTC)
+
+        repo.save_trace(_make_trace(request_id="req-1", timestamp=time1))
+        repo.save_trace(_make_trace(request_id="req-2", timestamp=time2))
+
+        traces = repo.get_traces_since(since_time)
+        assert len(traces) == 2
+        assert traces[0].request_id == "req-2"
+        assert traces[1].request_id == "req-1"
+
+
+class TestGetDistinctRunIds:
+    def test_returns_distinct_run_ids(self, repo):
+        repo.save_trace(
+            _make_trace(request_id="req-1", run_id="run-A", model="qwen3.5:2b")
+        )
+        repo.save_trace(
+            _make_trace(request_id="req-2", run_id="run-A", model="qwen3.5:2b")
+        )
+        repo.save_trace(
+            _make_trace(request_id="req-3", run_id="run-B", model="qwen3.5:4b")
+        )
+
+        runs = repo.get_distinct_run_ids()
+        assert len(runs) == 2
+        run_ids = {r["run_id"] for r in runs}
+        assert run_ids == {"run-A", "run-B"}
+
+    def test_excludes_null_run_ids(self, repo):
+        repo.save_trace(_make_trace(request_id="req-1", run_id="run-A"))
+        repo.save_trace(_make_trace(request_id="req-2", run_id=None))
+        repo.save_trace(_make_trace(request_id="req-3"))  # defaults to None
+
+        runs = repo.get_distinct_run_ids()
+        assert len(runs) == 1
+        assert runs[0]["run_id"] == "run-A"
+
+    def test_includes_model_and_count(self, repo):
+        repo.save_trace(
+            _make_trace(request_id="req-1", run_id="run-A", model="qwen3.5:4b")
+        )
+        repo.save_trace(
+            _make_trace(request_id="req-2", run_id="run-A", model="qwen3.5:4b")
+        )
+
+        runs = repo.get_distinct_run_ids()
+        assert len(runs) == 1
+        assert runs[0]["model"] == "qwen3.5:4b"
+        assert runs[0]["ticket_count"] == 2
+
+    def test_returns_empty_when_no_runs(self, repo):
+        repo.save_trace(_make_trace(request_id="req-1", run_id=None))
+        repo.save_trace(_make_trace(request_id="req-2"))
+
+        runs = repo.get_distinct_run_ids()
+        assert runs == []
+
+    def test_ordered_by_timestamp_desc(self, repo):
+        old_time = datetime(2026, 4, 17, 10, 0, 0, tzinfo=UTC)
+        new_time = datetime(2026, 4, 17, 12, 0, 0, tzinfo=UTC)
+
+        repo.save_trace(
+            _make_trace(request_id="req-old", run_id="run-old", timestamp=old_time)
+        )
+        repo.save_trace(
+            _make_trace(request_id="req-new", run_id="run-new", timestamp=new_time)
+        )
+
+        runs = repo.get_distinct_run_ids()
+        assert len(runs) == 2
+        assert runs[0]["run_id"] == "run-new"
+        assert runs[1]["run_id"] == "run-old"

@@ -48,13 +48,28 @@ class FakeTraceRepo:
         return [t for t in self.traces if t.run_id == run_id]
 
     def get_traces_by_provider(self, provider: str) -> list[TraceRecord]:
-        raise NotImplementedError
+        return [t for t in self.traces if t.provider == provider]
 
     def get_traces_since(self, since: datetime) -> list[TraceRecord]:
-        raise NotImplementedError
+        return [t for t in self.traces if t.timestamp >= since]
 
     def get_all_traces(self) -> list[TraceRecord]:
         return list(self.traces)
+
+    def get_distinct_run_ids(self) -> list[dict]:
+        runs: dict[str, dict] = {}
+        for t in self.traces:
+            if t.run_id is None:
+                continue
+            if t.run_id not in runs:
+                runs[t.run_id] = {
+                    "run_id": t.run_id,
+                    "model": t.model,
+                    "timestamp": t.timestamp.isoformat(),
+                    "ticket_count": 0,
+                }
+            runs[t.run_id]["ticket_count"] += 1
+        return sorted(runs.values(), key=lambda r: r["timestamp"], reverse=True)
 
 
 class AlwaysBadJsonProvider:

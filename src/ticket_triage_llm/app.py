@@ -1,4 +1,4 @@
-"""FastAPI + Gradio entry point — Phase 2."""
+"""FastAPI + Gradio entry point — Phase 5."""
 
 import os
 
@@ -14,7 +14,10 @@ from ticket_triage_llm.providers.ollama_qwen import OllamaQwenProvider
 from ticket_triage_llm.services.provider_router import ProviderRegistry
 from ticket_triage_llm.services.trace import SqliteTraceRepository
 from ticket_triage_llm.storage.db import get_connection, init_schema
-from ticket_triage_llm.ui.triage_tab import build_triage_tab
+from ticket_triage_llm.ui.experiments_tab import build_experiments_tab_content
+from ticket_triage_llm.ui.metrics_tab import build_metrics_tab_content
+from ticket_triage_llm.ui.traces_tab import build_traces_tab_content
+from ticket_triage_llm.ui.triage_tab import build_triage_tab_content
 
 
 def create_app() -> FastAPI:
@@ -42,13 +45,22 @@ def create_app() -> FastAPI:
 
     configure_api(registry, trace_repo, settings.guardrail_max_length)
 
-    gradio_app = build_triage_tab(
-        registry,
-        trace_repo,
-        default_provider=f"ollama:{settings.ollama_model}",
-        guardrail_max_length=settings.guardrail_max_length,
-    )
-    app = FastAPI(title="Ticket Triage LLM", version="0.2.0")
+    with gr.Blocks(title="Ticket Triage LLM") as gradio_app, gr.Tabs():
+        with gr.Tab("Triage"):
+            build_triage_tab_content(
+                registry,
+                trace_repo,
+                default_provider=f"ollama:{settings.ollama_model}",
+                guardrail_max_length=settings.guardrail_max_length,
+            )
+        with gr.Tab("Metrics"):
+            build_metrics_tab_content(trace_repo)
+        with gr.Tab("Traces"):
+            build_traces_tab_content(trace_repo)
+        with gr.Tab("Experiments"):
+            build_experiments_tab_content(trace_repo)
+
+    app = FastAPI(title="Ticket Triage LLM", version="0.3.0")
     app.include_router(api_router)
     app = gr.mount_gradio_app(app, gradio_app, path="/")
 

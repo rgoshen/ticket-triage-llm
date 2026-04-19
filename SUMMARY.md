@@ -19,6 +19,48 @@ Related artifacts:
 
 ---
 
+## [2026-04-18] Phase 5 — Dashboard, traces, and live monitoring
+
+**What was done:**
+
+- Implemented the metrics service layer (`services/metrics.py`) with three functions: `list_run_ids()` for discovering eval runs, `get_live_summary()` for rolling live traffic stats, and `group_runs_by_experiment()` for clustering runs by experiment prefix (e1-, e2-, e3-, e4-, adv-).
+- Implemented two stubbed trace repo methods (`get_traces_by_provider`, `get_traces_since`) and added a new `get_distinct_run_ids()` method with corresponding Protocol update.
+- Built the Metrics tab with two visually distinct sections per ADR 0009: Benchmark Results (run selector dropdown, KPI cards, comparison table from `summarize_run()`) and Live Metrics (time-windowed rolling stats for live traffic where `run_id IS NULL`).
+- Built the Traces tab with a filter bar (provider, validation status, status, limit), a trace list table, and click-to-inspect detail pane showing full metadata, timing, pipeline results, and content previews.
+- Built the Experiments tab with an experiment selector (populated from `group_runs_by_experiment()`), per-experiment descriptions, and comparison tables — benchmark format for normal experiments, adversarial format (guardrail blocked, success, failure, parse fail) for adversarial runs.
+- Refactored the Triage tab from a standalone `gr.Blocks` to inline content within a `gr.Tab`, enabling the outer tabbed layout.
+- Wired all four tabs into `app.py` via an outer `gr.Blocks` with `gr.Tabs`. Version bumped to 0.3.0.
+- Improved Triage tab UX: Cancel button starts disabled and enables only during processing; New Ticket button starts disabled and enables only after a result is displayed. Removed the trace details accordion (now redundant with the Traces tab).
+- Deferred category-distribution drift indicator and log-based alerting to `docs/future-improvements.md` with full entries matching the existing structure.
+- Updated `FakeTraceRepo` in `tests/fakes.py` with working implementations for all new methods.
+
+**How it was done:**
+
+- Strict RED/GREEN/REFACTOR TDD for trace repo methods (11 new tests) and metrics service (9 new tests). Judgment-based for all UI tab implementations.
+- Subagent-driven development: fresh subagent per task, sequential dispatch on `feature/phase-5-dashboard`.
+- 11 atomic commits on the branch. 290 tests total, 93.74% coverage, ruff clean.
+
+**Issues encountered:**
+
+1. **Triage tab refactoring required coordinated changes.** The existing `build_triage_tab()` returned a standalone `gr.Blocks`, but the new tabbed layout needs each tab to build content inline within a `gr.Tab` context. This meant changing the function signature, removing the Blocks wrapper, and updating `app.py` in the same logical change — but they were committed separately for clarity.
+
+2. **Gradio button state management.** Disabling/enabling Cancel and New Ticket buttons required threading `gr.update(interactive=...)` through every event handler's outputs. Each event chain (submit → process → complete, cancel, clear) needed the button state updates added to its output tuple.
+
+**How those issues were resolved:**
+
+1. Task 3 (triage refactor) and Task 4 (app.py wiring) were dispatched to the same subagent to ensure coordinated changes. Placeholder stubs were added to the three new tab modules so imports wouldn't fail before the real implementations landed.
+
+2. Each button state transition was mapped explicitly: Cancel enables on submit click, disables on completion or cancel. New Ticket enables on completion or cancel, disables on click. The state table was verified manually in the browser.
+
+**Exit state:**
+
+- 290 tests pass, 93.74% coverage, ruff clean.
+- Four-tab dashboard demo-ready: Triage, Metrics, Traces, Experiments.
+- Phase 6 unblocked (prompt v2 + prompt comparison).
+- Phase 7 unblocked (hardening, documentation, presentation prep).
+
+---
+
 ## [2026-04-18] Phase 4B — Documentation corrections (post-review cleanup)
 
 **What was done:**

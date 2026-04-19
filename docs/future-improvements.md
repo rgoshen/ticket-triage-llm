@@ -129,3 +129,27 @@ These are not gaps or oversights. They are the result of explicit scoping decisi
 **What was done instead:** The comparison stays within the Qwen 3.5 family (2B, 4B, 9B). The choice to stay within-family is documented in the decision log and model strategy section of PLAN.md.
 
 **Estimated effort to add:** Half a day per additional family (pull models, verify structured output, run benchmark, add to results). The provider abstraction and eval harness support this with no code changes — just adding new provider instances to the runner's list.
+
+---
+
+## Category-distribution drift indicator
+
+**What it would add:** A chart in the Live Metrics section showing the distribution of assigned categories over time, flagging when a single category dominates recent traffic (>70%) as a signal that input distribution or model behavior has shifted.
+
+**Why it's deferred:** Requires enough live traffic to produce a meaningful distribution. During a 5-minute demo, the volume of live requests is too low to show drift. The chart would render as single bars or be empty, undermining rather than supporting the demo narrative.
+
+**What was done instead:** The Metrics tab shows rolling aggregate metrics (success rate, latency, retry rate) that are meaningful even at low traffic volumes. Category distribution can be inferred from the Traces tab's filterable list.
+
+**Estimated effort to add:** A few hours. The trace data already includes category in `triage_output_json`. Implementation is a time-bucketed aggregation query and a Gradio bar chart.
+
+---
+
+## Log-based alerting
+
+**What it would add:** Structured log warnings (`WARN [monitoring] threshold_breached: p95_latency=6200ms > limit=5000ms`) emitted when configured thresholds are crossed (p95 latency > 5s, retry rate > 20%, single category > 70% of recent traffic). See [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md) for the threshold values and log format.
+
+**Why it's deferred:** Log-based alerts are invisible to the audience during a demo unless specifically surfaced in the UI. The monitoring value is real but the demo impact is low compared to the visible dashboard components.
+
+**What was done instead:** The Live Metrics section shows the same threshold-relevant numbers (p95 latency, retry rate) as KPI cards, making threshold violations visually apparent without log parsing.
+
+**Estimated effort to add:** A few hours. The metrics service already computes the relevant values; adding threshold checks and structured log output is straightforward.
