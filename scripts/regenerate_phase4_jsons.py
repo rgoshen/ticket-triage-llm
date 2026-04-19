@@ -115,10 +115,26 @@ def main():
                 continue
 
             if trace.status == "success" and trace.triage_output_json:
-                output = TriageOutput.model_validate_json(trace.triage_output_json)
-                triage_result = TriageSuccess(
-                    output=output, retry_count=trace.retry_count
-                )
+                try:
+                    output = TriageOutput.model_validate_json(trace.triage_output_json)
+                    triage_result = TriageSuccess(
+                        output=output, retry_count=trace.retry_count
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Corrupt trace for ticket_id=%s — reconstructing "
+                        "as schema_failure for compliance analysis (%s)",
+                        tid,
+                        type(exc).__name__,
+                    )
+                    triage_result = TriageFailure(
+                        category="schema_failure",
+                        detected_by="parser",
+                        message=(
+                            f"Reconstructed from corrupt trace ({type(exc).__name__})"
+                        ),
+                        retry_count=trace.retry_count,
+                    )
             else:
                 triage_result = TriageFailure(
                     category=trace.failure_category or "parse_failure",
