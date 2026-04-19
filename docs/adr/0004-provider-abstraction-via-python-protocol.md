@@ -100,3 +100,19 @@ The `provider_router` service maintains a registry of available providers and se
 - **Option C (direct Ollama calls):** rejected because it couples infrastructure to business logic, makes the pipeline impossible to unit-test without a running Ollama instance, and makes adding a second provider a refactoring exercise rather than a configuration change.
 
 - **Option D (callable):** rejected because providers carry identity and configuration beyond what a bare function signature can express. A callable works for trivial cases but doesn't scale to providers that need a `name` for trace logging, an endpoint URL, or an API key.
+
+## Addendum: Cloud models via Ollama passthrough (no new provider class needed) (2026-04-19)
+
+**Date:** 2026-04-19
+
+**Status:** The Decision above stands. The `CloudQwenProvider` stub in `src/ticket_triage_llm/providers/cloud_qwen.py` remains a `NotImplementedError` placeholder — **and it should stay that way** unless the project needs a non-Ollama cloud path.
+
+Ollama itself provides a cloud-model passthrough. When a user signs into `ollama.com` from their local Ollama server (`ollama signin`), certain cloud models appear in `ollama list` with a `:cloud` suffix (e.g., `qwen3.5:397b-cloud`). The local `:11434` endpoint transparently proxies requests for those models to `ollama.com:443`. From the perspective of the app's existing `OllamaQwenProvider`, a `:cloud`-suffixed model is just another model name. No code changes are required to use it — the user adds the name to `OLLAMA_MODELS` and the existing provider class handles it.
+
+This means **the cloud path works today via configuration**, not via a new provider class. The `CloudQwenProvider` stub exists for the *different* case: a direct integration with a non-Ollama cloud API (Alibaba DashScope, Anthropic, OpenAI, etc.) that does not route through an Ollama server. That direct-integration case is deferred to `docs/future-improvements.md` and is not needed for the Ollama-proxied cloud path.
+
+The Protocol-based abstraction is doing exactly what this ADR predicted: the decision about which endpoint serves a model name is a configuration concern, not a code concern. Proving this out with the cloud passthrough is why the `OllamaQwenProvider` remains model-agnostic (no branching on model name, no hardcoded list of supported models) — see `CLAUDE.md` § "Hardware & model constraints."
+
+Documented in `README.md` § "Managing models — Using cloud models via Ollama's passthrough" with a caveat: sampling-parameter honoring by the cloud backend (`num_ctx`, `think=false`, `temperature`, etc.) is unverified, and cloud runs should not be directly compared against the Phase 3/4 benchmark numbers until a smoke test confirms the parameters round-trip.
+
+No code changes in this addendum.

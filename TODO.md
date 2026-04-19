@@ -82,7 +82,7 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 - [x] `eval/runners/run_local_comparison.py` (E1) — local model size comparison
 - [x] `eval/runners/run_validation_impact.py` (E3) — validation on/off impact (needs Phase 2 retry)
-- [x] `eval/runners/run_prompt_comparison.py` (E4) — prompt v1 vs v2 (partial; re-run after Phase 6)
+- [x] `eval/runners/run_prompt_comparison.py` (E4) — prompt comparison (v1 only; Phase 6 scoped out, see decision log 2026-04-19)
 - [x] `eval/runners/summarize_results.py` — aggregate results, compute E2 as composition of E1+E3
 - [x] All runs tag rows with `run_id` in traces table (ADR 0005)
 - [x] Fill in `docs/evaluation-checklist.md` Phase 3 sections + "Expected Benchmark Table" in `PLAN.md`
@@ -130,32 +130,40 @@ Foundation runs TDD only where CLAUDE.md requires it (service and business logic
 
 ---
 
-## [2026-04-17] Phase 6 — Prompt v2 + prompt comparison
+## [2026-04-17] Phase 6 — Prompt v2 + prompt comparison *(SCOPED OUT)*
 
-- [ ] Author `prompts/triage_v2.py` — meaningfully different prompt (not a tweak)
-- [ ] Re-run Experiment 4 with both prompt versions
-- [ ] Wire prompt-version filtering into the dashboard
-- [ ] SUMMARY.md + TODO.md updated
-- [ ] PR opened, CI green, merged to `develop`
+**Status: not executed.** Scoped out per [decision log 2026-04-19](docs/decisions/decision-log.md#2026-04-19--phase-6-skipped-prompt-v2-comparison-deferred). Summary: Phase 3 replication saturated JSON validity at 100% across all three models, leaving the v1-vs-v2 comparison bounded by a narrow category-accuracy headroom. Time budget redirected to Phase 7. v2 moved to `docs/future-improvements.md`.
 
-**Dependencies:** Foundation (F), Phase 1, Phase 5 (dashboard filter).
-**PLAN.md mapping:** PLAN.md Phase 6.
-**Branch:** `feature/phase-6-prompt-v2`.
+~~Author `prompts/triage_v2.py` — meaningfully different prompt (not a tweak)~~
+~~Re-run Experiment 4 with both prompt versions~~
+~~Wire prompt-version filtering into the dashboard~~
 
 ---
 
-## [2026-04-17] Phase 7 — Hardening, documentation, presentation prep
+## [2026-04-19] Phase 7 — Hardening, documentation, presentation prep
 
-- [ ] Sweep adversarial misses that are cheap to fix
-- [ ] Write `DEPLOYMENT.md` with native + Docker quick-starts
-- [ ] Cross-platform Docker testing (macOS / Windows / Linux) per ADR 0007
-- [ ] Finalize ADRs reflecting what was actually built
-- [ ] `demo-script.md` + `presentation-notes.md`
-- [ ] Rehearse the demo twice
-- [ ] SUMMARY.md + TODO.md updated
+- [x] Decision-log entry: Phase 6 skip rationale *(commit 1)*
+- [x] Delete `triage_v2.py` stub + update E4 runner docstrings *(commit 2)*
+- [x] Update `CLAUDE.md` project status *(commit 3)*
+- [x] README "Managing models" section + cloud-via-passthrough docs + Phase 6 reconciliation *(commit 4)*
+- [ ] Propagate Phase 6 skip to PLAN.md / evaluation docs / TODO.md *(commit 5 — this)*
+- [ ] Add "Prompt v2 comparison" to `docs/future-improvements.md` *(commit 6)*
+- [ ] Write `docs/DEPLOYMENT.md` with native + Docker quick-starts + troubleshooting *(commit 7)*
+- [ ] Fill in `docs/cost-analysis.md` with Phase 3 measured values *(commit 8)*
+- [ ] ADR addenda (no in-place edits) reflecting Phase 4 / OD-4 / E5 outcomes *(commit 9)*
+- [ ] Author `docs/demo-script.md` + `docs/presentation-notes.md` *(commit 10)*
+- [ ] SUMMARY.md entry for Phase 7 + Phase 6 skip *(commit 11)*
 - [ ] PR opened, CI green, merged to `develop` → `main`
 
-**Dependencies:** Phases 1–6 all merged.
+**Deferred out of this branch (handled separately):**
+
+- Cross-platform Docker testing (Windows + Linux per ADR 0007) — documented as pending in DEPLOYMENT.md; requires user to run the container on other OSes
+- a-009 guardrail fix attempt — documented as a known reproducible vulnerability to preserve the ADR 0008 baseline
+- Live cloud-model smoke test against Ollama passthrough — documented with caveat in README
+- Code-polish items from `Phase C — Cleanup` below — stay on a future `feature/phase-cleanup` branch
+- Demo rehearsal — user's physical act, not an agent deliverable
+
+**Dependencies:** Phases 1–5 merged. Phase 6 dependency removed by scope decision.
 **PLAN.md mapping:** PLAN.md Phase 7.
 **Branch:** `feature/phase-7-hardening`.
 
