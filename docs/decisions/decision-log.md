@@ -8,6 +8,38 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-19 — Phase 6 skipped: prompt v2 comparison deferred
+
+**Decision:** Phase 6 (prompt v2 authoring + E4 v1-vs-v2 comparison) is not executed in this project iteration. The E4 experiment remains declared complete with v1-only results. `src/ticket_triage_llm/prompts/triage_v2.py` (a stub file containing only a docstring) is deleted. Time budget redirects to Phase 7 deliverables.
+
+This is a scope decision, not a slipped deliverable.
+
+**Original Phase 6 goal:** Author a meaningfully different prompt v2 and run E4 to quantify how much prompt design contributes vs. model selection. The question was "how much does a careful prompt buy you, holding model and pipeline constant?"
+
+**Why skip:**
+
+1. **Reliability saturated.** Phase 3 replication (n=5, production config) showed all three models (2B, 4B, 9B) produce 100% JSON validity on the 35-ticket normal set. First-pass validity is ~100%; retry rate is ~0–3%. A v2 prompt cannot improve reliability because there's no reliability headroom left to measure. The v1 prompt is already doing its structural job across the size range.
+
+2. **The measurement v2 would produce is narrower than planned.** The original Phase 6 motivation (PLAN.md:38, "how much does prompt design buy you?") was framed when JSON validity was 82.9% on the 4B and 74.3% on the 9B under the original configuration. Under production config, the question collapses from "validity + accuracy" to "accuracy only" — a ~3 percentage-point range between the 4B (80.6%) and 9B (83.4%) category accuracy. A v2 comparison would measure headroom inside that narrow band, not the structural reliability question the phase was designed to answer.
+
+3. **Remaining time produces more value elsewhere.** Phase 7 deliverables (DEPLOYMENT.md, cross-platform notes, cost-analysis completion, README model-management documentation, cloud-model path documentation, demo materials, ADR addenda reflecting Phase 4/5/E5 findings) are visible deliverables that a reviewer will evaluate directly. Writing v2 and running a comparison that's bounded by the 2.8pp gap between 4B and 9B is less visible value per unit time.
+
+4. **The question isn't permanently closed.** If category accuracy (~83% on the 9B) becomes the bottleneck in any future scenario, v2 authoring + comparison is a clean ~1-2 day workstream. Added to `docs/future-improvements.md` with the same "What / Why deferred / What was done instead / Effort" template as other deferred items.
+
+**What was done instead (this branch):**
+
+- Phase 7 execution: hardening, documentation, demo materials. See the Phase 7 SUMMARY.md entry for the full list.
+- Reconciliation of ~14 stale Phase-6 references across `README.md`, `CLAUDE.md`, `TODO.md`, `PLAN.md`, `docs/evaluation-plan.md`, `docs/evaluation-checklist.md`, and `src/ticket_triage_llm/eval/runners/run_prompt_comparison.py`. Stale references would have misled future readers (and future Claude sessions) into thinking v2 was still an active workstream.
+- `docs/future-improvements.md` gains a "Prompt v2 comparison" section.
+
+**E4 status update:** E4 is declared complete, v1 only. The comparison dimension (v1 vs v2) is reduced to a one-value dataset; the experiment's measured deliverable becomes "v1 baseline metrics per model" rather than "v1 vs v2 delta." `docs/evaluation-checklist.md` and `docs/evaluation-plan.md` are updated to reflect this framing.
+
+**Honest acknowledgement:** The original rubric (`docs/archive/Final Project Rubric.md`) and PLAN.md listed four experiments. With Phase 6 skipped, only three experiments have a full dataset (E1 size comparison, E2 size-vs-controls composed from E1/E3, E3 validation impact). E4 has a partial dataset (v1 only, no v2). This reduces the breadth of the prompt-comparison story and should be acknowledged in the presentation — the point to make is that reliability saturation under production config made the original v1-vs-v2 framing less informative than it was designed to be, not that the work ran out of time.
+
+**References:** This decision was made after Phase 4 replication (n=5), E5 reasoning-mode experiment, and OD-4 re-resolution landed. The accumulated evidence from the Phase 3 replication (commits `749bd81`..`f394f54`) is what makes "reliability saturated" a defensible claim.
+
+---
+
 ## 2026-04-19 — OD-4 re-resolved: Qwen 3.5 9B is the default demo model (supersedes 4B)
 
 **Decision:** The default model loaded when the Triage tab opens is now **Qwen 3.5 9B** (`qwen3.5:9b`). This supersedes the [2026-04-18 OD-4 resolution](#2026-04-18--od-4-resolved-qwen-35-4b-is-the-default-demo-model), which selected the 4B based on n=1 Phase 3 data collected under `think=true` / `num_ctx=4096`. That data has since been superseded by the Phase 3 replication (n=5, production config) — see [2026-04-19 Phase 3 replication supersedes single-run claims](#2026-04-19--phase-3-replication-supersedes-single-run-claims).

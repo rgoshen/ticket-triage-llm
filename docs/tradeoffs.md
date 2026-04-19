@@ -127,4 +127,36 @@ These are observations recorded *after* the tradeoffs above were made, reflectin
 
 **What changed in the framing.** The validator's *operational role* has shifted from "active correction loop where retry frequency is the headline KPI" to "assertion boundary / safety net where retry frequency is a near-zero measurement of system health, and any non-zero drift is a signal worth investigating." The complexity of the retry loop is no longer justified by "it recovers many tickets"; it is justified by "it guarantees no malformed output ever leaves the pipeline, and it is the only Layer 3 defense in the injection threat model." ADR 0002 is not edited — ADRs record decisions at the time they were made, and the decision is still correct under its stated reasoning.
 
-**Limit of this observation.** This is Phase 3 (normal input) data. Phase 4 (adversarial input) at n=1 showed parse-failure rates of 50% on the 4B and 21% on the 9B caused by reasoning-mode exhaustion — which was the motivation for `think=false` in production. A future Phase 4 replication under production config is required before claiming retry is near-zero on adversarial input as well.
+**Updated with Phase 4 replication (2026-04-19).** Phase 4 replication under production config (n=5 runs per model, 14 adversarial tickets each, 210 total adversarial triages) produced **zero parse failures** across all three models. The "retry is near-zero on normal input" observation now extends to adversarial input as well: the original Phase 4 n=1 parse-failure rates (50% on 4B, 21% on 9B) were reasoning-mode-exhaustion artifacts, not an adversarial-input pattern. Under production config, the validator catches schema/semantic failures on adversarial input at the same near-zero rate as on normal input. The injection defense's Layer 3 (post-LLM validation) is load-bearing by design, not by measured recovery rate.
+
+### Reasoning mode redistributes adversarial failure rather than reducing it
+
+**What was decided:** Thinking mode disabled in production (`think=false`) because reasoning tokens exhausted the 4096-token context window on the original configuration and caused parse failures. The decision was pragmatic — we needed reliable structured output — not an adversarial-robustness claim.
+
+**What was expected at decision time:** Once `num_ctx=16384` fixed the exhaustion problem, we anticipated that enabling reasoning mode again would be *safe* for adversarial robustness, possibly even helpful. The naive hypothesis was "more deliberation → more careful refusals."
+
+**What the E5 data shows (2026-04-19):** On the 9B adversarial set across 3 replications per condition, enabling reasoning mode:
+
+- Eliminated the clean integrity compromise on a-009 (`TT` → `FF?` — resisted in 2/3 runs, ambiguous in 1/3).
+- **Introduced a new reproducible compliance on a-014** (`FF` → `TFT` — compromised in 2/3 runs, previously 0/5 across the Phase 4 replication).
+- Degraded 7 additional previously-resisted tickets from stable-resist (`FF`) to ambiguous outcomes (`FF?`, `F??`).
+- Quadrupled the "needs manual review" count (mean 1.0 → 4.0 with stddev 0.0 → 2.16).
+- Increased per-triage latency ~17x (6.9 s → 121 s mean) and output tokens ~18x (162 → 2,913 mean).
+
+**The architectural decision still holds.** `think=false` remains the production default. But the *framing* has changed: reasoning mode is not disabled only for latency/token-budget reasons — it is disabled because **enabling it makes adversarial behavior worse in aggregate**, not better. A reviewer who suggests "just turn reasoning on for safety" now has a concrete, measured counter-argument.
+
+**What this changes about the heuristic guardrail decision (ADR 0008).** The ADR scoped the guardrail as a heuristic baseline with an expected finding ("pattern matching fails on obfuscated/indirect attacks"). E5 adds a second expected finding: *reasoning-mode model behavior is not a substitute for a real defense*. Both findings reinforce the original stance that the guardrail upgrade (LLM-based classifier, Option B) should be measured against the baseline, not assumed.
+
+See `docs/evaluation-checklist.md` § E5 and `docs/adr/0008-heuristic-only-guardrail-baseline.md` § Addendum (2026-04-19).
+
+### Local-only deployment cost: non-dollar factors dominate at project scale
+
+**What was decided:** Local-only deployment (see "Local-only deployment vs cloud accessibility" above). The framing at decision time emphasized privacy, API-key avoidance, and consumer-hardware demonstrability.
+
+**What was expected at decision time:** The original tradeoff text implied — without quantifying — that local would be cost-competitive at operational scale. "Cloud accessibility" was the gave-up side; cost was treated as a neutral factor.
+
+**What the cost-analysis data shows (2026-04-19):** With measured token counts from the Phase 3 replication and Qwen 3.5 Plus published pricing, cloud-per-request cost on the 9B is $0.000408. Amortized local hardware is $2.28/day on a $2,499 MacBook Pro. **Break-even volume is ~5,596 requests/day** — cloud wins on pure dollars by 5-50x at the project's plausible operational scale (100-1,000 tickets/day). See [`cost-analysis.md`](cost-analysis.md) § Break-even analysis.
+
+**The decision still holds, but the framing sharpens.** Local deployment is not the economically-dominant choice at this project's scale — it is the privacy-dominant, operational-simplicity-dominant, and latency-dominant choice. A reader looking at the original tradeoff text without the cost-analysis data might walk away with the impression that local wins on all axes. It does not. It wins on everything *except* dollars-per-request at small-to-medium volume.
+
+**What this means for the project's thesis.** The project's central engineering investigation ("how much of the value comes from the model vs. the engineering controls") is unaffected — the cost story is orthogonal to the model-vs-controls question. But any claim that implies *local is cost-dominant* should be qualified with the break-even number. The cost-analysis summary now does this explicitly: "cloud wins at low-to-medium volume by 5-50x; local wins on non-dollar factors (privacy, latency, operational simplicity)." `docs/presentation-notes.md` slide 5 reflects this honest framing.

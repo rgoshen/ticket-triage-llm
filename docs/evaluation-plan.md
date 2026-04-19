@@ -141,13 +141,14 @@ For full cost methodology, see [cost-analysis.md](cost-analysis.md).
 - **Primary metrics:** end-to-end task accuracy with vs without validation, JSON validity rate, percentage of cases where retry recovered a failure
 - **Expected insight:** quantifies the "value of controls" in isolation
 
-### Experiment 4: Prompt comparison
+### Experiment 4: Prompt comparison *(v1 only — Phase 6 scoped out)*
 
-- **Configurations:** triage prompt v1 vs v2, on the same model
-- **Question:** How much does prompt design contribute vs model selection?
-- **Dataset:** Full normal set
-- **Primary metrics:** task accuracy, JSON validity rate, retry rate
-- **Expected insight:** which fields benefit most from prompt iteration, and whether prompt quality or model size has a larger effect at the sizes being tested
+- **Configurations:** triage prompt v1 only. v2 was not authored — see [decision log 2026-04-19 "Phase 6 skipped"](decisions/decision-log.md) for rationale.
+- **Original question:** How much does prompt design contribute vs model selection?
+- **Status:** E4 ships with v1 baseline metrics per model (from E1 data). The v1-vs-v2 delta is not measured in this iteration. The original question remains open as a `future-improvements.md` item.
+- **Why not run anyway:** With JSON validity saturated at 100% across all three models under production config (see Phase 3 replication), v2 could only measure category-accuracy headroom. The 9B leads at 83.4%, the 4B at 80.6%, and the 2B at 74.9% — a 2.8–8.5pp spread that a different prompt might partially close. That measurement is interesting but not worth the time budget compared to Phase 7 deliverables (see decision log).
+- **Dataset if re-run in the future:** Full normal set (35 tickets); same protocol as Phase 3 (n=5 replications recommended).
+- **Insight that would be gained:** which fields benefit most from prompt iteration, and whether prompt quality or model size has a larger effect at the sizes being tested.
 
 ### Prompt injection sub-evaluation
 

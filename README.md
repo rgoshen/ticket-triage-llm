@@ -131,11 +131,65 @@ uv run python -m ticket_triage_llm.app
 
 Open **http://localhost:7860** in your browser. Select a model from the dropdown, paste a ticket, and click Triage.
 
-To customize which models appear in the dropdown, edit `OLLAMA_MODELS` in `.env`:
+### Managing models
+
+Two env vars control the Triage tab's model dropdown. They are **distinct** — a common source of confusion:
+
+| Env var | Purpose | Accepts | Example |
+| --- | --- | --- | --- |
+| `OLLAMA_MODELS` | Which models appear in the dropdown | Comma-separated list of Ollama model names | `qwen3.5:2b,qwen3.5:4b,qwen3.5:9b` |
+| `OLLAMA_MODEL` | Which model is selected by default when the Triage tab opens | A single Ollama model name (must also be in `OLLAMA_MODELS`) | `qwen3.5:9b` |
+
+The default model is **not** "the first entry in `OLLAMA_MODELS`." It is whatever `OLLAMA_MODEL` is set to. If `OLLAMA_MODEL` is unset or not present in the registry, the app falls back to the first entry in `OLLAMA_MODELS`.
+
+#### Add a model
+
+1. Pull it with Ollama:
+
+    ```bash
+    ollama pull <model-name>
+    ```
+
+2. Add its name to `OLLAMA_MODELS` in `.env`:
+
+    ```
+    OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b,<model-name>
+    ```
+
+3. Restart the app.
+
+#### Remove a model
+
+Remove its name from `OLLAMA_MODELS` in `.env` and restart the app. The model weights remain pulled on disk — if you want to reclaim that disk space, run `ollama rm <model-name>`.
+
+#### Change the default model
+
+Set `OLLAMA_MODEL` in `.env` to the model name you want pre-selected:
 
 ```
-OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b
+OLLAMA_MODEL=qwen3.5:4b
 ```
+
+The name must also appear in `OLLAMA_MODELS`, otherwise the registry can't find it and the app falls back to `OLLAMA_MODELS`'s first entry.
+
+#### Using cloud models via Ollama's passthrough
+
+If your local Ollama server has cloud models available (you've signed in with `ollama signin` and `ollama list` shows entries with a `:cloud` suffix), you can add them to `OLLAMA_MODELS` just like local models:
+
+```
+OLLAMA_MODELS=qwen3.5:9b,qwen3.5:397b-cloud
+```
+
+No code changes required. Ollama transparently proxies the request from your local `:11434` endpoint to `ollama.com`, and the app doesn't need to know whether a given model is running locally or in the cloud.
+
+**Caveat (unverified):** The app sends a specific request configuration on every triage — `num_ctx=16384`, `think=false`, `temperature=0.2`, `top_p=0.9`, `top_k=40`, `repeat_penalty=1.0`. Whether Ollama Cloud honors all of these parameters end-to-end has not been verified in this project. Cloud runs should therefore **not** be compared directly against the Phase 3/4 benchmark numbers until a smoke test confirms the parameters round-trip. See [`docs/future-improvements.md`](docs/future-improvements.md) for the cloud-provider integration status.
+
+#### Docker caveat
+
+The Dockerfile sets its own `ENV OLLAMA_MODEL=qwen3.5:9b` and `ENV OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b` defaults that apply to the containerized runtime. These override `.env` on the host because the container has its own environment. To use different values in Docker:
+
+- With `docker compose`: add the envs under the `app` service's `environment:` key, or set them in a `.env` file next to `docker-compose.yml`.
+- With `docker run`: pass `-e OLLAMA_MODEL=<name>` and/or `-e OLLAMA_MODELS=<list>`.
 
 #### Container image
 
@@ -197,7 +251,7 @@ OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b \
 # validation (the E2 data point). Three passes total.
 uv run python -m ticket_triage_llm.eval.runners.run_validation_impact
 
-# E4: Prompt comparison — runs v1 (and v2 after Phase 6) on one model.
+# E4: Prompt comparison — v1 only (Phase 6 scoped out; see decision log).
 uv run python -m ticket_triage_llm.eval.runners.run_prompt_comparison
 
 # Summarize any run by its run_id (printed by the runners during execution)
@@ -274,7 +328,7 @@ ticket-triage-llm/
 │           ├── common.py              # run_experiment_pass() shared loop
 │           ├── run_local_comparison.py # E1: model size comparison
 │           ├── run_validation_impact.py# E3: validation on/off + E2 data
-│           ├── run_prompt_comparison.py# E4: prompt v1 vs v2
+│           ├── run_prompt_comparison.py# E4: prompt comparison (v1 only)
 │           └── summarize_results.py   # summarize_run(), compose_e2(), CLI
 ├── Dockerfile                         # Multi-stage app container build
 ├── tests/

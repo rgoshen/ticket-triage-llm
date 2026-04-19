@@ -156,7 +156,7 @@ If time allows during or after Phase 3, test 2–3 temperature settings on the s
 
 **4. Cost implication: token consumption inversion confirmed at scale.** The 2B uses 4,951 tokens/request, the 4B uses 3,098, and the 9B uses 3,378. The Phase 0 observation (#4) that smaller models are not cheaper per request is now confirmed on the full 35-ticket dataset. Cloud cost projections must use actual token counts, not parameter-count proxies.
 
-**5. Limitation: 57% category accuracy across all models suggests prompt v1 needs iteration.** Even the best model (4B) only matches ground truth on category 57% of the time. This could reflect genuine ambiguity in the dataset labels, a prompt that doesn't constrain the taxonomy tightly enough, or both. Phase 6 (prompt v2) is the designed mechanism to test this. The accuracy numbers should not be compared to production NLP systems evaluated on thousands of samples — at n=35, individual ticket disagreements move the needle by ~3% each.
+**5. Limitation: 57% category accuracy across all models suggests prompt v1 needs iteration.** Even the best model (4B) only matches ground truth on category 57% of the time. This could reflect genuine ambiguity in the dataset labels, a prompt that doesn't constrain the taxonomy tightly enough, or both. *Superseded by Phase 3 replication:* under production config (`think=false`, `num_ctx=16384`), category accuracy rises to 83.4% on the 9B and 80.6% on the 4B. Phase 6 (prompt v2) was the designed mechanism to further separate model quality from prompt quality, but was scoped out after the replication closed most of the original gap — see decision log 2026-04-19. The accuracy numbers should not be compared to production NLP systems evaluated on thousands of samples — at n=35, individual ticket disagreements move the needle by ~3% each.
 
 **6. Telemetry artifact**: `schema_pass_rate=0%` in unvalidated runs is not a real finding. In E2 (9B unvalidated) and E3 (4B skipped), the `schema_pass_rate` reports 0.0% while json_valid_rate reports 48.6% and 65.7% respectively. This does not mean the outputs failed schema validation — it means the schema check was not executed when validation was skipped, and the metric was recorded as 0 by convention. For honest comparison across runs, only `json_valid_rate` should be used as the structured-output reliability metric. The `schema_pass_rate` column in unvalidated rows should be read as "not measured," not "0% passed."
 
@@ -327,21 +327,15 @@ Labels changed: n-012 (other→feature_request, medium→low, support→product)
 
 **10. Limitations at n=5.** Five runs establish reproducibility but not statistical power for small differences. The 9B vs 4B category accuracy gap (83.4% vs 80.6%, ~3pp) has non-overlapping 1-standard-deviation bands (82.1-84.7 vs 79.3-81.9), suggesting a real difference — but at n=35 tickets × n=5 runs, a 3pp gap could still reflect systematic label ambiguity on a few tickets rather than a generalizable capability difference. Severity accuracy has higher variance (stddev up to 5.1% for 4B validated), making severity comparisons less reliable than category comparisons. Per-ticket analysis (the accuracy matrix) is more informative than aggregate percentages for identifying where models diverge.
 
-### Experiment 4: Prompt Comparison
+### Experiment 4: Prompt Comparison *(v1 only — Phase 6 scoped out)*
 
-**Date run:** _______________
-**Model:** _______________
-**Dataset:** gold_tickets.json (__ tickets)
-**Sampling config:** temperature=___ top_p=___ top_k=___
+**Status:** E4 ships with v1 data only. v2 was never authored; Phase 6 was scoped out per decision log 2026-04-19. The v1-vs-v2 comparison table is not populated in this iteration; v1 baseline metrics per model are captured in E1 (Experiment 1: Model size comparison) above and are the authoritative reference.
 
-| Prompt version | run_id | Category acc | Severity acc | Routing acc | JSON valid | Retry rate | Notes |
-| -------------- | ------ | ------------ | ------------ | ----------- | ---------- | ---------- | ----- |
-| v1             |        |              |              |             |            |            |       |
-| v2             |        |              |              |             |            |            |       |
+**Why the comparison is not populated:**
 
-**What changed between v1 and v2:** _______________________________________________
-
-**Key finding from Experiment 4:** _______________________________________________
+- Phase 3 replication (n=5, production config) showed 100% JSON validity across all three models. JSON-validity headroom is zero, so v2 cannot improve that dimension.
+- Category accuracy across models is 74.9% (2B) → 80.6% (4B) → 83.4% (9B). v2 would measure at most a few percentage points of headroom inside that band.
+- Time budget redirected to Phase 7 deliverables. See `docs/future-improvements.md` § "Prompt v2 comparison" for what would be measured if this were re-run.
 
 ---
 
@@ -827,15 +821,15 @@ Using Qwen 3.5 Plus pricing ($0.26/M input, $1.56/M output):
 - ☒ Phase 1: Single happy-path slice working (native + Docker)
 - ☒ Phase 2: Provider abstraction, multiple models, guardrail, retry
 - ☒ Phase 3: Eval harness, labeled datasets, experiments run
-- ☐ Phase 4: Adversarial evaluation, guardrail iteration
-- ☐ Phase 5: Dashboard, traces, live monitoring
-- ☐ Phase 6: Prompt v2, prompt comparison experiment
+- ☒ Phase 4: Adversarial evaluation, guardrail iteration
+- ☒ Phase 5: Dashboard, traces, live monitoring
+- ☒ Phase 6: Prompt v2, prompt comparison experiment — *scoped out (see decision log 2026-04-19)*
 - ☐ Phase 7: Hardening, docs, deployment testing, presentation prep
 
 ### Rubric coverage
 - ☒ Model running and producing meaningful outputs
 - ☒ Evaluation dataset created and used
-- ☐ Innovation demonstrated (prompt injection investigation) — Phase 4
+- ☒ Innovation demonstrated (prompt injection investigation) — Phase 4 complete, replicated at n=5 under production config, E5 reasoning-mode follow-up complete
 - ☒ Deployed in production environment (local + Docker)
 - ☒ Accessible via API endpoint (FastAPI + Swagger)
 - ☒ Inference pipeline documented and optimized
@@ -853,9 +847,9 @@ Using Qwen 3.5 Plus pricing ($0.26/M input, $1.56/M output):
 - ☒ evaluation-plan.md current
 - ☒ threat-model.md current
 - ☒ tradeoffs.md current
-- ☐ cost-analysis.md populated with real data — token data filled, costs pending
+- ☒ cost-analysis.md populated with real data — Phase 3 replication values, hardware amortization, cloud projections, break-even analysis all filled in
 - ☒ future-improvements.md current
-- ☐ prompt-versions.md written — Phase 6
+- ☒ prompt-versions.md — *not written (Phase 6 scoped out — see decision log 2026-04-19)*
 - ☐ DEPLOYMENT.md written and tested — Phase 7
 - ☐ demo-script.md written
 - ☐ presentation-notes.md written
