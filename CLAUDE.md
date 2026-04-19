@@ -2,9 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status: Phase 5 complete, Phase 6 next
+## Project status: Phase 5 complete, Phase 6 scoped out, Phase 7 in progress
 
-Phases 0 (smoke test), F (foundation), 1 (happy-path slice), 2 (provider router, retry, guardrail), 3 (evaluation harness), 4 (adversarial evaluation), and 5 (dashboard) are complete. The repository has 290 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI), a full eval harness with four experiment runners, ground-truth correlation via `ticket_id`, a summarizer computing accuracy/reliability/latency metrics, and a four-tab Gradio dashboard (Triage, Metrics, Traces, Experiments) with benchmark results, live metrics, trace inspection, and experiment comparison — all computed from traces on the fly per ADR 0005. Phase 6 (prompt v2 + prompt comparison) is next — see `TODO.md` for the full phase plan with checkboxes.
+Phases 0 (smoke test), F (foundation), 1 (happy-path slice), 2 (provider router, retry, guardrail), 3 (evaluation harness), 4 (adversarial evaluation), and 5 (dashboard) are complete. The repository has 298 tests, a config-driven multi-model provider registry, bounded retry with repair prompt, heuristic guardrail for injection defense, all Phase 1 infrastructure (pydantic schemas, Protocols, SQLite traces, FastAPI + Gradio, CI), a full eval harness with four experiment runners (E4 ships v1 only — see below), ground-truth correlation via `ticket_id`, a summarizer computing accuracy/reliability/latency metrics, and a four-tab Gradio dashboard (Triage, Metrics, Traces, Experiments) with benchmark results, live metrics, trace inspection, and experiment comparison — all computed from traces on the fly per ADR 0005.
+
+**Phase 6 (prompt v2 + prompt comparison) was scoped out** — see `docs/decisions/decision-log.md` 2026-04-19 entry. With Phase 3 replication showing 100% JSON validity saturation across all three models under production config, v2 cannot improve reliability and the remaining headroom is a narrow 2.8pp category-accuracy band. E4 is declared complete with v1 only; v2 authoring remains a `future-improvements.md` item.
+
+**Phase 7 (hardening, deployment docs, demo prep) is in progress** — see `TODO.md` for the checklist. Post-release work after Phase 5 also included a Phase 4 replication (n=5, production config), an E5 reasoning-mode adversarial experiment (9B only, think-off vs think-on, which found reasoning redistributes rather than reduces adversarial failure), and an OD-4 re-resolution to the Qwen 3.5 9B as default model.
 
 Do not invent tooling — the stack is fixed (see below) and decisions about deviation belong in an ADR or the decision log. When adding new modules, follow the existing layout under `src/ticket_triage_llm/`.
 
@@ -113,7 +117,7 @@ docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
 uv run python -m ticket_triage_llm.eval.runners.run_local_comparison
 # E3: validation impact — runs 4B validated/skipped + 9B-no-validation (E2 data point)
 uv run python -m ticket_triage_llm.eval.runners.run_validation_impact
-# E4: prompt comparison — v1 only until Phase 6 adds v2
+# E4: prompt comparison — v1 only (Phase 6 scoped out per decision log)
 uv run python -m ticket_triage_llm.eval.runners.run_prompt_comparison
 # Summarize a specific run by run_id
 uv run python -m ticket_triage_llm.eval.runners.summarize_results --run-id <RUN_ID>
