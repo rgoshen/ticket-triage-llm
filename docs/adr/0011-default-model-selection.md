@@ -92,3 +92,22 @@ The 4B wins on every metric that matters for the default model decision:
 - **Option A (9B as default):** Rejected because the 9B is slower, less reliable, and less accurate than the 4B on the structured-output triage task. The naive assumption that "bigger is better" is contradicted by the Phase 3 evidence. The 9B remains available for comparison but is not the default.
 
 - **Option C (2B as default):** Rejected because the 2B is not viable for the task (2.9% success rate). It remains in the dropdown for demonstration purposes only.
+
+## Addendum: Superseded by OD-4 re-resolution (2026-04-19)
+
+**Date:** 2026-04-19
+
+**Status:** The Decision section above (Option B: Qwen 3.5 4B) is **superseded** by the 2026-04-19 OD-4 re-resolution in the decision log. The current default model is **Qwen 3.5 9B**. See [`docs/decisions/decision-log.md` — "OD-4 re-resolved: Qwen 3.5 9B is the default demo model (supersedes 4B)"](../decisions/decision-log.md).
+
+This ADR body is preserved as a historical record of the n=1 evidence and reasoning that produced the original 4B decision. The numbers in the rationale table (82.9% / 74.3% JSON validity, 57.1% / 54.3% category accuracy, 74 s / 107 s latency) reflect data collected under the original configuration (`think=true`, `num_ctx=4096`) at n=1, which has since been superseded by the Phase 3 replication data (n=5 under production config `think=false`, `num_ctx=16384`). The replication closed or inverted each of those differences — see the decision-log entry for the updated measurements.
+
+Why an addendum and not an edit or a new ADR:
+
+- The Decision / Rationale / Alternatives sections above should not be edited in place because they capture what was decided when the decision was made. Editing them would lose the historical record of what the evidence looked like at Phase 3 single-run.
+- A new superseding ADR was considered but rejected: the re-resolution is a scope/framing decision (which model is the best-available default under updated evidence) rather than an architectural decision (which is what ADRs are for). The decision log is the appropriate store for the re-resolution itself; this addendum points readers to it.
+
+The consequence for the codebase:
+
+- `.env.example` now sets `OLLAMA_MODEL=qwen3.5:9b` (updated in the E5 release PR, 2026-04-19).
+- The Dockerfile sets `ENV OLLAMA_MODEL=qwen3.5:9b` and `ENV OLLAMA_MODELS=qwen3.5:2b,qwen3.5:4b,qwen3.5:9b`.
+- The Triage tab's default selection resolver (`resolve_default_provider` in `src/ticket_triage_llm/ui/triage_tab.py`) has a regression test that the 9B is selected when registered.
