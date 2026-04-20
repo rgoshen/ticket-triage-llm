@@ -158,23 +158,28 @@ def build_experiments_tab_content(trace_repo: TraceRepository) -> None:
     gr.Markdown("## Experiment Comparison")
 
     initial_choices = _get_experiment_choices()
+    initial_value = initial_choices[0] if initial_choices else None
+    initial_desc, initial_rows = (
+        _load_experiment(initial_value)
+        if initial_value
+        else ("No experiment runs found. Run experiments to see results here.", [])
+    )
+    initial_is_adversarial = initial_value and initial_value.startswith("Adversarial")
+    initial_headers = ADVERSARIAL_HEADERS if initial_is_adversarial else BENCHMARK_HEADERS
 
     experiment_selector = gr.Dropdown(
         choices=initial_choices,
-        value=initial_choices[0] if initial_choices else None,
+        value=initial_value,
         label="Select Experiment",
     )
 
     refresh_btn = gr.Button("Refresh")
 
-    experiment_desc = gr.Markdown(
-        value="Select an experiment to view comparison."
-        if initial_choices
-        else "No experiment runs found. Run experiments to see results here."
-    )
+    experiment_desc = gr.Markdown(value=initial_desc)
 
     experiment_table = gr.Dataframe(
-        headers=BENCHMARK_HEADERS,
+        headers=initial_headers,
+        value=initial_rows,
         interactive=False,
     )
 

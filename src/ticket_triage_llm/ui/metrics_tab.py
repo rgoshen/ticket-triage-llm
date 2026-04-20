@@ -109,6 +109,11 @@ def build_metrics_tab_content(trace_repo: TraceRepository) -> None:
     gr.Markdown("## Benchmark Results")
 
     initial_choices, initial_default = _get_run_choices()
+    initial_kpi, initial_table = (
+        load_benchmark(initial_default)
+        if initial_default
+        else ("No benchmark runs found. Run an experiment to see results here.", [])
+    )
 
     with gr.Row():
         run_selector = gr.Dropdown(
@@ -119,11 +124,7 @@ def build_metrics_tab_content(trace_repo: TraceRepository) -> None:
         )
         refresh_btn = gr.Button("Refresh", scale=1)
 
-    benchmark_kpi = gr.Markdown(
-        value="Select a run to view benchmark results."
-        if initial_choices
-        else "No benchmark runs found. Run an experiment to see results here."
-    )
+    benchmark_kpi = gr.Markdown(value=initial_kpi)
 
     benchmark_table = gr.Dataframe(
         headers=[
@@ -139,6 +140,7 @@ def build_metrics_tab_content(trace_repo: TraceRepository) -> None:
             "Tok/s",
             "Success",
         ],
+        value=initial_table,
         interactive=False,
     )
 
@@ -162,12 +164,7 @@ def build_metrics_tab_content(trace_repo: TraceRepository) -> None:
         )
         live_refresh_btn = gr.Button("Refresh")
 
-    live_kpi = gr.Markdown(
-        value=(
-            "No live traffic recorded yet. "
-            "Submit tickets through the Triage tab to see live metrics."
-        )
-    )
+    live_kpi = gr.Markdown(value=load_live("All time"))
 
     window_selector.change(
         fn=load_live,
