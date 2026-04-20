@@ -1423,7 +1423,7 @@ wheels = [
 
 [[package]]
 name = "ticket-triage-llm"
-version = "1.0.7"
+version = "1.0.15"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
