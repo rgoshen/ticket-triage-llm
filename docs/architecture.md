@@ -104,14 +104,12 @@ The pipeline uses conservative sampling parameters optimized for structured JSON
 
 | Parameter | Value | Rationale |
 |---|---|---|
-| Temperature | 0.1–0.3 | Low temperature maximizes JSON validity. Near-zero avoids greedy decoding's complete lack of variation. |
-| Top-p | 0.85–0.9 | Excludes low-probability tokens that could break JSON structure |
+| Temperature | 0.2 | Low temperature maximizes JSON validity. Near-zero avoids greedy decoding's complete lack of variation. |
+| Top-p | 0.9 | Excludes low-probability tokens that could break JSON structure |
 | Top-k | 40 | Standard default; limits vocabulary to the 40 most probable tokens |
 | Repetition penalty | 1.0 (disabled) | JSON output legitimately repeats field names and structural tokens |
 
-These parameters are passed to the Ollama provider as request-level settings and are configurable via app configuration. The rationale: structured JSON output requires the model to be predictable. Every "creative" token choice is a potential validation failure.
-
-If time permits, sampling parameters can be added as an experimental variable in the eval harness to test whether different settings measurably affect JSON validity or task accuracy.
+These are module-level constants in `config.py`, deliberately **not** environment-configurable — drifting sampling values silently invalidates prior experiment results. Any change requires a decision-log entry. The rationale: structured JSON output requires the model to be predictable. Every "creative" token choice is a potential validation failure.
 
 ### UI layer (`ui/`)
 
