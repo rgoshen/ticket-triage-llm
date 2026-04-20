@@ -125,7 +125,7 @@ The `ServiceContainer` (or equivalent) is a simple object that holds references 
 app.py (entry point)
   └── FastAPI (main app)
         ├── POST /api/v1/triage      → triage_service.run_triage()
-        ├── GET  /api/v1/docs        → Swagger UI (auto-generated)
+        ├── GET  /docs               → Swagger UI (auto-generated)
         └── mount: Gradio at /       → gr.Blocks with tabs (unchanged)
 ```
 
@@ -140,7 +140,7 @@ The original ADR also rejected Option C (Gradio mounted on FastAPI) because "if 
 **What the API provides:**
 
 - `POST /api/v1/triage` — accepts a ticket body and optional model/prompt-version parameters, returns a `TriageResult` (success or typed failure)
-- `GET /api/v1/docs` — Swagger UI with interactive documentation, auto-generated from the pydantic request/response models
-- The instructor can open `/api/v1/docs` in a browser and submit a triage request interactively without using the Gradio UI
+- `GET /docs` — Swagger UI with interactive documentation, auto-generated from the pydantic request/response models
+- The instructor can open `/docs` in a browser and submit a triage request interactively without using the Gradio UI
 
 **Implementation cost:** One FastAPI route file, one request/response schema (reusing existing pydantic models), and the `app.py` entry point mounts Gradio inside FastAPI instead of running Gradio standalone. Estimated coding agent time: 30 minutes.

@@ -27,6 +27,7 @@ ADRs follow the standard format used by [`adr-tools`](https://github.com/npryce/
 | [0009](0009-monitoring-distinct-from-benchmarking.md) | Monitoring distinct from benchmarking | Accepted |
 | [0010](0010-non-actionable-and-ambiguous-input-handling.md) | Non-actionable and ambiguous input handling | Accepted |
 | [0011](0011-default-model-selection.md) | Default model selection: Qwen 3.5 4B | Accepted |
+| [0012](0012-adr-framing-retrospective.md) | ADR framing retrospective | Accepted |
 
 ## Status definitions
 

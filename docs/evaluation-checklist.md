@@ -4,6 +4,20 @@ A working document for logging results as each phase produces data. Fill in as y
 
 ---
 
+## Key findings
+
+These are the most material results to date, drawn from the Phase 3 replication (5 independent runs of E1/E2/E3 under the current production configuration `think=false`, `num_ctx=16384`, 35-ticket normal set). Each bullet links to the supporting detail below.
+
+- **All three Qwen 3.5 sizes (2B/4B/9B) achieve 100% first-pass JSON validity** under production config. The original n=1 claim that "the 2B is unusable for structured output" measured thinking-mode + 4096-token-context brokenness, not model capability. ([§ Phase 3 Replication — Finding 2](#phase-3-replication-n5-thinkfalse-num_ctx16384))
+- **The 9B is the accuracy leader**, not the 4B. Category accuracy: 9B 83.4% > 4B 80.6% > 2B 74.9%. With reliability equalized at 100% JSON validity, classification accuracy becomes the differentiator and the quality-size curve is monotonic. ([§ Phase 3 Replication — Finding 3](#phase-3-replication-n5-thinkfalse-num_ctx16384))
+- **First-pass validity ~100% reduces retry to a safety net.** Retry rate is ~0–3% under production config, down from 43–51% under the original configuration. The validator-first pipeline still holds as defense-in-depth and observability — its operational role has shifted from "active correction loop" to "insurance." ([§ Phase 3 Replication — Finding 5](#phase-3-replication-n5-thinkfalse-num_ctx16384), [`tradeoffs.md` § Post-implementation observations](tradeoffs.md#post-implementation-observations))
+- **Reproducibility is high.** Across 5 runs, accuracy metrics have stddev ≤ 5% and latency stddev ≤ 3%. The numbers here are baselines, not point observations. ([§ Phase 3 Replication — Finding 4](#phase-3-replication-n5-thinkfalse-num_ctx16384))
+- **The ground-truth dataset had a 14% label-error rate.** Model consensus against a label (all three models, all 5 runs = 0/5 on the same field) surfaced 5 incorrect labels in the 35-ticket normal set, corrected in this PR. Model disagreement with ground truth is a more reliable audit signal than manual review. ([§ Ground Truth Audit](#ground-truth-audit))
+
+Phase 4 adversarial findings were collected at n=1 under the original configuration and have **not** been replicated under the current config — they should be read as single-run observations pending Phase 4 replication.
+
+---
+
 ## Phase 0: Smoke Test
 
 **Date started:** 2026-04-16

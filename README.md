@@ -8,19 +8,52 @@
 
 A production-style support ticket triage system built on local LLMs, with a focus on prompt injection defense and structured-output reliability under realistic adversarial conditions.
 
-> **Status:** Phase 5 complete — four-tab Gradio dashboard (Triage, Metrics, Traces, Experiments) with benchmark results, live metrics, trace inspection, and experiment comparison. Docker images published to GHCR on push to main.
+> **Status:** All build phases complete. Four-tab Gradio dashboard (Triage, Metrics, Traces, Experiments) with benchmark results, live metrics, trace inspection, and experiment comparison. Docker images published to GHCR on push to main. See [`docs/evaluation-checklist.md`](docs/evaluation-checklist.md) for key findings and full experiment results.
 
-## Key findings
+---
 
-These are the most material results to date, drawn from the Phase 3 replication (5 independent runs of E1/E2/E3 under the current production configuration `think=false`, `num_ctx=16384`, 35-ticket normal set). Each bullet links to the supporting detail in [`docs/evaluation-checklist.md`](docs/evaluation-checklist.md).
+## What this project is
 
-- **All three Qwen 3.5 sizes (2B/4B/9B) achieve 100% first-pass JSON validity** under production config. The original n=1 claim that "the 2B is unusable for structured output" measured thinking-mode + 4096-token-context brokenness, not model capability. ([§ Phase 3 Replication — Finding 2](docs/evaluation-checklist.md#phase-3-replication-n5-thinkfalse-num_ctx16384))
-- **The 9B is the accuracy leader**, not the 4B. Category accuracy: 9B 83.4% > 4B 80.6% > 2B 74.9%. With reliability equalized at 100% JSON validity, classification accuracy becomes the differentiator and the quality-size curve is monotonic. ([§ Phase 3 Replication — Finding 3](docs/evaluation-checklist.md#phase-3-replication-n5-thinkfalse-num_ctx16384))
-- **First-pass validity ~100% reduces retry to a safety net.** Retry rate is ~0–3% under production config, down from 43–51% under the original configuration. The validator-first pipeline still holds as defense-in-depth and observability — its operational role has shifted from "active correction loop" to "insurance." ([§ Phase 3 Replication — Finding 5](docs/evaluation-checklist.md#phase-3-replication-n5-thinkfalse-num_ctx16384), [`docs/tradeoffs.md` § Post-implementation observations](docs/tradeoffs.md#post-implementation-observations))
-- **Reproducibility is high.** Across 5 runs, accuracy metrics have stddev ≤ 5% and latency stddev ≤ 3%. The numbers in this README are baselines, not point observations. ([§ Phase 3 Replication — Finding 4](docs/evaluation-checklist.md#phase-3-replication-n5-thinkfalse-num_ctx16384))
-- **The ground-truth dataset had a 14% label-error rate.** Model consensus against a label (all three models, all 5 runs = 0/5 on the same field) surfaced 5 incorrect labels in the 35-ticket normal set, corrected in this PR. Model disagreement with ground truth is a more reliable audit signal than manual review. ([§ Ground Truth Audit](docs/evaluation-checklist.md#ground-truth-audit))
+`ticket-triage-llm` takes a raw support ticket and returns a validated triage object: category, severity, routing team, summary, draft reply, escalation flag, and a confidence score. The system is built around a validator-first inference pipeline with bounded retry, a provider abstraction that supports both local (Ollama) and cloud-hosted Qwen models, and a built-in observability dashboard for runtime metrics and benchmark results.
 
-Phase 4 adversarial findings were collected at n=1 under the original configuration and have **not** been replicated under the current config — they should be read as single-run observations pending Phase 4 replication.
+**Key features:**
+- **Multi-model support** — switchable Qwen 3.5 models (2B/4B/9B) via dropdown in the Triage tab or `OLLAMA_MODELS` env var
+- **Heuristic guardrail** — injection phrase detection, structural marker screening, PII pattern matching, and length checks per [ADR 0008](docs/adr/0008-heuristic-only-guardrail-baseline.md)
+- **Bounded retry with repair prompt** — on validation failure, sends the failed output plus specific error back to the model for self-correction (exactly one retry per [ADR 0002](docs/adr/0002-validator-first-pipeline-with-bounded-retry.md))
+- **Config-driven provider registry** — add models via environment variables, no code changes required
+
+The project is deliberately constrained to consumer hardware (Apple Silicon, ≤24GB unified memory) for the local execution path. That constraint is a feature, not a workaround — it reflects the deployment context most production LLM systems will actually face outside of well-funded AI labs.
+
+![1-triage-tab](./docs/images/1-triage-tab.jpg)
+Figure 1. Triage tab
+
+![2-metric-tab](./docs/images/2-metric-tab.jpg)
+Figure 2. Metrics tab
+
+![3-traces-tab](./docs/images/3-traces-tab.jpg)
+Figure 3. Traces tab
+
+![4-experiments-tab](./docs/images/4-experiments-tab.jpg)
+Figure 4. Experiments tab
+
+---
+
+## Project goals
+
+This project is structured around a single engineering question:
+
+> **In a production LLM system, how much of the value comes from the model itself versus from the surrounding engineering controls — and how well can layered mitigations defend against prompt injection in user-submitted content?**
+
+To answer that, the system supports four planned experiments:
+
+1. **Model size comparison** — how task quality, latency, and reliability scale across small, medium, and larger Qwen 3.5 variants on the same hardware
+2. **Local vs cloud comparison** — what the cloud premium actually buys on this task, within the same model family
+3. **Validation impact** — how much the validator-first pipeline (parse + schema + bounded retry) contributes to overall reliability vs. the model alone
+4. **Prompt comparison** — how much careful prompt design contributes vs. model selection
+
+Findings from experiments E1, E3, and E4 are reported in [`docs/evaluation-checklist.md`](docs/evaluation-checklist.md), with full data and analysis. The tradeoff analysis and model selection rationale are documented in [`docs/tradeoffs.md`](docs/tradeoffs.md) and [`docs/decisions/decision-log.md`](docs/decisions/decision-log.md). E2 (local vs cloud) remains deferred — see [`docs/future-improvements.md`](docs/future-improvements.md).
+
+---
 
 ## Production configuration
 
@@ -41,32 +74,7 @@ The sampling parameters (temperature, top-p, top-k, repetition penalty) are deli
 
 See `docs/decisions/decision-log.md` for the rationale behind each pinned value — in particular the 2026-04-16 entries that locked the sampling parameters and established `think=false` as the production configuration.
 
-## What this project is
-
-`ticket-triage-llm` takes a raw support ticket and returns a validated triage object: category, severity, routing team, summary, draft reply, escalation flag, and a confidence score. The system is built around a validator-first inference pipeline with bounded retry, a provider abstraction that supports both local (Ollama) and cloud-hosted Qwen models, and a built-in observability dashboard for runtime metrics and benchmark results.
-
-**Key features:**
-- **Multi-model support** — switchable Qwen 3.5 models (2B/4B/9B) via dropdown in the Triage tab or `OLLAMA_MODELS` env var
-- **Heuristic guardrail** — injection phrase detection, structural marker screening, PII pattern matching, and length checks per ADR 0008
-- **Bounded retry with repair prompt** — on validation failure, sends the failed output plus specific error back to the model for self-correction (exactly one retry per ADR 0002)
-- **Config-driven provider registry** — add models via environment variables, no code changes required
-
-The project is deliberately constrained to consumer hardware (Apple Silicon, ≤24GB unified memory) for the local execution path. That constraint is a feature, not a workaround — it reflects the deployment context most production LLM systems will actually face outside of well-funded AI labs.
-
-## Project goals
-
-This project is structured around a single engineering question:
-
-> **In a production LLM system, how much of the value comes from the model itself versus from the surrounding engineering controls — and how well can layered mitigations defend against prompt injection in user-submitted content?**
-
-To answer that, the system supports four planned experiments:
-
-1. **Model size comparison** — how task quality, latency, and reliability scale across small, medium, and larger Qwen 3.5 variants on the same hardware
-2. **Local vs cloud comparison** — what the cloud premium actually buys on this task, within the same model family
-3. **Validation impact** — how much the validator-first pipeline (parse + schema + bounded retry) contributes to overall reliability vs. the model alone
-4. **Prompt comparison** — how much careful prompt design contributes vs. model selection
-
-The findings from these experiments will be reported as part of the project deliverable, along with a documented decision matrix showing what factors were weighed and why.
+---
 
 ## Tech stack
 
@@ -81,13 +89,15 @@ The findings from these experiments will be reported as part of the project deli
 - **Linting / formatting:** `ruff`
 - **Architecture decisions:** ADRs in `docs/adr/` (managed via `adr-tools`)
 
+---
+
 ## Quick start
 
 ### Prerequisites
 
 - Python ≥3.11
 - [uv](https://docs.astral.sh/uv/) package manager
-- [Ollama](https://ollama.com/) running on localhost (for Phase 1+)
+- [Ollama](https://ollama.com/) running on localhost
 
 ### Install and verify
 
@@ -125,7 +135,7 @@ ollama pull qwen3.5:2b
 ollama pull qwen3.5:4b
 ```
 
-#### Option A: run natively
+#### --- Option A: Run natively ---
 
 ```bash
 # 1. Create your .env file (one-time setup)
@@ -136,6 +146,54 @@ uv run python -m ticket_triage_llm.app
 ```
 
 Open **http://localhost:7860** in your browser. Select a model from the dropdown, paste a ticket, and click Triage.
+
+#### --- Option B: Run in Docker ---
+
+The Docker container runs the app only — Ollama stays on the host for GPU access.
+
+```bash
+# Build and run (recommended)
+docker compose up --build
+
+# Or without docker compose
+docker build -t ticket-triage-llm .
+docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
+```
+
+Open **http://localhost:7860** in your browser.
+
+The container reaches Ollama at `host.docker.internal:11434` (Mac/Windows). On Linux, add `--network=host` to the `docker run` command, or add `network_mode: host` to `docker-compose.yml`.
+
+#### --- Container image (pre-built) ---
+
+A multi-platform Docker image (amd64 + arm64) is published to GHCR on every push to `main`:
+
+```bash
+docker pull ghcr.io/rgoshen/ticket-triage-llm:latest
+
+# macOS / Windows (host.docker.internal resolves automatically)
+docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ghcr.io/rgoshen/ticket-triage-llm:latest
+
+# Linux (host.docker.internal is not available by default)
+docker run --rm --network=host -v "$PWD/data:/app/data" \
+  -e OLLAMA_BASE_URL=http://localhost:11434/v1 ghcr.io/rgoshen/ticket-triage-llm:latest
+```
+
+Ollama must still be running on the host (see prerequisites above).
+
+#### Verify it's working
+
+The Gradio UI should show a Triage tab with a model dropdown, subject/body fields, and Triage/Cancel/New Ticket buttons.
+
+You can also test the REST API directly:
+
+```bash
+curl -X POST http://localhost:7860/api/v1/triage \
+  -H "Content-Type: application/json" \
+  -d '{"ticket_body": "My printer is offline and I cannot print any documents.", "ticket_subject": "Printer not working"}'
+```
+
+---
 
 ### Managing models
 
@@ -197,51 +255,7 @@ The Dockerfile sets its own `ENV OLLAMA_MODEL=qwen3.5:9b` and `ENV OLLAMA_MODELS
 - With `docker compose`: add the envs under the `app` service's `environment:` key, or set them in a `.env` file next to `docker-compose.yml`.
 - With `docker run`: pass `-e OLLAMA_MODEL=<name>` and/or `-e OLLAMA_MODELS=<list>`.
 
-#### Container image
-
-A multi-platform Docker image (amd64 + arm64) is published to GHCR on every push to `main`:
-
-```bash
-docker pull ghcr.io/rgoshen/ticket-triage-llm:latest
-
-# macOS / Windows (host.docker.internal resolves automatically)
-docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ghcr.io/rgoshen/ticket-triage-llm:latest
-
-# Linux (host.docker.internal is not available by default)
-docker run --rm --network=host -v "$PWD/data:/app/data" \
-  -e OLLAMA_BASE_URL=http://localhost:11434/v1 ghcr.io/rgoshen/ticket-triage-llm:latest
-```
-
-Ollama must still be running on the host (see prerequisites above).
-
-#### Option B: run in Docker
-
-The Docker container runs the app only — Ollama stays on the host for GPU access.
-
-```bash
-# Build and run (recommended)
-docker compose up --build
-
-# Or without docker compose
-docker build -t ticket-triage-llm .
-docker run --rm -p 7860:7860 -v "$PWD/data:/app/data" ticket-triage-llm
-```
-
-Open **http://localhost:7860** in your browser.
-
-The container reaches Ollama at `host.docker.internal:11434` (Mac/Windows). On Linux, add `--network=host` to the `docker run` command, or add `network_mode: host` to `docker-compose.yml`.
-
-#### Verify it's working
-
-The Gradio UI should show a Triage tab with a model dropdown, subject/body fields, and Triage/Cancel/New Ticket buttons.
-
-You can also test the REST API directly:
-
-```bash
-curl -X POST http://localhost:7860/api/v1/triage \
-  -H "Content-Type: application/json" \
-  -d '{"ticket_body": "My printer is offline and I cannot print any documents.", "ticket_subject": "Printer not working"}'
-```
+---
 
 ### Run evaluation experiments
 
@@ -268,6 +282,8 @@ All runners accept `--db-path`, `--dataset-path`, and `--output-dir` flags (defa
 
 **E2 (Model size vs engineering controls)** is not a separate runner — it's composed by `summarize_results.py` from the 2B row of E1 and the 9B-no-validation row produced by E3.
 
+---
+
 ## Repository structure
 
 ```text
@@ -290,7 +306,8 @@ ticket-triage-llm/
 │   │   ├── 0008-heuristic-only-guardrail-baseline.md
 │   │   ├── 0009-monitoring-distinct-from-benchmarking.md
 │   │   ├── 0010-non-actionable-and-ambiguous-input-handling.md
-│   │   └── 0011-default-model-selection.md
+│   │   ├── 0011-default-model-selection.md
+│   │   └── 0012-adr-framing-retrospective.md
 │   ├── decisions/decision-log.md      # Scope/framing decisions
 │   ├── PLAN.md                        # Project build plan
 │   ├── SUMMARY.md                     # Historical log across all phases
@@ -302,7 +319,7 @@ ticket-triage-llm/
 │   ├── cost-analysis.md
 │   ├── future-improvements.md
 │   ├── DEPLOYMENT.md                  # Native + Docker quick-starts
-│   └── archive/                       # Original plan and rubric (read-only)
+│   └── archive/                       # Original plan (read-only reference)
 ├── src/ticket_triage_llm/
 │   ├── __init__.py
 │   ├── app.py                         # FastAPI + Gradio entry point
@@ -367,16 +384,13 @@ ticket-triage-llm/
 - **[ADR index](docs/adr/README.md)** — all Architecture Decision Records
 - **[Decision log](docs/decisions/decision-log.md)** — chronological scope/framing/strategy decisions
 - **[Evaluation plan](docs/evaluation-plan.md)** — experiment design and methodology
+- **[Evaluation results](docs/evaluation-checklist.md)** — key findings and full experiment data
 - **[Threat model](docs/threat-model.md)** — prompt injection defense layers
 - **[Tradeoffs](docs/tradeoffs.md)** — design tradeoff analysis
 - **[Cost analysis](docs/cost-analysis.md)** — three-component cost analysis
 - **[Deployment](docs/DEPLOYMENT.md)** — native + Docker quick-starts, architecture context, troubleshooting
 - **[SUMMARY](docs/SUMMARY.md)** — historical log of what was done, how, issues, and resolution per phase
 - **[Future improvements](docs/future-improvements.md)** — deferred work with effort estimates
-
-## Context
-
-This project is the final deliverable for an LLMs-in-Production course based on Brousseau & Sharp, *LLMs in Production* (Manning, 2024). It is intended to demonstrate the engineering judgment, evaluation rigor, and decision-making process that go into selecting and deploying an LLM under real-world constraints — not just the act of building a chatbot.
 
 ## License
 
