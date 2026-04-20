@@ -183,6 +183,8 @@ Summary of the decisions and where to find them:
 | Local-only deployment with Docker for app, Ollama on host                   | [ADR 0007](adr/0007-local-deployment-with-docker.md)                 |
 | Heuristic-only guardrail as baseline                                        | [ADR 0008](adr/0008-heuristic-only-guardrail-baseline.md)            |
 | Monitoring distinct from benchmarking, with drift detection and alerting    | [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md)        |
+| Non-actionable and ambiguous input handling                                | [ADR 0010](adr/0010-non-actionable-and-ambiguous-input-handling.md)  |
+| Default model selection (4B → 9B, see OD-4)                               | [ADR 0011](adr/0011-default-model-selection.md)                      |
 
 The prompt injection defense strategy — three defensive layers, what each catches and misses, and the residual risk — is documented in [threat-model.md](threat-model.md).
 
