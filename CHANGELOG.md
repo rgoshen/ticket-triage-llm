@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.0.17] - 2026-04-20
+
+## Bug Fixes
+
+- wrap long line in experiments_tab to satisfy ruff E501
+- eagerly populate dashboard tabs on page load
+
+
 ## [v1.0.16] - 2026-04-20
 
 ## Maintenance
