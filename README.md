@@ -24,6 +24,18 @@ A production-style support ticket triage system built on local LLMs, with a focu
 
 The project is deliberately constrained to consumer hardware (Apple Silicon, ≤24GB unified memory) for the local execution path. That constraint is a feature, not a workaround — it reflects the deployment context most production LLM systems will actually face outside of well-funded AI labs.
 
+![1-triage-tab](./docs/images/1-triage-tab.jpg)
+Figure 1. Triage tab
+
+![2-metric-tab](./docs/images/2-metric-tab.jpg)
+Figure 2. Metrics tab
+
+![3-traces-tab](./docs/images/3-traces-tab.jpg)
+Figure 3. Traces tab
+
+![4-experiments-tab](./docs/images/4-experiments-tab.jpg)
+Figure 4. Experiments tab
+
 ---
 
 ## Project goals
