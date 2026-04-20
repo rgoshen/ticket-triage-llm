@@ -6,6 +6,18 @@ These are not gaps or oversights. They are the result of explicit scoping decisi
 
 ---
 
+## ADR 0010 semantic check for non-actionable input
+
+**What it would add:** The semantic validation layer described in [ADR 0010](adr/0010-non-actionable-and-ambiguous-input-handling.md) — a post-LLM check that detects the combination of `category: "other"`, low confidence, and a vague summary, and flags the output as non-actionable. Optionally, a `non_actionable` flag on `TriageSuccess` so the UI can surface the distinction. Additionally, prompt changes to explicitly instruct the model to classify vague/minimal input as `category: "other"` with `severity: "low"`.
+
+**Why it's deferred:** Discovered 2026-04-19 after the build was complete. The ADR was written and accepted, but the semantic check was never implemented — `services/validation.py` only has JSON parse and schema validation. The prompt (Rule 3) tells the model to lower confidence on ambiguous input but does not tell it to default to `other` / `low`.
+
+**Observed behavior without this check:** A one-word ticket body ("broke") produces `category=outage`, `severity=critical`, `confidence=0.60`, `escalation=true`. The model invents context from minimal input and assigns maximum severity. See [screenshot](images/Screenshot%202026-04-19%20at%2018.38.11.jpg).
+
+**Estimated effort to add:** Half a day. Add a semantic check function to `validation.py`, add prompt rules for minimal/vague input, add test cases for non-actionable tickets (n-031 through n-033 already exist in the dataset). Optionally add the `non_actionable` flag to the `TriageSuccess` schema.
+
+---
+
 ## Cloud provider integration
 
 **What it would add:** A concrete cloud Qwen provider (via DashScope or `qwen3.5:cloud` through Ollama) running the same benchmark suite, producing actual cloud latency and accuracy numbers alongside the local results.

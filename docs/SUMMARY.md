@@ -18,6 +18,12 @@ Related artifacts:
 
 ---
 
+## [2026-04-19] ADR 0010 implementation gap — non-actionable semantic check never built
+
+ADR 0010 specifies a semantic validation check that detects non-actionable input (`category: "other"` + low confidence + vague summary) and flags it before the pipeline routes it to a real team. This check was never implemented — `services/validation.py` only has JSON parse and schema validation, no non-actionable detection. The prompt (Rule 3) tells the model to lower confidence on ambiguous input but does not instruct it to classify as `other` / `severity: low`. Result: the model produces confident-looking output on junk input. Reproduction: ticket body "broke" → `category=outage`, `severity=critical`, `confidence=0.60`. See [screenshot](images/Screenshot%202026-04-19%20at%2018.38.11.jpg). Deferred to future work.
+
+---
+
 ## [2026-04-19] CI — automated release workflow + versioned Docker tags
 
 **What was done:**
