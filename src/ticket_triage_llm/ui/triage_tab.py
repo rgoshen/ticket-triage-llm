@@ -51,12 +51,14 @@ def build_triage_tab_content(
             cat = output.category.replace("_", " ").title()
             sev = output.severity.title()
             team = output.routing_team.title()
+            conf_pct = f"{output.confidence * 100:.0f}%"
             return (
                 f"### Triage Result\n\n"
                 f"**Category:** {cat}  \n"
                 f"**Severity:** {sev}  \n"
                 f"**Routing Team:** {team}  \n"
-                f"**Escalation:** {esc}\n\n"
+                f"**Escalation:** {esc}  \n"
+                f"**Confidence:** {conf_pct}\n\n"
                 f"---\n\n"
                 f"**Summary**  \n{output.summary}\n\n"
                 f"**Business Impact**  \n"
