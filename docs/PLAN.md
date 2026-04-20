@@ -136,7 +136,7 @@ For the **MacBook Pro M4 Pro, 24GB unified memory**:
 
 | Model       |  Quant | Approx RAM | Expected Role                                  |
 | ----------- | -----: | ---------: | ---------------------------------------------- |
-| Qwen 3.5 2B | Q4_K_M |     ~2.7GB | Fast baseline / validator-pipeline stress test |
+| Qwen 3.5 2B | Q8_0   |     ~2.7GB | Fast baseline / validator-pipeline stress test |
 | Qwen 3.5 4B | Q4_K_M |     ~3.3GB | Middle data point                              |
 | Qwen 3.5 9B | Q4_K_M |     ~6.6GB | Likely best-balance candidate                  |
 
@@ -206,9 +206,9 @@ Full monitoring design, alerting thresholds, drift detection approach, and what'
 
 ## API Endpoint
 
-The rubric requires the model to be "accessible via an API endpoint." To satisfy this, a minimal FastAPI layer is added alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One route (`POST /api/v1/triage`) calls the same service layer the Gradio Triage tab calls. Swagger UI is auto-generated at `/api/v1/docs` from existing pydantic models.
+The rubric requires the model to be "accessible via an API endpoint." To satisfy this, a minimal FastAPI layer is added alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One route (`POST /api/v1/triage`) calls the same service layer the Gradio Triage tab calls. Swagger UI is auto-generated at `/docs` from existing pydantic models.
 
-This does not create a client/server split — it's one process, one codebase, one Docker container. The instructor can open `/api/v1/docs` in a browser and submit a triage request via Swagger without using the Gradio UI.
+This does not create a client/server split — it's one process, one codebase, one Docker container. The instructor can open `/docs` in a browser and submit a triage request via Swagger without using the Gradio UI.
 
 Full reasoning for this addition: see the addendum to [ADR 0006](adr/0006-single-app-gradio-architecture.md). Decision log entry: [2026-04-15 — API endpoint](decisions/decision-log.md).
 

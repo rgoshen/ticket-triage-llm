@@ -318,9 +318,9 @@ The 2B is a usable model under production config (100% JSON validity vs the earl
 
 The rubric's Environment Setup criterion requires the model to be "accessible via an API endpoint." The original single-app Gradio architecture (ADR 0006) did not explicitly address this. Gradio auto-generates internal API endpoints, but these are framework-determined, not project-designed, and lack Swagger/OpenAPI documentation.
 
-Resolution: add a minimal FastAPI layer alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One new route (`POST /api/v1/triage`) calls the same `triage_service.run_triage()` that the Gradio Triage tab calls. Swagger UI is auto-generated at `/api/v1/docs` from the existing pydantic request/response models.
+Resolution: add a minimal FastAPI layer alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One new route (`POST /api/v1/triage`) calls the same `triage_service.run_triage()` that the Gradio Triage tab calls. Swagger UI is auto-generated at `/docs` from the existing pydantic request/response models.
 
-This does not create a client/server split — it's one process, one codebase, one Docker container. The service layer is unchanged. The instructor can open `/api/v1/docs` in a browser, submit a triage request via Swagger, and see the structured result without using the Gradio UI.
+This does not create a client/server split — it's one process, one codebase, one Docker container. The service layer is unchanged. The instructor can open `/docs` in a browser, submit a triage request via Swagger, and see the structured result without using the Gradio UI.
 
 See the addendum to ADR 0006 for the full architectural update.
 

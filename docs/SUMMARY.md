@@ -691,7 +691,7 @@ None — all items were straightforward cleanup.
 - Prompt dispatch service (`services/prompt.py`) routing version strings to prompt implementations. v1 prompt fully wired.
 - Validation service (`services/validation.py`) with markdown fence stripping and pydantic schema validation.
 - `SqliteTraceRepository` with `save_trace()` and `get_recent_traces()` — remaining 4 query methods deferred to Phase 3/5.
-- FastAPI app with Gradio Triage tab mounted as sub-application, `POST /api/v1/triage` endpoint with Swagger docs at `/api/v1/docs`.
+- FastAPI app with Gradio Triage tab mounted as sub-application, `POST /api/v1/triage` endpoint with Swagger docs at `/docs`.
 - Multi-stage Dockerfile for the app container (Ollama on host per ADR 0007). Docker build verified.
 - 130 tests total (57 new), 99.64% coverage on service/business logic, ruff clean.
 

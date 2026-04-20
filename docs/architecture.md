@@ -93,7 +93,7 @@ The system exposes a REST API via FastAPI alongside the Gradio UI, in the same p
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/api/v1/triage` | POST | Submit a ticket for triage. Accepts ticket body, optional model and prompt version. Returns `TriageResult`. |
-| `/api/v1/docs` | GET | Swagger UI — interactive API documentation auto-generated from pydantic models |
+| `/docs` | GET | Swagger UI — interactive API documentation auto-generated from pydantic models |
 | `/` | GET | Gradio UI (mounted as sub-application) |
 
 The API and the UI call the same service layer. There is no logic duplication. The API exists to satisfy the rubric's "accessible via an API endpoint" requirement and to provide Swagger documentation for programmatic consumers.
