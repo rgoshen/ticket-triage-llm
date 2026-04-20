@@ -47,8 +47,8 @@ See `docs/decisions/decision-log.md` for the rationale behind each pinned value 
 
 **Key features:**
 - **Multi-model support** — switchable Qwen 3.5 models (2B/4B/9B) via dropdown in the Triage tab or `OLLAMA_MODELS` env var
-- **Heuristic guardrail** — injection phrase detection, structural marker screening, PII pattern matching, and length checks per ADR 0008
-- **Bounded retry with repair prompt** — on validation failure, sends the failed output plus specific error back to the model for self-correction (exactly one retry per ADR 0002)
+- **Heuristic guardrail** — injection phrase detection, structural marker screening, PII pattern matching, and length checks per [ADR 0008](docs/adr/0008-heuristic-only-guardrail-baseline.md)
+- **Bounded retry with repair prompt** — on validation failure, sends the failed output plus specific error back to the model for self-correction (exactly one retry per [ADR 0002](docs/adr/0002-validator-first-pipeline-with-bounded-retry.md))
 - **Config-driven provider registry** — add models via environment variables, no code changes required
 
 The project is deliberately constrained to consumer hardware (Apple Silicon, ≤24GB unified memory) for the local execution path. That constraint is a feature, not a workaround — it reflects the deployment context most production LLM systems will actually face outside of well-funded AI labs.
@@ -66,7 +66,7 @@ To answer that, the system supports four planned experiments:
 3. **Validation impact** — how much the validator-first pipeline (parse + schema + bounded retry) contributes to overall reliability vs. the model alone
 4. **Prompt comparison** — how much careful prompt design contributes vs. model selection
 
-The findings from these experiments will be reported as part of the project deliverable, along with a documented decision matrix showing what factors were weighed and why.
+Findings from experiments E1, E3, and E4 are reported in the [Key findings](#key-findings) section above, with full data in [`docs/evaluation-checklist.md`](docs/evaluation-checklist.md). The tradeoff analysis and model selection rationale are documented in [`docs/tradeoffs.md`](docs/tradeoffs.md) and [`docs/decisions/decision-log.md`](docs/decisions/decision-log.md). E2 (local vs cloud) remains deferred — see [`docs/future-improvements.md`](docs/future-improvements.md).
 
 ## Tech stack
 
