@@ -165,7 +165,9 @@ def build_experiments_tab_content(trace_repo: TraceRepository) -> None:
         else ("No experiment runs found. Run experiments to see results here.", [])
     )
     initial_is_adversarial = initial_value and initial_value.startswith("Adversarial")
-    initial_headers = ADVERSARIAL_HEADERS if initial_is_adversarial else BENCHMARK_HEADERS
+    initial_headers = (
+        ADVERSARIAL_HEADERS if initial_is_adversarial else BENCHMARK_HEADERS
+    )
 
     experiment_selector = gr.Dropdown(
         choices=initial_choices,
