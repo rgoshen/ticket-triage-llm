@@ -8,6 +8,14 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-19 — ADR framing retrospective: rubric-driven justification pattern
+
+**Decision:** Documented a framing pattern across early ADRs (0001-0003, 0005-0007, 0009, 0010) where decisions are justified partly by citing rubric criteria, grading tiers, or instructor expectations rather than standing on independent engineering reasoning. The decisions themselves are sound — in every case the underlying technical driver would justify the choice without a rubric. The articulation would be sharper today.
+
+See [ADR 0012](../adr/0012-adr-framing-retrospective.md) for the full inventory and the corrected framing principle for future ADRs.
+
+---
+
 ## 2026-04-19 — Phase 6 skipped: prompt v2 comparison deferred
 
 **Decision:** Phase 6 (prompt v2 authoring + E4 v1-vs-v2 comparison) is not executed in this project iteration. The E4 experiment remains declared complete with v1-only results. `src/ticket_triage_llm/prompts/triage_v2.py` (a stub file containing only a docstring) is deleted. Time budget redirects to Phase 7 deliverables.
@@ -34,7 +42,7 @@ This is a scope decision, not a slipped deliverable.
 
 **E4 status update:** E4 is declared complete, v1 only. The comparison dimension (v1 vs v2) is reduced to a one-value dataset; the experiment's measured deliverable becomes "v1 baseline metrics per model" rather than "v1 vs v2 delta." `docs/evaluation-checklist.md` and `docs/evaluation-plan.md` are updated to reflect this framing.
 
-**Honest acknowledgement:** The original rubric (archived at `docs/archive/Final Project Rubric.docx`) and PLAN.md listed four experiments. With Phase 6 skipped, only three experiments have a full dataset (E1 size comparison, E2 size-vs-controls composed from E1/E3, E3 validation impact). E4 has a partial dataset (v1 only, no v2). This reduces the breadth of the prompt-comparison story and should be acknowledged in the presentation — the point to make is that reliability saturation under production config made the original v1-vs-v2 framing less informative than it was designed to be, not that the work ran out of time.
+**Honest acknowledgement:** PLAN.md listed four experiments. With Phase 6 skipped, only three experiments have a full dataset (E1 size comparison, E2 size-vs-controls composed from E1/E3, E3 validation impact). E4 has a partial dataset (v1 only, no v2). This reduces the breadth of the prompt-comparison story and should be acknowledged in the presentation — the point to make is that reliability saturation under production config made the original v1-vs-v2 framing less informative than it was designed to be, not that the work ran out of time.
 
 **References:** This decision was made after Phase 4 replication (n=5), E5 reasoning-mode experiment, and OD-4 re-resolution landed. The accumulated evidence from the Phase 3 replication (commits `749bd81`..`f394f54`) is what makes "reliability saturated" a defensible claim.
 
@@ -318,9 +326,9 @@ The 2B is a usable model under production config (100% JSON validity vs the earl
 
 The rubric's Environment Setup criterion requires the model to be "accessible via an API endpoint." The original single-app Gradio architecture (ADR 0006) did not explicitly address this. Gradio auto-generates internal API endpoints, but these are framework-determined, not project-designed, and lack Swagger/OpenAPI documentation.
 
-Resolution: add a minimal FastAPI layer alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One new route (`POST /api/v1/triage`) calls the same `triage_service.run_triage()` that the Gradio Triage tab calls. Swagger UI is auto-generated at `/api/v1/docs` from the existing pydantic request/response models.
+Resolution: add a minimal FastAPI layer alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One new route (`POST /api/v1/triage`) calls the same `triage_service.run_triage()` that the Gradio Triage tab calls. Swagger UI is auto-generated at `/docs` from the existing pydantic request/response models.
 
-This does not create a client/server split — it's one process, one codebase, one Docker container. The service layer is unchanged. The instructor can open `/api/v1/docs` in a browser, submit a triage request via Swagger, and see the structured result without using the Gradio UI.
+This does not create a client/server split — it's one process, one codebase, one Docker container. The service layer is unchanged. The instructor can open `/docs` in a browser, submit a triage request via Swagger, and see the structured result without using the Gradio UI.
 
 See the addendum to ADR 0006 for the full architectural update.
 

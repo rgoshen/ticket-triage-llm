@@ -18,6 +18,12 @@ Related artifacts:
 
 ---
 
+## [2026-04-19] ADR 0010 implementation gap — non-actionable semantic check never built
+
+ADR 0010 specifies a semantic validation check that detects non-actionable input (`category: "other"` + low confidence + vague summary) and flags it before the pipeline routes it to a real team. This check was never implemented — `services/validation.py` only has JSON parse and schema validation, no non-actionable detection. The prompt (Rule 3) tells the model to lower confidence on ambiguous input but does not instruct it to classify as `other` / `severity: low`. Result: the model produces confident-looking output on junk input. Reproduction: ticket body "broke" → `category=outage`, `severity=critical`, `confidence=0.60`. See [screenshot](images/Screenshot%202026-04-19%20at%2018.38.11.jpg). Deferred to future work.
+
+---
+
 ## [2026-04-19] CI — automated release workflow + versioned Docker tags
 
 **What was done:**
@@ -691,7 +697,7 @@ None — all items were straightforward cleanup.
 - Prompt dispatch service (`services/prompt.py`) routing version strings to prompt implementations. v1 prompt fully wired.
 - Validation service (`services/validation.py`) with markdown fence stripping and pydantic schema validation.
 - `SqliteTraceRepository` with `save_trace()` and `get_recent_traces()` — remaining 4 query methods deferred to Phase 3/5.
-- FastAPI app with Gradio Triage tab mounted as sub-application, `POST /api/v1/triage` endpoint with Swagger docs at `/api/v1/docs`.
+- FastAPI app with Gradio Triage tab mounted as sub-application, `POST /api/v1/triage` endpoint with Swagger docs at `/docs`.
 - Multi-stage Dockerfile for the app container (Ollama on host per ADR 0007). Docker build verified.
 - 130 tests total (57 new), 99.64% coverage on service/business logic, ruff clean.
 
