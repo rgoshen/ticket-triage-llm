@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0.13] - 2026-04-20
+
+No categorized changes found.
+
 ## [v1.0.11] - 2026-04-20
 
 No categorized changes found.
