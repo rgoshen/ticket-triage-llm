@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.0.18] - 2026-04-20
+
+## Bug Fixes
+
+- broaden ignore_previous regex to catch multi-word variants
+
+
 ## [v1.0.17] - 2026-04-20
 
 ## Bug Fixes
