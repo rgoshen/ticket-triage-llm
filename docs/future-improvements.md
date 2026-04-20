@@ -6,6 +6,18 @@ These are not gaps or oversights. They are the result of explicit scoping decisi
 
 ---
 
+## ADR 0010 semantic check for non-actionable input
+
+**What it would add:** The semantic validation layer described in [ADR 0010](adr/0010-non-actionable-and-ambiguous-input-handling.md) — a post-LLM check that detects the combination of `category: "other"`, low confidence, and a vague summary, and flags the output as non-actionable. Optionally, a `non_actionable` flag on `TriageSuccess` so the UI can surface the distinction. Additionally, prompt changes to explicitly instruct the model to classify vague/minimal input as `category: "other"` with `severity: "low"`.
+
+**Why it's deferred:** Discovered 2026-04-19 after the build was complete. The ADR was written and accepted, but the semantic check was never implemented — `services/validation.py` only has JSON parse and schema validation. The prompt (Rule 3) tells the model to lower confidence on ambiguous input but does not tell it to default to `other` / `low`.
+
+**Observed behavior without this check:** A one-word ticket body ("broke") produces `category=outage`, `severity=critical`, `confidence=0.60`, `escalation=true`. The model invents context from minimal input and assigns maximum severity. See [screenshot](images/Screenshot%202026-04-19%20at%2018.38.11.jpg).
+
+**Estimated effort to add:** Half a day. Add a semantic check function to `validation.py`, add prompt rules for minimal/vague input, add test cases for non-actionable tickets (n-031 through n-033 already exist in the dataset). Optionally add the `non_actionable` flag to the `TriageSuccess` schema.
+
+---
+
 ## Cloud provider integration
 
 **What it would add:** A concrete cloud Qwen provider (via DashScope or `qwen3.5:cloud` through Ollama) running the same benchmark suite, producing actual cloud latency and accuracy numbers alongside the local results.
@@ -144,15 +156,9 @@ These are not gaps or oversights. They are the result of explicit scoping decisi
 
 ---
 
-## Versioned container image tags
+## ~~Versioned container image tags~~ — DONE
 
-**What it would add:** Semantic-versioned tags on the GHCR image (e.g., `ghcr.io/<owner>/ticket-triage-llm:1.0.0`) published when git tags are pushed, in addition to the existing `latest` tag on every push to `main`.
-
-**Why it's deferred:** The project does not yet use tagged releases. Adding version-based image tags before the release workflow exists would produce meaningless tags.
-
-**What was done instead:** The `docker-publish.yml` workflow publishes `latest` only. When tagged releases are adopted, the same workflow can be extended with `type=semver,pattern={{version}}` in the metadata action.
-
-**Estimated effort to add:** An hour. Add a `on: push: tags: ['v*']` trigger and a semver tag pattern to the existing metadata-action configuration.
+**Implemented** in the `feature/release-workflow-v2` branch. The `docker-publish.yml` workflow now triggers on `v*` tag pushes in addition to `main` pushes, and produces `:latest`, `:v1.0.0` (full semver), and `:v1.0` (major.minor) image tags via the Docker metadata action. The automated release workflow (`.github/workflows/release.yml`) creates tags on merge to `main`, completing the end-to-end automation.
 
 ---
 

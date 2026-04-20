@@ -217,7 +217,7 @@ This is GitHub Flow with a `develop` integration branch — not full GitFlow. Th
 
 ### Reference materials
 
-`docs/archive/` contains the original project plan (pre-revision) and the Final Project Rubric. These are read-only reference material — do not modify them.
+`docs/archive/` contains the original project plan (pre-revision). This is read-only reference material — do not modify it.
 
 ### Other agent context
 

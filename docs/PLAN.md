@@ -136,7 +136,7 @@ For the **MacBook Pro M4 Pro, 24GB unified memory**:
 
 | Model       |  Quant | Approx RAM | Expected Role                                  |
 | ----------- | -----: | ---------: | ---------------------------------------------- |
-| Qwen 3.5 2B | Q4_K_M |     ~2.7GB | Fast baseline / validator-pipeline stress test |
+| Qwen 3.5 2B | Q8_0   |     ~2.7GB | Fast baseline / validator-pipeline stress test |
 | Qwen 3.5 4B | Q4_K_M |     ~3.3GB | Middle data point                              |
 | Qwen 3.5 9B | Q4_K_M |     ~6.6GB | Likely best-balance candidate                  |
 
@@ -183,6 +183,9 @@ Summary of the decisions and where to find them:
 | Local-only deployment with Docker for app, Ollama on host                   | [ADR 0007](adr/0007-local-deployment-with-docker.md)                 |
 | Heuristic-only guardrail as baseline                                        | [ADR 0008](adr/0008-heuristic-only-guardrail-baseline.md)            |
 | Monitoring distinct from benchmarking, with drift detection and alerting    | [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md)        |
+| Non-actionable and ambiguous input handling                                | [ADR 0010](adr/0010-non-actionable-and-ambiguous-input-handling.md)  |
+| Default model selection (4B → 9B, see OD-4)                               | [ADR 0011](adr/0011-default-model-selection.md)                      |
+| ADR framing retrospective                                                  | [ADR 0012](adr/0012-adr-framing-retrospective.md)                   |
 
 The prompt injection defense strategy — three defensive layers, what each catches and misses, and the residual risk — is documented in [threat-model.md](threat-model.md).
 
@@ -192,7 +195,7 @@ The prompt injection defense strategy — three defensive layers, what each catc
 
 The system is deployed locally on consumer hardware, with two supported paths: native (`uv run`) and containerized (Docker for the Gradio app, Ollama on the host). Ollama runs outside the container to preserve GPU/MLX acceleration on Apple Silicon. Cross-platform testing is performed on macOS, Windows, and Linux.
 
-Full deployment architecture, rationale for the Ollama-on-host split, and cross-platform testing plan: [ADR 0007](adr/0007-local-deployment-with-docker.md). Runtime instructions will be in `DEPLOYMENT.md` (Phase 7).
+Full deployment architecture, rationale for the Ollama-on-host split, and cross-platform testing plan: [ADR 0007](adr/0007-local-deployment-with-docker.md). Runtime instructions: [`docs/DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ---
 
@@ -206,9 +209,9 @@ Full monitoring design, alerting thresholds, drift detection approach, and what'
 
 ## API Endpoint
 
-The rubric requires the model to be "accessible via an API endpoint." To satisfy this, a minimal FastAPI layer is added alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One route (`POST /api/v1/triage`) calls the same service layer the Gradio Triage tab calls. Swagger UI is auto-generated at `/api/v1/docs` from existing pydantic models.
+The rubric requires the model to be "accessible via an API endpoint." To satisfy this, a minimal FastAPI layer is added alongside Gradio in the same process. FastAPI is the outer app; Gradio is mounted inside it as a sub-application. One route (`POST /api/v1/triage`) calls the same service layer the Gradio Triage tab calls. Swagger UI is auto-generated at `/docs` from existing pydantic models.
 
-This does not create a client/server split — it's one process, one codebase, one Docker container. The instructor can open `/api/v1/docs` in a browser and submit a triage request via Swagger without using the Gradio UI.
+This does not create a client/server split — it's one process, one codebase, one Docker container. The instructor can open `/docs` in a browser and submit a triage request via Swagger without using the Gradio UI.
 
 Full reasoning for this addition: see the addendum to [ADR 0006](adr/0006-single-app-gradio-architecture.md). Decision log entry: [2026-04-15 — API endpoint](decisions/decision-log.md).
 
@@ -216,9 +219,7 @@ Full reasoning for this addition: see the addendum to [ADR 0006](adr/0006-single
 
 ## Sampling Configuration
 
-The pipeline uses conservative sampling parameters optimized for structured JSON output: low temperature (0.1–0.3), tight top-p (0.85–0.9), standard top-k (40), and repetition penalty disabled (1.0). The rationale: structured JSON output requires the model to be predictable; every "creative" token choice is a potential validation failure.
-
-These parameters are configurable and passed to the Ollama provider as request-level settings. If time permits during or after Phase 3, sampling can be added as an experimental variable in the eval harness.
+The pipeline uses pinned sampling parameters optimized for structured JSON output: temperature **0.2**, top-p **0.9**, top-k **40**, and repetition penalty **1.0** (disabled). These are module-level constants in `config.py`, not environment-configurable — drifting sampling values silently invalidates prior experiment results. Any change requires a decision-log entry. The rationale: structured JSON output requires the model to be predictable; every "creative" token choice is a potential validation failure.
 
 Full configuration table and rationale: [architecture.md](architecture.md) (Sampling Configuration section). Decision log entry: [2026-04-15 — Sampling configuration](decisions/decision-log.md).
 
@@ -260,9 +261,8 @@ ticket-triage-llm/
 ├── .remember/
 ├── .adr-dir                          # adr tools config
 ├── README.md
-├── DEPLOYMENT.md                   # forthcoming — native and Docker quick-start
-├── Dockerfile                      # forthcoming — Phase 1
-├── .dockerignore                   # forthcoming — Phase 1
+├── Dockerfile                      # multi-stage app container build
+├── .dockerignore
 ├── pyproject.toml                  # uv-managed, source of truth for deps
 ├── uv.lock
 ├── .env
@@ -281,13 +281,13 @@ ticket-triage-llm/
 │   ├── decisions/                  # scope/framing decisions (non-architectural)
 │   │   └── decision-log.md         # chronological decision log
 │   ├── archive/                    # original plan and rubric (reference)
-│   ├── architecture.md             # forthcoming
-│   ├── evaluation-plan.md          # forthcoming
-│   ├── tradeoffs.md                # forthcoming
-│   ├── prompt-versions.md          # not written (Phase 6 scoped out — see decision log)
-│   ├── threat-model.md             # forthcoming — prompt injection threat model
-│   ├── demo-script.md              # forthcoming
-│   └── presentation-notes.md       # forthcoming
+│   ├── architecture.md             # written — pipeline flow, components, data model, deployment
+│   ├── evaluation-plan.md          # written — datasets, metrics, experiments, reporting
+│   ├── tradeoffs.md                # written — cross-cutting tradeoffs with reasoning
+│   ├── threat-model.md             # written — prompt injection threat model
+│   ├── DEPLOYMENT.md               # written — native and Docker quick-starts
+│   ├── future-improvements.md      # written — deferred work with effort estimates
+│   └── cost-analysis.md            # written — three-component cost analysis
 │
 ├── src/
 │   └── ticket_triage_llm/
@@ -341,18 +341,16 @@ ticket-triage-llm/
 │       │
 │       └── eval/                   # evaluation harness
 │           ├── __init__.py
-│           ├── datasets/
-│           │   ├── gold_tickets.json
-│           │   └── adversarial_tickets.json
-│           ├── runners/
-│           │   ├── __init__.py
-│           │   ├── run_local_comparison.py
-│           │   ├── run_local_vs_cloud.py
-│           │   ├── run_validation_impact.py
-│           │   ├── run_prompt_comparison.py
-│           │   └── summarize_results.py
-│           └── reports/
-│               └── (generated benchmark output)
+│           ├── datasets.py                # dataset loader (GroundTruth, TicketRecord)
+│           ├── results.py                 # ModelMetrics, ExperimentSummary
+│           └── runners/
+│               ├── __init__.py
+│               ├── common.py              # run_experiment_pass() shared loop
+│               ├── run_local_comparison.py # E1: model size comparison
+│               ├── run_validation_impact.py# E3: validation on/off + E2 data
+│               ├── run_prompt_comparison.py# E4: prompt comparison (v1 only)
+│               ├── run_adversarial_eval.py # Phase 4: adversarial evaluation
+│               └── summarize_results.py   # summarize_run(), compose_e2(), CLI
 │
 └── tests/
     ├── __init__.py
@@ -500,7 +498,7 @@ live requests -> trace store -> trace service -> Traces tab (Gradio)
 
 ### In-process service interfaces
 
-Because the project is a single Gradio app rather than a split client/server, there are no HTTP endpoints. Instead, the UI tabs call into Python service modules in the same process:
+The project is a single-process app — FastAPI is the outer app, Gradio is mounted inside it as a sub-application (see ADR 0006 addendum). The REST API (`POST /api/v1/triage`) and the UI tabs both call the same Python service modules:
 
 #### `triage_service.run_triage(ticket_body, provider, prompt_version)`
 
@@ -757,7 +755,7 @@ This version matches the available hardware, the constraints we have chosen to h
 
 ## Open Decisions
 
-This section tracks decisions that have **not yet been made** and need to be resolved before or during the build. Every entry includes what the decision is, what's blocking it, and where it will be captured once made.
+This section tracked decisions that were open during the build. All have been resolved — see links to the decision log and ADRs in each entry.
 
 ### ~~OD-1: Why Qwen 3.5 specifically (over Qwen 3.0)?~~ — RESOLVED
 
@@ -773,7 +771,7 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: 2B 
 
 ### ~~OD-4: Default model for the demo~~ — RESOLVED
 
-Resolved 2026-04-18. See [decision log](decisions/decision-log.md) and [ADR 0011](adr/0011-default-model-selection.md). Summary: Qwen 3.5 4B is the default. It wins on every Phase 3 metric — highest accuracy, highest JSON validity, best retry recovery, lowest latency, lowest token cost. The 9B is slower and less reliable despite more parameters. The 2B is not viable (2.9% success rate).
+Resolved 2026-04-18, **re-resolved 2026-04-19**. See [decision log](decisions/decision-log.md) and [ADR 0011](adr/0011-default-model-selection.md). The original n=1 decision selected the 4B (ADR 0011). The Phase 3 replication (n=5, `think=false`, `num_ctx=16384`) reversed the finding: the 9B leads on category accuracy (83.4% vs 80.6%) with all three models at 100% JSON validity. **The current default is Qwen 3.5 9B.** ADR 0011 is historical; the decision-log entry dated 2026-04-19 supersedes it.
 
 ### ~~OD-5: Cost analysis depth~~ — RESOLVED
 
@@ -794,17 +792,16 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: sev
 Documentation is split across multiple artifact types, each with a clear purpose:
 
 - **This document** (`docs/PLAN.md`) — the working project plan and map to all other docs
-- **`docs/adr/`** — Architecture Decision Records for architectural decisions ([ADR index](adr/README.md)) — **9 ADRs written**
-- **`docs/decisions/decision-log.md`** — chronological log of scope, framing, and strategy decisions — **active, 9 entries**
+- **`docs/adr/`** — Architecture Decision Records for architectural decisions ([ADR index](adr/README.md)) — **12 ADRs written**
+- **`docs/decisions/decision-log.md`** — chronological log of scope, framing, and strategy decisions — **written**
 - **`docs/architecture.md`** — pipeline flow, component responsibilities, data model, deployment diagram — **written**
 - **`docs/evaluation-plan.md`** — datasets, metrics, experiments, execution, reporting — **written**
 - **`docs/threat-model.md`** — prompt injection threat model, attack categories, defensive layers, residual risk, measurement plan — **written**
 - **`docs/tradeoffs.md`** — cross-cutting tradeoffs with reasoning — **written**
-- **`docs/cost-analysis.md`** — three-component cost analysis with TBD placeholders for Phase 3 data — **structured, awaiting data**
+- **`docs/cost-analysis.md`** — three-component cost analysis with measured Phase 3 data — **written**
 - **`docs/future-improvements.md`** — everything deliberately out of scope with reasoning and effort estimates — **written**
-- **`docs/prompt-versions.md`** — not written (Phase 6 scoped out — v2 was never authored; see decision log 2026-04-19)
-- **`DEPLOYMENT.md`** (repo root) — forthcoming (Phase 7, native and Docker quick-start, tested platforms)
-- **`docs/demo-script.md`** — forthcoming (Phase 7, literal walkthrough for the live demo)
-- **`docs/presentation-notes.md`** — forthcoming (Phase 7, slide-by-slide speaker notes)
+- **`docs/DEPLOYMENT.md`** — native and Docker quick-starts, architecture context, troubleshooting — **written**
+- **`docs/SUMMARY.md`** — historical log across all phases — **written**
+- **`docs/prompt-versions.md`** — not written (Phase 6 scoped out — v2 was never authored; see [decision log 2026-04-19](decisions/decision-log.md) and [`future-improvements.md`](future-improvements.md))
 
 This split keeps the presentation short while preserving rigor in writing. PLAN.md is the map; the other docs are the territory.

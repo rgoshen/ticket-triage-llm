@@ -121,6 +121,6 @@ Both paths require Ollama and the models to be present on the host. The Docker p
 
 ## Addendum: GHCR container publishing (2026-04-18)
 
-A GitHub Actions workflow (`.github/workflows/docker-publish.yml`) builds and pushes the app container to GitHub Container Registry on every push to `main`. The image is multi-platform (linux/amd64 + linux/arm64) so it runs natively on both Intel and Apple Silicon hosts. Tagged `latest` only — versioned image tags are deferred until the project adopts tagged releases.
+A GitHub Actions workflow (`.github/workflows/docker-publish.yml`) builds and pushes the app container to GitHub Container Registry on every push to `main` and on `v*` tag pushes. The image is multi-platform (linux/amd64 + linux/arm64) so it runs natively on both Intel and Apple Silicon hosts. Images are tagged `:latest` (default branch), `:v1.0.0` (full semver), and `:v1.0` (major.minor) from version tags.
 
 This does not change the deployment architecture: Ollama still runs on the host for GPU access. The GHCR image replaces the `docker build` step — users can `docker pull` instead of building locally.

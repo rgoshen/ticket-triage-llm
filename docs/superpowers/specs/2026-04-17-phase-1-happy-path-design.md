@@ -130,7 +130,7 @@ Located in `services/trace.py` for now. No additional service-layer abstraction 
 ### `api/triage_route.py`
 
 - `POST /api/v1/triage` — accepts `TriageInput`, calls `run_triage()`, returns `TriageResult`
-- Swagger at `/api/v1/docs`
+- Swagger at `/docs`
 
 ### `ui/triage_tab.py`
 
