@@ -12,7 +12,7 @@ from typing import Literal
 _INJECTION_RULES: list[tuple[str, re.Pattern[str]]] = [
     (
         "injection:ignore_previous",
-        re.compile(r"ignore\s+(previous|all|above)\s+instructions", re.IGNORECASE),
+        re.compile(r"ignore\b.{0,30}\binstructions\b", re.IGNORECASE),
     ),
     (
         "injection:disregard",
