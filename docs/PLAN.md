@@ -185,6 +185,7 @@ Summary of the decisions and where to find them:
 | Monitoring distinct from benchmarking, with drift detection and alerting    | [ADR 0009](adr/0009-monitoring-distinct-from-benchmarking.md)        |
 | Non-actionable and ambiguous input handling                                | [ADR 0010](adr/0010-non-actionable-and-ambiguous-input-handling.md)  |
 | Default model selection (4B → 9B, see OD-4)                               | [ADR 0011](adr/0011-default-model-selection.md)                      |
+| ADR framing retrospective                                                  | [ADR 0012](adr/0012-adr-framing-retrospective.md)                   |
 
 The prompt injection defense strategy — three defensive layers, what each catches and misses, and the residual risk — is documented in [threat-model.md](threat-model.md).
 
@@ -791,7 +792,7 @@ Resolved 2026-04-14. See [decision log](decisions/decision-log.md). Summary: sev
 Documentation is split across multiple artifact types, each with a clear purpose:
 
 - **This document** (`docs/PLAN.md`) — the working project plan and map to all other docs
-- **`docs/adr/`** — Architecture Decision Records for architectural decisions ([ADR index](adr/README.md)) — **11 ADRs written**
+- **`docs/adr/`** — Architecture Decision Records for architectural decisions ([ADR index](adr/README.md)) — **12 ADRs written**
 - **`docs/decisions/decision-log.md`** — chronological log of scope, framing, and strategy decisions — **written**
 - **`docs/architecture.md`** — pipeline flow, component responsibilities, data model, deployment diagram — **written**
 - **`docs/evaluation-plan.md`** — datasets, metrics, experiments, execution, reporting — **written**

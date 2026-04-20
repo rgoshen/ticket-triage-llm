@@ -8,6 +8,14 @@ Newest entries at the top.
 
 ---
 
+## 2026-04-19 — ADR framing retrospective: rubric-driven justification pattern
+
+**Decision:** Documented a framing pattern across early ADRs (0001-0003, 0005-0007, 0009, 0010) where decisions are justified partly by citing rubric criteria, grading tiers, or instructor expectations rather than standing on independent engineering reasoning. The decisions themselves are sound — in every case the underlying technical driver would justify the choice without a rubric. The articulation would be sharper today.
+
+See [ADR 0012](../adr/0012-adr-framing-retrospective.md) for the full inventory and the corrected framing principle for future ADRs.
+
+---
+
 ## 2026-04-19 — Phase 6 skipped: prompt v2 comparison deferred
 
 **Decision:** Phase 6 (prompt v2 authoring + E4 v1-vs-v2 comparison) is not executed in this project iteration. The E4 experiment remains declared complete with v1-only results. `src/ticket_triage_llm/prompts/triage_v2.py` (a stub file containing only a docstring) is deleted. Time budget redirects to Phase 7 deliverables.
