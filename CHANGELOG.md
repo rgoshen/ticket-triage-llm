@@ -1,5 +1,14 @@
 # Changelog
 
+## [v1.0.16] - 2026-04-20
+
+## Maintenance
+
+- add .gitkeep to track data/ directory in git
+- v1.0.15 — changelog and version bump
+- v1.0.14 — changelog and version bump
+
+
 ## [v1.0.15] - 2026-04-20
 
 No categorized changes found.
