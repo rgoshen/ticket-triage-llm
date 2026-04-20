@@ -1,6 +1,6 @@
 [project]
 name = "ticket-triage-llm"
-version = "1.0.7"
+version = "1.0.8"
 description = "Production-style support ticket triage with local-first LLM evaluation"
 requires-python = ">=3.11"
 license = {text = "MIT"}
